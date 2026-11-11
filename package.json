@@ -1,0 +1,28 @@
+{
+  "name": "albayan-quran-school",
+  "version": "3.0.0",
+  "description": "منظومة مدرسة البيان لتعليم القرآن الكريم - تطبيق الويب والجوال الذكي",
+  "main": "app.py",
+  "scripts": {
+    "start": "python app.py",
+    "start:desktop": "python run_desktop.py",
+    "cap:init": "npx @capacitor/cli init",
+    "cap:add:android": "npx @capacitor/cli add android",
+    "cap:sync": "npx @capacitor/cli sync",
+    "cap:open:android": "npx @capacitor/cli open android"
+  },
+  "keywords": [
+    "quran",
+    "school",
+    "albayan",
+    "capacitor",
+    "mobile"
+  ],
+  "author": "Albayan School",
+  "license": "ISC",
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/android": "^6.0.0"
+  }
+}

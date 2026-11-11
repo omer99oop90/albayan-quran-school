@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+  <title>بوابة تثبيت التطبيقات - مدرسة البيان لتعليم القرآن الكريم</title>
+  <meta name="description" content="البوابة الرسمية لتحميل وتثبيت تطبيقات مدرسة البيان لتعليم القرآن الكريم: تطبيق الإدارة والمعلمين وتطبيق بوابة الطلاب.">
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #059669;
+      --primary-dark: #064e3b;
+      --primary-light: #10b981;
+      --student-blue: #2563eb;
+      --student-dark: #1e40af;
+      --student-light: #3b82f6;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --gold: #d97706;
+      --gold-bg: rgba(217, 119, 6, 0.08);
+      --gold-border: rgba(217, 119, 6, 0.2);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1120;
+        --card-bg: #1e293b;
+        --text: #f8fafc;
+        --text-muted: #94a3b8;
+        --border: #334155;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: none !important;
+      -webkit-box-shadow: none !important;
+      text-shadow: none !important;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Background decoration */
+    .bg-glow {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 1200px;
+      height: 480px;
+      background: radial-gradient(50% 50% at 50% 0%, rgba(5, 150, 105, 0.12) 0%, rgba(37, 99, 235, 0.05) 50%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 36px 20px 60px 20px;
+      position: relative;
+      z-index: 1;
+      flex: 1;
+    }
+
+    /* Header Section */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--gold-bg);
+      color: var(--gold);
+      border: 1px solid var(--gold-border);
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+
+    .logo-wrapper {
+      width: 90px;
+      height: 90px;
+      margin: 0 auto 18px auto;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #064e3b, #059669);
+      padding: 8px;
+      box-shadow: none !important;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+
+    .main-title {
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .sub-title {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 620px;
+      margin: 0 auto;
+      font-weight: 600;
+    }
+
+    /* Apps Grid */
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .app-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+      box-shadow: none !important;
+    }
+
+    .app-card:hover {
+      transform: translateY(-4px);
+      box-shadow: none !important;
+    }
+
+    .card-admin:hover {
+      border-color: rgba(5, 150, 105, 0.4);
+    }
+
+    .card-student:hover {
+      border-color: rgba(37, 99, 235, 0.4);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .app-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .icon-admin {
+      background: rgba(5, 150, 105, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(5, 150, 105, 0.2);
+    }
+
+    .icon-student {
+      background: rgba(37, 99, 235, 0.1);
+      color: var(--student-blue);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+    }
+
+    .app-badge {
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 999px;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-admin {
+      background: rgba(5, 150, 105, 0.12);
+      color: var(--primary);
+      border: 1px solid rgba(5, 150, 105, 0.25);
+    }
+
+    .badge-student {
+      background: rgba(37, 99, 235, 0.12);
+      color: var(--student-blue);
+      border: 1px solid rgba(37, 99, 235, 0.25);
+    }
+
+    .app-title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .app-desc {
+      font-size: 14.5px;
+      color: var(--text-muted);
+      margin-bottom: 22px;
+      line-height: 1.6;
+    }
+
+    .features-list {
+      list-style: none;
+      margin-bottom: 28px;
+      flex: 1;
+    }
+
+    .features-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13.5px;
+      color: var(--text);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .features-list li svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+    }
+
+    .check-admin {
+      color: var(--primary);
+    }
+
+    .check-student {
+      color: var(--student-blue);
+    }
+
+    .app-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 18px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 15px 20px;
+      border-radius: 14px;
+      font-size: 15.5px;
+      font-weight: 800;
+      text-decoration: none;
+      color: #ffffff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: none !important;
+    }
+
+    .btn-admin {
+      background: linear-gradient(135deg, var(--primary), #047857);
+    }
+
+    .btn-admin:hover {
+      background: linear-gradient(135deg, var(--primary-light), var(--primary));
+      transform: translateY(-2px);
+      box-shadow: none !important;
+    }
+
+    .btn-student {
+      background: linear-gradient(135deg, var(--student-blue), var(--student-dark));
+    }
+
+    .btn-student:hover {
+      background: linear-gradient(135deg, var(--student-light), var(--student-blue));
+      transform: translateY(-2px);
+      box-shadow: none !important;
+    }
+
+    .btn-download:active {
+      transform: translateY(0);
+    }
+
+    .btn-download svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Installation Steps Section */
+    .steps-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px 28px;
+      margin-bottom: 40px;
+    }
+
+    .steps-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .steps-header svg {
+      width: 24px;
+      height: 24px;
+      color: var(--primary);
+    }
+
+    .steps-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .step-number {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--gold-bg);
+      color: var(--gold);
+      border: 1px solid var(--gold-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .step-text h4 {
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+
+    .step-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 24px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 13.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 24px 16px 40px 16px;
+      }
+      .main-title {
+        font-size: 25px;
+      }
+      .sub-title {
+        font-size: 14px;
+      }
+      .apps-grid {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+      .app-card {
+        padding: 24px 20px;
+      }
+      .steps-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand-badge">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <span>المنظومة التعليمية الذكية</span>
+      </div>
+
+      <div class="logo-wrapper">
+        <img src="logo.png" alt="شعار مدرسة البيان لتعليم القرآن الكريم">
+      </div>
+
+      <h1 class="main-title">مدرسة البيان لتعليم القرآن الكريم</h1>
+      <p class="sub-title">بوابة تثبيت التطبيقات الرسمية — حمّل وثبّت التطبيق المناسب لجهازك للوصول إلى الحلقات ومتابعة السجلات بكل سهولة.</p>
+    </header>
+
+    <!-- Apps Grid -->
+    <main class="apps-grid">
+      <!-- 1. Admin / Staff App -->
+      <section class="app-card card-admin">
+        <div class="card-top">
+          <div class="app-icon icon-admin">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          </div>
+          <span class="app-badge badge-admin">للكادر والمشرفين</span>
+        </div>
+
+        <h2 class="app-title">تطبيق الإدارة والمعلمين</h2>
+        <p class="app-desc">المنظومة المتكاملة لإدارة الحلقات القرآنية، تسجيل الحضور والغياب، رصد درجات الحفظ والمراجعة، وإدارة الاختبارات والشهادات.</p>
+
+        <ul class="features-list">
+          <li>
+            <svg class="check-admin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>إدارة الحلقات القرآنية والطلاب بالكامل</span>
+          </li>
+          <li>
+            <svg class="check-admin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>رصد درجات الحفظ والمراجعة والعلوم المصاحبة</span>
+          </li>
+          <li>
+            <svg class="check-admin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>سجل الحضور والغياب وكشوف نهاية السنة</span>
+          </li>
+          <li>
+            <svg class="check-admin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>يعمل بدون إنترنت مع مزامنة سحابية فورية</span>
+          </li>
+        </ul>
+
+        <div class="app-meta">
+          <span>الحجم: ~15 ميغابايت</span>
+          <span>الإصدار: أحدث نسخة (APK)</span>
+        </div>
+
+        <a href="downloads/AlbayanApp.apk" download="AlbayanApp.apk" class="btn-download btn-admin" id="btnDownloadAdmin">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>تنزيل تطبيق الإدارة (APK)</span>
+        </a>
+      </section>
+
+      <!-- 2. Student Portal App -->
+      <section class="app-card card-student">
+        <div class="card-top">
+          <div class="app-icon icon-student">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          </div>
+          <span class="app-badge badge-student">للطلاب وأولياء الأمور</span>
+        </div>
+
+        <h2 class="app-title">تطبيق بوابة الطلاب</h2>
+        <p class="app-desc">تطبيق مخصص للطلاب وأولياء الأمور لمتابعة الإنجاز القرآني اليومي، كشف الدرجات الشهرية، السيرة الذاتية وبطاقة الطالب.</p>
+
+        <ul class="features-list">
+          <li>
+            <svg class="check-student" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>متابعة جدول الحفظ والمراجعة اليومية</span>
+          </li>
+          <li>
+            <svg class="check-student" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>كشف الدرجات الشهري والتقييمات الدورية</span>
+          </li>
+          <li>
+            <svg class="check-student" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>السيرة الذاتية للقرآن الكريم وسجل الأوسمة</span>
+          </li>
+          <li>
+            <svg class="check-student" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>واجهة مبسطة وسريعة متوافقة مع كل الأجهزة</span>
+          </li>
+        </ul>
+
+        <div class="app-meta">
+          <span>الحجم: ~5 ميغابايت</span>
+          <span>الإصدار: أحدث نسخة (APK)</span>
+        </div>
+
+        <a href="downloads/AlbayanStudent.apk" download="AlbayanStudent.apk" class="btn-download btn-student" id="btnDownloadStudent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>تنزيل تطبيق الطلاب (APK)</span>
+        </a>
+      </section>
+    </main>
+
+    <!-- Installation Instructions Section -->
+    <section class="steps-section">
+      <div class="steps-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <h3 class="steps-title">طريقة تثبيت التطبيق على جهاز الأندرويد</h3>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <div class="step-text">
+            <h4>تنزيل الملف (APK)</h4>
+            <p>اضغط على زر التنزيل الأخضر (للإدارة) أو الأزرق (للطلاب) وسيبدأ تنزيل الملف فوراً.</p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <div class="step-text">
+            <h4>السماح بالتثبيت</h4>
+            <p>افتح الملف عند اكتمال تنزيله، وإذا ظهر تنبيه أمني اختر "السماح بالتثبيت من هذا المصدر".</p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <div class="step-text">
+            <h4>تسجيل الدخول والبدء</h4>
+            <p>افتح التطبيق من الشاشة الرئيسية وسجّل دخولك بحسابك للوصول المباشر لكافة الميزات.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>جميع الحقوق محفوظة © مدرسة البيان لتعليم القرآن الكريم — 1448هـ / 2026م</p>
+  </footer>
+</body>
+</html>

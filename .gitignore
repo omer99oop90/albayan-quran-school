@@ -1,0 +1,45 @@
+# ==============================================================================
+# Albayan Quran School - Git Ignore Configuration
+# ==============================================================================
+
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Android Gradle & Build intermediates
+.gradle/
+build/
+android/.gradle/
+android/app/build/
+android/capacitor-android/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+
+# Student App Android Build intermediates
+student_app/node_modules/
+student_app/android/.gradle/
+student_app/android/app/build/
+student_app/android/capacitor-android/build/
+student_app/android/capacitor-cordova-android-plugins/build/
+student_app/android/local.properties
+
+# Temporary & Log files
+*.log
+logs/app.log
+*.tmp
+*.bak
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+
+# OS & IDE caches
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Local legacy backup folder
+local_server_backup/

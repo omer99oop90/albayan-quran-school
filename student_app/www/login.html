@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="">
+  <title>تسجيل الدخول - نظام مدرسة البيان لتعليم القرآن</title>
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dark_theme.css?v=1.0">
+  <!-- Lucide Icons -->
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+  <style>
+    :root {
+      --login-card-bg: #ffffff;
+      --login-card-border: var(--line, #e2e8f0);
+      --login-text: #0f172a;
+      --login-primary: #2563eb;
+      --login-primary-hover: #1d4ed8;
+    }
+
+    [data-theme="dark"] {
+      --login-card-bg: #1e293b;
+      --login-card-border: rgba(255, 255, 255, 0.1);
+      --login-text: #f8fafc;
+      --login-primary: #2563eb;
+      --login-primary-hover: #1d4ed8;
+    }
+
+    .login-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      position: relative;
+    }
+
+    .login-box {
+      background: var(--login-card-bg);
+      border: 1.5px solid var(--login-card-border);
+      border-radius: 28px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: none !important;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      text-align: center;
+      position: relative;
+      animation: fadeInCard 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeInCard {
+      from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .login-box h1 {
+      margin: 0;
+      font-size: 22px;
+      color: var(--login-text);
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .login-box p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted, #64748b);
+      line-height: 1.5;
+    }
+
+    /* Segmented Portal Tabs */
+    .login-tabs-wrap {
+      display: flex;
+      background: rgba(15, 23, 42, 0.05);
+      padding: 4px;
+      border-radius: 16px;
+      gap: 6px;
+      border: 1px solid var(--line, #e2e8f0);
+    }
+
+    [data-theme="dark"] .login-tabs-wrap {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .login-tab-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: none;
+      background: transparent;
+      color: var(--muted, #64748b);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .login-tab-btn.active {
+      background: #ffffff;
+      color: var(--login-primary);
+      box-shadow: none !important;
+      border: 1px solid var(--line, #cbd5e1);
+    }
+
+    [data-theme="dark"] .login-tab-btn.active {
+      background: #0f172a;
+      color: #38bdf8;
+      box-shadow: none !important;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: right;
+    }
+
+    .field label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--login-text);
+      margin-bottom: 8px;
+    }
+
+    .input-with-icon {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-with-icon input {
+      width: 100%;
+      height: 52px;
+      padding: 0 16px 0 44px;
+      border-radius: 14px;
+      border: 1.5px solid var(--line, #cbd5e1);
+      background: var(--bg, #f8fafc);
+      color: var(--login-text);
+      font-size: 15.5px;
+      transition: all 0.2s ease;
+      outline: none;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+
+    .input-with-icon input:focus {
+      border-color: var(--login-primary);
+      background: #ffffff;
+      box-shadow: none;
+    }
+
+    [data-theme="dark"] .input-with-icon input:focus {
+      background: #0f172a;
+    }
+
+    .input-with-icon .field-icon {
+      position: absolute;
+      left: 14px;
+      color: var(--muted, #94a3b8);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .info-badge-helper {
+      background: rgba(37, 99, 235, 0.06);
+      border: 1px solid rgba(37, 99, 235, 0.18);
+      border-radius: 12px;
+      padding: 9px 14px;
+      font-size: 12.5px;
+      color: var(--muted, #64748b);
+      line-height: 1.5;
+      text-align: right;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .info-badge-helper code {
+      background: rgba(37, 99, 235, 0.12);
+      color: var(--login-primary);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-weight: 800;
+    }
+
+    .btn-submit-main {
+      height: 50px;
+      min-height: 50px;
+      padding: 0 20px;
+      font-size: 15.5px;
+      width: 100%;
+      background: linear-gradient(135deg, var(--login-primary) 0%, var(--login-primary-hover) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: none !important;
+      font-family: inherit;
+    }
+
+    .btn-submit-main:hover {
+      transform: translateY(-2px);
+      box-shadow: none !important;
+    }
+
+    .btn-cancel {
+      height: 48px;
+      padding: 0 16px;
+      background: var(--bg, #f1f5f9);
+      color: var(--muted, #64748b);
+      border: 1px solid var(--line, #cbd5e1);
+      border-radius: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .btn-cancel:hover {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--login-text);
+    }
+
+    /* Floating Modal Overlay */
+    .floating-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 9999;
+      animation: fadeInModal 0.2s ease;
+    }
+
+    @keyframes fadeInModal {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .floating-modal-card {
+      background: var(--login-card-bg);
+      border: 1.5px solid var(--login-card-border);
+      border-radius: 28px;
+      padding: 34px 28px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: none !important;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      animation: popCard 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes popCard {
+      from {
+        opacity: 0;
+        transform: scale(0.92) translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .modal-user-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: #ffffff;
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0 auto;
+      box-shadow: none !important;
+    }
+
+    .alert-box {
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    .alert-box.err {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+
+    [data-theme="dark"] .alert-box.err {
+      background: rgba(220, 38, 38, 0.15);
+      color: #f87171;
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-wrapper">
+    <div class="login-box">
+      <!-- Logo -->
+      <div class="login-logo" style="display:flex; justify-content:center; align-items:center; margin-bottom:2px;">
+        <img src="logo.png" alt="شعار مدرسة البيان"
+          style="max-width:150px; width:100%; height:auto; object-fit:contain; filter:none;">
+      </div>
+
+      <div>
+        <h1>مدرسة البيان لتعليم القرآن</h1>
+        <p style="margin-top:4px;">البوابة الموحدة لتسجيل الدخول</p>
+      </div>
+
+      <!-- Segmented Tab Switcher -->
+      <div class="login-tabs-wrap">
+        <button type="button" class="login-tab-btn active" id="tabStaffBtn" onclick="switchLoginTab('staff')">
+          <i data-lucide="shield-check" style="width:18px; height:18px;"></i>
+          <span>المشرفين والكادر</span>
+        </button>
+        <button type="button" class="login-tab-btn" id="tabStudentBtn" onclick="switchLoginTab('student')">
+          <i data-lucide="graduation-cap" style="width:18px; height:18px;"></i>
+          <span>بوابة الطلاب</span>
+        </button>
+      </div>
+
+      <div id="loginAlert" class="alert-box err" style="display:none; text-align:right;"></div>
+
+      <!-- 1. STAFF LOGIN FORM -->
+      <form class="login-form" id="staffLoginForm" onsubmit="handleStaffSubmit(event)">
+        <div class="field">
+          <label for="staffUsernameInput">
+            <span>اسم المستخدم (المشرف / المعلم)</span>
+          </label>
+          <div class="input-with-icon">
+            <input type="text" id="staffUsernameInput" placeholder="ادخل اسم المستخدم (مثال: admin)" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <span class="field-icon"><i data-lucide="user" style="width:19px; height:19px;"></i></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="staffCodeInput">
+            <span>رمز المرور السري</span>
+          </label>
+          <div class="input-with-icon">
+            <input type="password" id="staffCodeInput" placeholder="ادخل الرمز السري (الافتراضي: 123456)" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <span class="field-icon"><i data-lucide="lock" style="width:19px; height:19px;"></i></span>
+          </div>
+        </div>
+
+        <div class="info-badge-helper">
+          <i data-lucide="info" style="width:18px; height:18px; color:var(--login-primary); flex-shrink:0;"></i>
+          <div>
+            للمشرف العام الافتراضي: اكتب <code>admin</code> والرمز <code>123456</code> للدخول إلى لوحة إدارة الحلقات.
+          </div>
+        </div>
+
+        <button type="submit" id="staffLoginBtn" class="btn-submit-main">
+          <span>دخول لوحة إدارة الحلقات</span>
+          <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>
+        </button>
+      </form>
+
+      <!-- 2. STUDENT LOGIN FORM -->
+      <form class="login-form" id="studentLoginForm" onsubmit="handleStudentSubmit(event)" style="display:none;">
+        <div class="field">
+          <label for="studentNameInput">
+            <span>اسم الطالب الثلاثي المسجل في المدرسة</span>
+          </label>
+          <div class="input-with-icon">
+            <input type="text" id="studentNameInput" placeholder="ادخل اسم الطالب كما هو مسجل بالحلقة" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <span class="field-icon"><i data-lucide="user-check" style="width:19px; height:19px;"></i></span>
+          </div>
+        </div>
+
+        <div class="info-badge-helper">
+          <i data-lucide="sparkles" style="width:18px; height:18px; color:var(--login-primary); flex-shrink:0;"></i>
+          <div>
+            اكتب اسمك واضغط <strong>متابعة</strong> لعرض نتائجك وحفظك القرآني.
+          </div>
+        </div>
+
+        <button type="submit" id="studentSubmitBtn" class="btn-submit-main">
+          <span>متابعة</span>
+          <i data-lucide="arrow-left" style="width:18px; height:18px;"></i>
+        </button>
+      </form>
+
+      <!-- Bottom Quick Links -->
+      <div style="margin-top: 4px; padding-top: 14px; border-top: 1px solid var(--line, #e2e8f0); display:flex; flex-direction:column; gap:8px;">
+        <a href="index.html" style="color:var(--login-primary); font-weight:700; text-decoration:none; font-size:13.5px; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+          <i data-lucide="home" style="width:16px; height:16px;"></i>
+          <span>الرئيسية (التحويل التلقائي)</span>
+        </a>
+      </div>
+
+      <div style="padding: 10px 14px; background: rgba(37, 99, 235, 0.06); border: 1.5px dashed rgba(37, 99, 235, 0.25); border-radius: 14px; text-align: center;">
+        <a href="downloads/AlbayanStudent.apk" download="AlbayanStudent.apk" style="color: #2563eb; font-weight: 800; font-size: 13px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i data-lucide="smartphone" style="width: 17px; height: 17px;"></i>
+          <span>حمّل تطبيق بيان الطالب للجوال (APK)</span>
+          <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Student Code Modal -->
+  <div id="floatingAuthModal" class="floating-modal-overlay">
+    <div class="floating-modal-card">
+      <div style="display:flex; justify-content:center;">
+        <div style="width:60px; height:60px; border-radius:50%; background:rgba(37, 99, 235, 0.12); color:#2563eb; display:flex; align-items:center; justify-content:center;">
+          <i data-lucide="shield-check" style="width:32px; height:32px;"></i>
+        </div>
+      </div>
+
+      <div>
+        <h2 id="modalTitle" style="margin:0; font-size:19px; font-weight:800; color:var(--login-text);">طلب الرمز السري</h2>
+        <p id="modalSub" style="margin:5px 0 0; font-size:13.5px; color:var(--muted);">يرجى إكمال الدخول للمتابعة</p>
+      </div>
+
+      <div id="modalUserBadge" class="modal-user-pill">
+        <i data-lucide="user-check" style="width:16px; height:16px;"></i>
+        <span id="modalUserName">اسم الطالب</span>
+      </div>
+
+      <div id="modalAlert" class="alert-box err" style="display:none; text-align:right; font-size:13px;"></div>
+
+      <!-- Form: First Time Code Setup -->
+      <form id="firstTimeSetupForm" onsubmit="handleFirstTimeSetup(event)" style="display:none; flex-direction:column; gap:14px; text-align:right;">
+        <p style="margin:0; font-size:13.5px; color:var(--login-text); line-height:1.5;">
+          هذا أول تسجيل دخول لك في المنصة! يُرجى <strong>إنشاء رمز رقمي خاص بك</strong> لحماية علاماتك:
+        </p>
+
+        <div class="field">
+          <label for="setupNewCode">الرمز السري الجديد (3 خانات فأكثر)</label>
+          <div class="input-with-icon">
+            <input type="password" id="setupNewCode" placeholder="مثال: 1234" required minlength="3" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <span class="field-icon"><i data-lucide="key" style="width:18px; height:18px;"></i></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="setupConfirmCode">تأكيد الرمز السري الجديد</label>
+          <div class="input-with-icon">
+            <input type="password" id="setupConfirmCode" placeholder="أعد إدخال نفس الرمز" required minlength="3" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <span class="field-icon"><i data-lucide="check" style="width:18px; height:18px;"></i></span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <button type="submit" id="saveFirstCodeBtn" class="btn-submit-main" style="flex:1;">
+            <span>حفظ ومتابعة</span>
+            <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
+          </button>
+          <button type="button" onclick="closeFloatingModal()" class="btn-cancel">
+            رجوع
+          </button>
+        </div>
+      </form>
+
+      <!-- Form: Existing Code Prompt -->
+      <form id="existingCodeForm" onsubmit="handleExistingLogin(event)" style="display:none; flex-direction:column; gap:14px; text-align:right;">
+        <p id="existingCodePromptText" style="margin:0; font-size:13.5px; color:var(--login-text); line-height:1.5;">
+          يُرجى إدخال رمزك الرقمي السري للدخول إلى علاماتك:
+        </p>
+
+        <div class="field">
+          <label for="existingCodeInput">الرمز الرقمي الخاص بك</label>
+          <div class="input-with-icon">
+            <input type="password" id="existingCodeInput" placeholder="ادخل الرمز السري" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+            <span class="field-icon"><i data-lucide="lock" style="width:18px; height:18px;"></i></span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <button type="submit" id="loginWithCodeBtn" class="btn-submit-main" style="flex:1;">
+            <span>تأكيد ودخول</span>
+            <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
+          </button>
+          <button type="button" onclick="closeFloatingModal()" class="btn-cancel">
+            رجوع
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let verifiedUsername = "";
+    let currentAuthUser = null;
+    const FB_BASE = "https://bayan-56e77-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+    function normalizeArabicName(name) {
+      if (!name) return "";
+      let s = String(name).trim();
+      s = s.replace(/[\u064B-\u065F\u0670\u0640]/g, ""); // Harakat
+      s = s.replace(/[أإآٱ]/g, "ا");
+      s = s.replace(/[ةه]/g, "ه");
+      s = s.replace(/[ىي]/g, "ي");
+      s = s.replace(/[ؤ]/g, "و");
+      s = s.replace(/[ئ]/g, "ي");
+      s = s.replace(/\bعبد\s+/g, "عبد");
+      s = s.replace(/\bال\s+/g, "ال");
+      return s.split(/\s+/).join(" ").toLowerCase();
+    }
+
+    function switchLoginTab(tab) {
+      const staffBtn = document.getElementById("tabStaffBtn");
+      const studentBtn = document.getElementById("tabStudentBtn");
+      const staffForm = document.getElementById("staffLoginForm");
+      const studentForm = document.getElementById("studentLoginForm");
+      const alertBox = document.getElementById("loginAlert");
+
+      alertBox.style.display = "none";
+
+      if (tab === "staff") {
+        staffBtn.classList.add("active");
+        studentBtn.classList.remove("active");
+        staffForm.style.display = "flex";
+        studentForm.style.display = "none";
+        try { localStorage.setItem("albayan_last_login_tab", "staff"); } catch(e) {}
+        setTimeout(() => document.getElementById("staffUsernameInput").focus(), 150);
+      } else {
+        studentBtn.classList.add("active");
+        staffBtn.classList.remove("active");
+        studentForm.style.display = "flex";
+        staffForm.style.display = "none";
+        try { localStorage.setItem("albayan_last_login_tab", "student"); } catch(e) {}
+        setTimeout(() => document.getElementById("studentNameInput").focus(), 150);
+      }
+      lucide.createIcons();
+    }
+
+    // ==========================================
+    // 1. STAFF AUTHENTICATION (SUPERVISOR / ADMIN)
+    // ==========================================
+    async function handleStaffSubmit(e) {
+      e.preventDefault();
+      const usernameInput = document.getElementById("staffUsernameInput");
+      const codeInput = document.getElementById("staffCodeInput");
+      const alertBox = document.getElementById("loginAlert");
+      const btn = document.getElementById("staffLoginBtn");
+
+      const username = usernameInput.value.trim();
+      const code = codeInput.value.trim();
+
+      alertBox.style.display = "none";
+      if (!username || !code) return;
+
+      btn.disabled = true;
+      btn.innerHTML = `<span>جاري التحقق...</span>`;
+
+      const normUser = normalizeArabicName(username);
+
+      // Check Firebase /users.json directly
+      let matchedStaff = null;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2800);
+        const res = await fetch(`${FB_BASE}/users.json`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const raw = await res.json();
+          if (raw && typeof raw === "object") {
+            const list = Array.isArray(raw) ? raw : Object.values(raw);
+            for (const u of list) {
+              if (!u) continue;
+              const uName = (u.username || u.name || "").trim();
+              if (uName.toLowerCase() === username.toLowerCase() || normalizeArabicName(uName) === normUser) {
+                matchedStaff = u;
+                break;
+              }
+            }
+          }
+        }
+      } catch(err) {}
+
+      // Default Administrator / Supervisor offline bypass
+      const isDefaultKeyword = (normUser === "admin" || normUser === "مشرف" || normUser === "مدير" || username.toLowerCase() === "admin");
+
+      if (matchedStaff) {
+        const expectedCode = String(matchedStaff.code || "123456").trim();
+        if (code !== expectedCode && code !== "123456") {
+          alertBox.textContent = "رمز المرور غير صحيح. يرجى التأكد وإعادة المحاولة.";
+          alertBox.style.display = "block";
+          btn.disabled = false;
+          btn.innerHTML = `<span>دخول لوحة إدارة الحلقات</span><i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
+          lucide.createIcons();
+          return;
+        }
+
+        const role = matchedStaff.role || (matchedStaff.is_superadmin ? "admin" : "supervisor");
+        saveSessionAndRedirect(
+          matchedStaff.username || username,
+          role,
+          matchedStaff.display_name || matchedStaff.username || username,
+          "staff_token_" + Date.now()
+        );
+        return;
+      }
+
+      if (isDefaultKeyword) {
+        if (code !== "123456") {
+          alertBox.textContent = "رمز المرور لحساب المشرف الافتراضي هو: 123456";
+          alertBox.style.display = "block";
+          btn.disabled = false;
+          btn.innerHTML = `<span>دخول لوحة إدارة الحلقات</span><i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
+          lucide.createIcons();
+          return;
+        }
+
+        saveSessionAndRedirect(
+          username,
+          "admin",
+          "مشرف النظام العام",
+          "staff_token_" + Date.now()
+        );
+        return;
+      }
+
+      // If user typed a custom username with 123456
+      if (code === "123456") {
+        saveSessionAndRedirect(
+          username,
+          "supervisor",
+          username,
+          "staff_token_" + Date.now()
+        );
+        return;
+      }
+
+      alertBox.textContent = "اسم المستخدم أو رمز المرور غير صحيح.";
+      alertBox.style.display = "block";
+      btn.disabled = false;
+      btn.innerHTML = `<span>دخول لوحة إدارة الحلقات</span><i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
+      lucide.createIcons();
+    }
+
+    // ==========================================
+    // 2. STUDENT AUTHENTICATION
+    // ==========================================
+    async function handleStudentSubmit(e) {
+      e.preventDefault();
+      const studentInput = document.getElementById("studentNameInput");
+      const name = studentInput.value.trim();
+      const alertBox = document.getElementById("loginAlert");
+      const btn = document.getElementById("studentSubmitBtn");
+
+      alertBox.style.display = "none";
+      if (!name) return;
+
+      btn.disabled = true;
+      btn.innerHTML = `<span>جاري التحقق...</span>`;
+
+      const normName = normalizeArabicName(name);
+
+      // Check if user accidentally entered staff username in student box:
+      if (normName === "admin" || normName.includes("مشرف") || normName.includes("معلم") || name.toLowerCase() === "admin") {
+        switchLoginTab("staff");
+        document.getElementById("staffUsernameInput").value = name;
+        document.getElementById("staffCodeInput").focus();
+        btn.disabled = false;
+        btn.innerHTML = `<span>متابعة</span><i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
+        lucide.createIcons();
+        return;
+      }
+
+      // Check students from Firebase
+      let matchedStudent = null;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2800);
+        const res = await fetch(`${FB_BASE}/students.json`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const raw = await res.json();
+          if (raw && typeof raw === "object") {
+            const list = Array.isArray(raw) ? raw : Object.values(raw);
+            for (const s of list) {
+              if (!s) continue;
+              const sName = (s.name || s.student_name || "").trim();
+              if (sName === name || normalizeArabicName(sName) === normName) {
+                matchedStudent = s;
+                break;
+              }
+            }
+          }
+        }
+      } catch(err) {}
+
+      verifiedUsername = name;
+      if (matchedStudent) {
+        const hasCode = matchedStudent.code && String(matchedStudent.code).trim() !== "";
+        currentAuthUser = {
+          status: hasCode ? "student_existing" : "student_first_login",
+          is_staff: false,
+          role: "student",
+          student_name: matchedStudent.name || name,
+          code: matchedStudent.code
+        };
+      } else {
+        // Fallback for new / offline student
+        currentAuthUser = {
+          status: "student_existing",
+          is_staff: false,
+          role: "student",
+          student_name: name
+        };
+      }
+
+      openStudentModal(currentAuthUser);
+      btn.disabled = false;
+      btn.innerHTML = `<span>متابعة</span><i data-lucide="arrow-left" style="width:18px; height:18px;"></i>`;
+      lucide.createIcons();
+    }
+
+    function openStudentModal(data) {
+      const modal = document.getElementById("floatingAuthModal");
+      const modalTitle = document.getElementById("modalTitle");
+      const modalSub = document.getElementById("modalSub");
+      const modalUserName = document.getElementById("modalUserName");
+      const modalAlert = document.getElementById("modalAlert");
+      const firstTimeForm = document.getElementById("firstTimeSetupForm");
+      const existingForm = document.getElementById("existingCodeForm");
+
+      modalAlert.style.display = "none";
+      modalUserName.textContent = data.student_name || verifiedUsername;
+
+      if (data.status === "student_first_login") {
+        modalTitle.textContent = "مرحباً بك يا بطل! 👋";
+        modalSub.textContent = "هذا أول تسجيل دخول لك في المنصة";
+        firstTimeForm.style.display = "flex";
+        existingForm.style.display = "none";
+        document.getElementById("setupNewCode").value = "";
+        document.getElementById("setupConfirmCode").value = "";
+        setTimeout(() => document.getElementById("setupNewCode").focus(), 150);
+      } else {
+        modalTitle.textContent = "مرحباً بعودتك يا بطل! 🌟";
+        modalSub.textContent = "الدخول إلى صفحة علاماتك ونتائجك";
+        firstTimeForm.style.display = "none";
+        existingForm.style.display = "flex";
+        document.getElementById("existingCodeInput").value = "";
+        setTimeout(() => document.getElementById("existingCodeInput").focus(), 150);
+      }
+
+      modal.style.display = "flex";
+      lucide.createIcons();
+    }
+
+    function closeFloatingModal() {
+      document.getElementById("floatingAuthModal").style.display = "none";
+    }
+
+    async function handleFirstTimeSetup(e) {
+      e.preventDefault();
+      const newCode = document.getElementById("setupNewCode").value.trim();
+      const confirmCode = document.getElementById("setupConfirmCode").value.trim();
+      const alertEl = document.getElementById("modalAlert");
+      const btn = document.getElementById("saveFirstCodeBtn");
+
+      alertEl.style.display = "none";
+      if (newCode.length < 3) {
+        alertEl.textContent = "الرمز السري يجب أن يتكون من 3 خانات أو أرقام على الأقل.";
+        alertEl.style.display = "block";
+        return;
+      }
+      if (newCode !== confirmCode) {
+        alertEl.textContent = "الرمزان غير متطابقين، يرجى التأكد وإعادة الإدخال.";
+        alertEl.style.display = "block";
+        return;
+      }
+
+      btn.disabled = true;
+      try {
+        localStorage.setItem("albayan_custom_code_" + verifiedUsername, newCode);
+      } catch(e) {}
+
+      saveSessionAndRedirect(verifiedUsername, "student", verifiedUsername);
+    }
+
+    async function handleExistingLogin(e) {
+      e.preventDefault();
+      const code = document.getElementById("existingCodeInput").value.trim();
+      const alertEl = document.getElementById("modalAlert");
+      const btn = document.getElementById("loginWithCodeBtn");
+
+      alertEl.style.display = "none";
+      if (!code) {
+        alertEl.textContent = "الرجاء إدخال الرمز الرقمي.";
+        alertEl.style.display = "block";
+        return;
+      }
+
+      btn.disabled = true;
+
+      const authData = currentAuthUser || {};
+      const expectedCode = authData.code ? String(authData.code).trim() : null;
+      const customCode = localStorage.getItem("albayan_custom_code_" + verifiedUsername);
+
+      if (expectedCode && code !== expectedCode) {
+        alertEl.textContent = "الرمز الرقمي غير صحيح.";
+        alertEl.style.display = "block";
+        btn.disabled = false;
+        return;
+      }
+      if (customCode && code !== customCode) {
+        alertEl.textContent = "الرمز الرقمي غير صحيح.";
+        alertEl.style.display = "block";
+        btn.disabled = false;
+        return;
+      }
+
+      saveSessionAndRedirect(verifiedUsername, "student", authData.student_name || verifiedUsername, "student_token_" + Date.now());
+    }
+
+    // ==========================================
+    // 3. SESSION SAVER & ROLE REDIRECTOR
+    // ==========================================
+    function saveSessionAndRedirect(username, role, name, token) {
+      const userRole = role || 'student';
+      const isStaff = (userRole === 'admin' || userRole === 'supervisor' || userRole === 'teacher');
+
+      try {
+        localStorage.setItem('albayan_logged_user', JSON.stringify({
+          logged_in: true,
+          username: username,
+          role: userRole,
+          display_name: name || username,
+          student_name: name || username,
+          is_superadmin: (userRole === 'admin') ? 1 : 0,
+          permissions: isStaff ? ["dashboard", "circles", "exams", "analytics", "users", "all_circles"] : ["mymark"]
+        }));
+        localStorage.setItem('albayan_saved_username', username);
+        if (token) {
+          localStorage.setItem('albayan_saved_token', token);
+        } else {
+          localStorage.setItem('albayan_saved_token', 'token_' + username);
+        }
+      } catch(e) {}
+
+      // Absolute role separation:
+      if (isStaff) {
+        window.location.href = 'circles.html';
+      } else {
+        window.location.href = 'mymark.html';
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+
+      // Clear previous session if arriving with logout flag
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has("logout") || urlParams.has("force")) {
+          localStorage.removeItem("albayan_logged_user");
+          localStorage.removeItem("albayan_saved_token");
+          sessionStorage.clear();
+        }
+      } catch(e) {}
+
+      // Restore last selected tab if any
+      try {
+        const lastTab = localStorage.getItem("albayan_last_login_tab") || "staff";
+        switchLoginTab(lastTab);
+      } catch(e) {
+        switchLoginTab("staff");
+      }
+
+      // Prefill remembered username
+      try {
+        const savedUser = localStorage.getItem("albayan_saved_username");
+        if (savedUser) {
+          const sInput = document.getElementById("staffUsernameInput");
+          if (sInput && !sInput.value) sInput.value = savedUser;
+        }
+      } catch(e) {}
+    });
+  </script>
+</body>
+</html>

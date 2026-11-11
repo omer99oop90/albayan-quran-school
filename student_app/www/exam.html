@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+  <title>منصة اختبار الطلاب - مدرسة البيان لتعليم القرآن</title>
+  <meta name="description" content="منصة الاختبار الإلكتروني الخاصة بمدرسة البيان لتعليم القرآن الكريم">
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dark_theme.css">
+  <link rel="stylesheet" href="mobile_bottom_nav.css">
+  <!-- Lucide Icons -->
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+  <style>
+    /* ==========================================
+       STUDENT EXAM PAGE — PREMIUM DESIGN
+    ========================================== */
+    *,*::before,*::after { box-sizing: border-box; }
+
+    body {
+      font-family: 'Cairo', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg, #f8fafc);
+      color: var(--text, #0f172a);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      padding-bottom: 90px;
+    }
+
+    .bg-blob { display: none !important; }
+
+    /* EXAM SHELL */
+    .exam-shell {
+      position: relative; z-index: 1;
+      max-width: 920px; margin: 0 auto; padding: 20px 16px 80px;
+    }
+
+    /* TOP STATUS BAR */
+    .exam-topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 20px; padding: 14px 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      margin-bottom: 20px; flex-wrap: wrap;
+    }
+
+    .exam-topbar-brand {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .exam-topbar-brand img {
+      width: 44px; height: 44px; object-fit: contain;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.1));
+    }
+    .exam-topbar-brand-text h1 {
+      margin: 0; font-size: 17px; font-weight: 800; color: #0f172a; line-height: 1.2;
+    }
+    .exam-topbar-brand-text p {
+      margin: 0; font-size: 12px; color: #64748b; font-weight: 500;
+    }
+
+    .exam-topbar-stats {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 50px; padding: 6px 14px;
+      font-size: 13px; font-weight: 700; color: #334155;
+      cursor: default; font-family: inherit;
+    }
+    .stat-pill button, button.stat-pill {
+      cursor: pointer;
+    }
+    .stat-pill.timer-pill {
+      background: linear-gradient(135deg, #1e293b, #334155);
+      color: #fff; border: none;
+      font-size: 16px; font-variant-numeric: tabular-nums;
+      letter-spacing: 1px;
+    }
+    .stat-pill.timer-pill.urgent {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      animation: pulse-urgent 1s ease-in-out infinite;
+    }
+    @keyframes pulse-urgent {
+      0%,100% { transform: scale(1); } 50% { transform: scale(1.04); }
+    }
+    .stat-pill svg { width: 15px; height: 15px; }
+
+    /* STUDENT NAME INPUT CARD */
+    .name-card {
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 20px; padding: 20px 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      margin-bottom: 20px;
+    }
+    .name-card label {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 13px; font-weight: 800; color: #475569; margin-bottom: 10px;
+    }
+    .name-input-wrap { position: relative; }
+    .name-input-wrap input {
+      width: 100%; padding: 14px 18px 14px 48px;
+      border: 2px solid #e2e8f0; border-radius: 14px;
+      font-size: 16px; font-weight: 700; color: #0f172a;
+      background: #f8fafc; outline: none; transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .name-input-wrap input:focus {
+      border-color: #2563eb; background: #fff;
+      box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+    }
+    .name-input-wrap input.valid { border-color: #22c55e; background: #f0fdf4; }
+    .name-input-wrap input.invalid { border-color: #ef4444; background: #fef2f2; }
+    .name-input-icon {
+      position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+      color: #94a3b8;
+    }
+    .input-feedback {
+      margin-top: 8px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;
+    }
+    .input-feedback.valid { color: #16a34a; }
+    .input-feedback.invalid { color: #dc2626; }
+
+    /* PROGRESS BAR */
+    .progress-card {
+      background: rgba(255,255,255,0.95);
+      border-radius: 20px; padding: 16px 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      margin-bottom: 20px;
+    }
+    .progress-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+    }
+    .progress-header span { font-size: 13px; font-weight: 700; color: #475569; }
+    .progress-header strong { font-size: 15px; font-weight: 800; color: #2563eb; }
+    .progress-bar-track {
+      height: 10px; background: #f1f5f9; border-radius: 99px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; background: linear-gradient(90deg, #1d4ed8, #2563eb);
+      border-radius: 99px; transition: width 0.4s ease; width: 0%;
+    }
+
+    /* QUESTION NAVIGATOR */
+    .q-navigator {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      background: rgba(255,255,255,0.9);
+      border-radius: 20px; padding: 16px 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      margin-bottom: 20px;
+    }
+    .q-navigator-title {
+      width: 100%; font-size: 12px; font-weight: 800; color: #94a3b8; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .q-nav-btn {
+      width: 34px; height: 34px; border-radius: 10px;
+      border: 2px solid #e2e8f0; background: #f8fafc; color: #64748b;
+      font-size: 12px; font-weight: 800; cursor: pointer; transition: all 0.15s ease;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .q-nav-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+    .q-nav-btn.answered { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .q-nav-btn.current { border-color: #f59e0b; color: #d97706; background: #fffbeb; }
+
+    /* QUESTIONS AREA - ALWAYS FULLY VISIBLE & ACCESSIBLE */
+    .questions-area { position: relative; min-height: 120px; }
+    .locked-overlay { display: none !important; }
+
+    /* QUESTION CARDS */
+    .question-card {
+      background: rgba(255,255,255,0.97); border: 1px solid #e2e8f0;
+      border-radius: 20px; padding: 24px; margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04); transition: box-shadow 0.2s ease;
+      scroll-margin-top: 80px;
+    }
+    .question-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .question-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
+    .q-num-badge {
+      min-width: 36px; height: 36px; border-radius: 12px;
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      color: #fff; font-size: 14px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    }
+    .q-text { font-size: 16px; font-weight: 700; color: #1e293b; line-height: 1.6; margin: 0; padding-top: 4px; }
+
+    .options { display: flex; flex-direction: column; gap: 10px; }
+    .opt-label {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-radius: 14px;
+      border: 2px solid #e2e8f0; background: #f8fafc;
+      cursor: pointer; transition: all 0.15s ease; font-size: 14px; font-weight: 600; color: #334155;
+    }
+    .opt-label:hover { border-color: #93c5fd; background: #eff6ff; color: #1e40af; }
+    .opt-label input[type="radio"] { display: none; }
+    .opt-radio-circle {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid #cbd5e1; background: #fff;
+      flex-shrink: 0; transition: all 0.15s ease;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .opt-label:has(input:checked) { border-color: #2563eb; background: #eff6ff; color: #1e40af; }
+    .opt-label:has(input:checked) .opt-radio-circle {
+      border-color: #2563eb; background: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+    }
+    .opt-label:has(input:checked) .opt-radio-circle::after {
+      content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff;
+    }
+
+    .opt-label.correct { border-color: #22c55e !important; background: #f0fdf4 !important; color: #15803d !important; }
+    .opt-label.wrong { border-color: #ef4444 !important; background: #fef2f2 !important; color: #dc2626 !important; }
+
+    /* SUBMIT AREA */
+    .submit-area {
+      background: rgba(255,255,255,0.95); border-radius: 20px;
+      padding: 24px; margin-top: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      text-align: center;
+    }
+    .submit-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 16px 48px; border-radius: 16px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%);
+      color: #fff; border: none; cursor: pointer;
+      font-size: 17px; font-weight: 800; font-family: inherit;
+      box-shadow: 0 6px 24px rgba(37,99,235,0.35); transition: all 0.2s ease; width: 100%;
+    }
+    .submit-btn:disabled { background: #94a3b8; box-shadow: none; cursor: not-allowed; }
+
+    /* RESULT SCREEN */
+    .result-screen {
+      display: none; background: #ffffff; border: 1.5px solid #cbd5e1;
+      border-radius: 24px; padding: 30px 24px;
+      box-shadow: 0 20px 50px -12px rgba(15, 23, 42, 0.12);
+      margin-top: 24px; margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .result-screen.visible { display: block !important; }
+    .result-card-inner {
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      max-width: 640px; margin: 0 auto;
+    }
+    .result-icon-wrapper {
+      width: 58px; height: 58px; border-radius: 18px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 8px; color: #ffffff;
+    }
+    .result-student-greeting { font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 3px; }
+    .result-exam-subtitle { font-size: 13px; color: #64748b; margin: 0 0 14px; }
+    .result-score-container {
+      display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .result-score-ring {
+      background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 16px;
+      padding: 6px 20px; display: inline-flex; align-items: baseline; gap: 6px;
+    }
+    .result-score-val {
+      font-size: 32px; font-weight: 900; color: #2563eb;
+    }
+    .result-status-pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px;
+      border-radius: 9999px; font-size: 13px; font-weight: 800; background: #eff6ff;
+      color: #1d4ed8; border: 1px solid #bfdbfe;
+    }
+    .compact-metrics-strip {
+      display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+      align-items: center; background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 16px; padding: 10px 14px; width: 100%; margin-bottom: 14px;
+    }
+    .metric-cell { display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .cell-label { font-size: 11px; font-weight: 700; color: #64748b; }
+    .cell-val { font-size: 17px; font-weight: 900; }
+    .cell-divider { width: 1px; height: 26px; background: #e2e8f0; }
+
+    /* Modals & Overlays */
+    .presubmit-modal-overlay, .security-modal-overlay, .review-modal-overlay {
+      position: fixed; inset: 0; z-index: 10000; background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(10px); display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .presubmit-modal-overlay.active, .review-modal-overlay.active, .security-modal-overlay.active { display: flex !important; }
+    .presubmit-modal-card, .review-modal-card, .security-modal-card {
+      background: #ffffff; border-radius: 24px; max-width: 580px; width: 100%;
+      padding: 24px; box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+<body>
+  <div class="exam-shell">
+
+    <!-- TOP STATUS BAR -->
+    <div class="exam-topbar">
+      <div class="exam-topbar-brand">
+        <img src="logo.png" alt="شعار مدرسة البيان">
+        <div class="exam-topbar-brand-text">
+          <h1 id="examTitleDisplay">منصة اختبار الطلاب</h1>
+          <p>مدرسة البيان لتعليم القرآن الكريم</p>
+        </div>
+      </div>
+
+      <div class="exam-topbar-stats">
+        <span class="stat-pill cloud-pill" id="cloudStatusPill" onclick="toggleDiagnosticsModal()" style="cursor:pointer;" title="اضغط لعرض حالة الاتصال والتشخيص">
+          <i data-lucide="cloud" id="cloudStatusIcon" style="width:14px;height:14px;color:#16a34a;"></i>
+          <span id="cloudStatusText" style="font-size:12px;">فايربيس متصل</span>
+        </span>
+        <span class="stat-pill">
+          <i data-lucide="help-circle" style="width:15px;height:15px;color:#2563eb;"></i>
+          <span id="questionCount">0</span> سؤال
+        </span>
+        <span class="stat-pill timer-pill" id="timerPill">
+          <i data-lucide="clock" style="width:15px;height:15px;"></i>
+          <span id="timerDisplay">20:00</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- STUDENT NAME INPUT CARD -->
+    <div class="name-card" id="nameCard">
+      <label for="studentInput">
+        <i data-lucide="user" style="width:16px;height:16px;color:#2563eb;"></i>
+        اسم الطالب الثلاثي (للبدء في الاختبار)
+      </label>
+      <div class="name-input-wrap">
+        <input
+          type="text"
+          id="studentInput"
+          placeholder="أدخل اسمك الثلاثي هنا للبدء (مثال: محمد أحمد علي)..."
+          oninput="onNameInput()"
+          autocomplete="off"
+          dir="rtl"
+        >
+        <span class="name-input-icon">
+          <i data-lucide="edit-3" style="width:18px;height:18px;"></i>
+        </span>
+      </div>
+      <div class="input-feedback" id="nameFeedback" style="display:none;"></div>
+    </div>
+
+    <!-- PROGRESS BAR -->
+    <div class="progress-card" id="progressCard">
+      <div class="progress-header">
+        <span>تقدم الإجابة على الأسئلة</span>
+        <strong id="progressText">0 / 0</strong>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <!-- QUESTION NAVIGATOR -->
+    <div class="q-navigator" id="qNavigator" style="display:none;">
+      <div class="q-navigator-title">
+        <i data-lucide="layout-grid" style="width:13px;height:13px;"></i>
+        التنقل السريع بين الأسئلة
+      </div>
+      <div id="qNavBtns" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+
+    <!-- QUESTIONS AREA -->
+    <div class="questions-area" id="questionsArea">
+      <div id="questionsContainer"></div>
+    </div>
+
+    <!-- SUBMIT AREA -->
+    <div class="submit-area" id="submitArea" style="display:none;">
+      <button class="submit-btn" id="submitBtn" onclick="submitExam()" disabled>
+        <i data-lucide="send" style="width:20px;height:20px;"></i>
+        إرسال الإجابات
+      </button>
+    </div>
+
+    <!-- RESULT SCREEN -->
+    <div class="result-screen" id="resultScreen">
+      <div class="result-card-inner">
+        <div class="result-icon-wrapper" id="resultIconWrapper">
+          <div id="resultIconBox">
+            <i data-lucide="award" style="width:30px;height:30px;"></i>
+          </div>
+        </div>
+        <h2 class="result-student-greeting" id="resultGreeting">مبارك إتمام الاختبار!</h2>
+        <p class="result-exam-subtitle" id="resultSubtitle">تقرير التقييم الإلكتروني المعتمد</p>
+
+        <div class="result-score-container">
+          <div class="result-score-ring">
+            <span class="result-score-val" id="resultScore">0%</span>
+            <span class="result-score-sub">النسبة الكلية</span>
+          </div>
+          <div class="result-status-pill" id="resultStatusPill">
+            <i data-lucide="award" style="width:15px;height:15px;"></i>
+            <span id="resultGradeLabel">ممتاز — مبارك النجاح</span>
+          </div>
+        </div>
+
+        <div class="compact-metrics-strip">
+          <div class="metric-cell">
+            <span class="cell-label">الإجابات الصحيحة</span>
+            <span class="cell-val" id="statCorrect" style="color:#2563eb;">0 / 0</span>
+          </div>
+          <div class="cell-divider"></div>
+          <div class="metric-cell">
+            <span class="cell-label">النسبة المئوية</span>
+            <span class="cell-val" id="statPercent" style="color:#2563eb;">0%</span>
+          </div>
+          <div class="cell-divider"></div>
+          <div class="metric-cell">
+            <span class="cell-label">إجابات خاطئة</span>
+            <span class="cell-val" id="statWrong" style="color:#dc2626;">0</span>
+          </div>
+          <div class="cell-divider"></div>
+          <div class="metric-cell">
+            <span class="cell-label">التقدير العام</span>
+            <span class="cell-val" id="statGrade" style="color:#b45309;">ممتاز</span>
+          </div>
+        </div>
+
+        <!-- Quranic Inspiring Note -->
+        <div class="result-quote-box" style="margin: 14px 0; font-size: 13.5px; color: #475569; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i data-lucide="book-open" style="width:16px;height:16px;color:#2563eb;"></i>
+          <span>﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾ — مدرسة البيان لتعليم القرآن الكريم</span>
+        </div>
+
+        <!-- Action Review Helper (Wrong Answers Modal Trigger) -->
+        <div class="result-action-bar" style="margin-top: 10px; width: 100%;">
+          <button type="button" class="wrong-review-trigger-btn" id="openWrongReviewBtn" onclick="openWrongAnswersModal()" style="width:100%; padding:14px; border-radius:14px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; font-family:inherit;">
+            <i data-lucide="alert-circle" id="reviewBtnIcon" style="width:18px;height:18px;color:#dc2626;"></i>
+            <span id="wrongReviewBtnText">مراجعة الأسئلة الخاطئة والتصحيح</span>
+            <span class="wrong-count-pill" id="wrongCountPill" style="padding:4px 10px; border-radius:50px; background:#fee2e2; color:#dc2626; font-size:12px;">0 أخطاء</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN DIMMING OVERLAY WHEN QUARTER-TIME WARNING IS ACTIVE -->
+    <div id="warningDimOverlay" class="warning-dim-overlay" style="display:none;"></div>
+
+    <!-- FULL-WIDTH SLIM WARNING BANNER BAR -->
+    <div id="floatingTimerWidget" class="warning-banner-bar" style="display:none;">
+      <div class="warning-banner-content">
+        <span class="warning-banner-icon">⚠️</span>
+        <span class="warning-banner-text">تنبيه: متبقي ربع وقت الاختبار فقط!</span>
+        <span class="warning-banner-badge">الوقت المتبقي: <strong id="floatingTimerTime">00:00</strong></span>
+      </div>
+    </div>
+
+    <!-- 2-SECOND SUBMISSION TOAST MODAL -->
+    <div id="submitToastModal" class="submit-toast-modal">
+      <div class="submit-toast-card">
+        <div class="submit-toast-icon-wrap" id="submitToastIconWrap">
+          <i data-lucide="check-circle-2" style="width:38px;height:38px;"></i>
+        </div>
+        <h3 class="submit-toast-title" id="submitToastTitle">تم تسليم الإجابات بنجاح!</h3>
+        <p class="submit-toast-desc" id="submitToastDesc">جارٍ معالجة التقييم وإعداد بطاقة النتيجة...</p>
+        <div class="submit-toast-bar">
+          <div class="submit-toast-bar-fill" id="submitToastBarFill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WRONG ANSWERS REVIEW MODAL -->
+    <div id="wrongAnswersModal" class="review-modal-overlay" onclick="if(event.target === this) closeWrongAnswersModal()">
+      <div class="review-modal-card">
+        <div class="review-modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="review-modal-icon-badge" id="reviewModalIconBadge">
+              <i data-lucide="file-x-2" style="width:24px;height:24px;"></i>
+            </div>
+            <div>
+              <h3 class="review-modal-title" id="reviewModalTitle" style="margin:0;font-size:17px;font-weight:800;color:#0f172a;">مراجعة الأسئلة الخاطئة والتصحيح</h3>
+              <p class="review-modal-subtitle" id="reviewModalSubtitle" style="margin:2px 0 0;font-size:12px;color:#64748b;">تفاصيل الإجابات التي تحتاج مراجعة مع حلها النموذجي المعتمد</p>
+            </div>
+          </div>
+          <button type="button" class="review-modal-close-btn" onclick="closeWrongAnswersModal()" title="إغلاق النافذة" style="background:none;border:none;cursor:pointer;font-size:18px;color:#64748b;font-weight:bold;">✕</button>
+        </div>
+
+        <div class="review-modal-summary-bar" id="reviewModalSummaryBar" style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:10px 14px;margin-bottom:16px;text-align:center;">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:#64748b;display:block;">الأسئلة الخاطئة</span>
+            <span style="font-size:16px;font-weight:900;color:#dc2626;" id="modalWrongCount">0</span>
+          </div>
+          <div style="width:1px;height:24px;background:#e2e8f0;"></div>
+          <div>
+            <span style="font-size:11px;font-weight:700;color:#64748b;display:block;">الإجابات الصحيحة</span>
+            <span style="font-size:16px;font-weight:900;color:#16a34a;" id="modalCorrectCount">0</span>
+          </div>
+          <div style="width:1px;height:24px;background:#e2e8f0;"></div>
+          <div>
+            <span style="font-size:11px;font-weight:700;color:#64748b;display:block;">نسبة الإتقان</span>
+            <span style="font-size:16px;font-weight:900;color:#2563eb;" id="modalPercent">0%</span>
+          </div>
+        </div>
+
+        <div class="review-modal-body" id="reviewModalBody" style="max-height:380px;overflow-y:auto;padding-right:4px;"></div>
+
+        <div class="review-modal-footer" style="margin-top:16px;">
+          <button type="button" class="review-modal-action-btn" onclick="closeWrongAnswersModal()" style="width:100%;padding:12px;background:linear-gradient(135deg, #1e3a8a, #2563eb);color:#fff;border:none;border-radius:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;">
+            <i data-lucide="check" style="width:16px;height:16px;"></i>
+            <span>إغلاق نافذة المراجعة</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANTI-CHEAT DUPLICATE SESSION SECURITY MODAL -->
+    <div id="duplicateSessionModal" class="security-modal-overlay">
+      <div class="security-modal-card">
+        <div class="security-badge-icon" style="margin:0 auto 12px;width:56px;height:56px;border-radius:50%;background:#fee2e2;color:#dc2626;display:flex;align-items:center;justify-content:center;">
+          <i data-lucide="shield-alert" style="width:32px;height:32px;"></i>
+        </div>
+        <h3 style="margin:0 0 10px;font-size:18px;font-weight:800;text-align:center;color:#0f172a;">🚫 تنبيه: محاولة إعادة تسجيل مرفوضة!</h3>
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;background:#f8fafc;border-radius:10px;padding:8px 12px;margin-bottom:14px;font-size:13px;font-weight:700;color:#475569;">
+          <i data-lucide="user-x" style="width:16px;height:16px;color:#dc2626;"></i>
+          <span id="dupStudentName">اسم الطالب</span>
+        </div>
+        <p style="font-size:13.5px;color:#475569;line-height:1.6;margin-bottom:16px;text-align:center;">
+          لقد تم تسجيل وتثبيت درجتك السابقة في هذا الاختبار، ويُمنع تكرار المحاولات لضمان النزاهة والعدالة.
+        </p>
+        <button type="button" onclick="closeDuplicateSessionModal()" style="width:100%;padding:12px;background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;">
+          إغلاق والرجوع
+        </button>
+      </div>
+    </div>
+
+    <!-- PRE-SUBMISSION SMART WARNING MODAL -->
+    <div id="preSubmitModal" class="presubmit-modal-overlay">
+      <div class="presubmit-modal-card">
+        <div class="presubmit-header">
+          <div class="presubmit-badge-icon">
+            <i data-lucide="help-circle" style="width:28px;height:28px;"></i>
+          </div>
+          <div class="presubmit-header-text">
+            <h3 class="presubmit-title">تنبيه قبل تسليم الإجابات</h3>
+            <p class="presubmit-subtitle">تحقق استباقي لمساعدتك على نيل أعلى درجة ممكنة</p>
+          </div>
+          <button type="button" class="presubmit-close-btn" onclick="closePreSubmitModal()" title="إغلاق النافذة" aria-label="إغلاق النافذة">
+            ✕
+          </button>
+        </div>
+
+        <div class="presubmit-body">
+          <div class="presubmit-alert-box">
+            <div class="presubmit-alert-title">
+              <i data-lucide="alert-triangle" style="width:20px;height:20px;flex-shrink:0;"></i>
+              <span id="preSubmitAlertHeading">تنبيه: لديك أسئلة لم تجب عليها بعد!</span>
+            </div>
+            <p class="presubmit-alert-desc" id="preSubmitAlertSubtext">
+              هل ترغب في العودة لإكمالها والحصول على الدرجة كاملة، أم تسليم الإجابات كما هي؟
+            </p>
+          </div>
+
+          <div class="presubmit-chips-section">
+            <div class="presubmit-chips-label">
+              <i data-lucide="list" style="width:15px;height:15px;"></i>
+              <span>قائمة الأسئلة الشاغرة (اضغط على أي سؤال للانتقال إليه مباشرة):</span>
+            </div>
+            <div class="presubmit-chips-grid" id="preSubmitChipsGrid"></div>
+          </div>
+        </div>
+
+        <div class="presubmit-footer">
+          <button type="button" class="presubmit-jump-btn" id="preSubmitJumpBtn" onclick="jumpToFirstUnanswered()">
+            <i data-lucide="corner-down-right" style="width:18px;height:18px;"></i>
+            <span>العودة للحل (الانتقال لأول سؤال شاغر)</span>
+          </button>
+          <button type="button" class="presubmit-force-btn" onclick="confirmForceSubmit()">
+            <i data-lucide="send" style="width:15px;height:15px;"></i>
+            <span>تسليم الاختبار على أي حال</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIAGNOSTICS MODAL -->
+    <div id="diagnosticsModal" class="presubmit-modal-overlay" onclick="if(event.target===this) toggleDiagnosticsModal()" style="display:none;">
+      <div class="presubmit-modal-card" style="max-width:440px;background:#ffffff;border-radius:24px;padding:24px;box-shadow:0 25px 60px rgba(0,0,0,0.25);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h3 style="margin:0;font-size:17px;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:8px;">
+            <i data-lucide="activity" style="color:#2563eb;width:20px;height:20px;"></i>
+            لوحة التشخيص الذاتي للاختبار
+          </h3>
+          <button onclick="toggleDiagnosticsModal()" style="background:none;border:none;cursor:pointer;font-size:18px;color:#64748b;font-weight:bold;">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+            <span style="color:#64748b;font-weight:700;">حالة الاتصال السحابي:</span>
+            <strong id="diagFirebaseStatus" style="color:#16a34a;">🟢 متصل بنجاح</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+            <span style="color:#64748b;font-weight:700;">مصدر الأسئلة المعروضة:</span>
+            <strong id="diagQuestionsSource" style="color:#2563eb;">سحابي (Firebase RTDB)</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+            <span style="color:#64748b;font-weight:700;">عدد الأسئلة الجاهزة:</span>
+            <strong id="diagQuestionsCount" style="color:#0f172a;">0 أسئلة</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+            <span style="color:#64748b;font-weight:700;">طالب الجلسة:</span>
+            <strong id="diagStudentName" style="color:#0f172a;">-</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+            <span style="color:#64748b;font-weight:700;">معرف الاختبار النشط:</span>
+            <strong id="diagExamId" style="color:#475569;">exams_3</strong>
+          </div>
+        </div>
+        <button onclick="reloadExamQuestions(true)" style="margin-top:16px;width:100%;padding:12px;background:linear-gradient(135deg, #1e3a8a, #2563eb);color:#fff;border:none;border-radius:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;">
+          <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i>
+          إعادة فحص وتحديث الأسئلة الآن
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="hijri_date.js"></script>
+  <script src="matching_engine.js"></script>
+  <script src="exam_timer.js"></script>
+  <script src="exam_questions.js"></script>
+  <script src="albayan_dialog.js?v=1.0"></script>
+  <script src="exam_sync.js"></script>
+  <script src="script.js"></script>
+  <script src="student_nav.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      try {
+        const u = JSON.parse(localStorage.getItem('albayan_logged_user') || '{}');
+        const sName = u.student_name || u.username;
+        if (sName) {
+          const input = document.getElementById("studentInput");
+          if (input && !input.value) {
+            input.value = sName;
+            if (typeof onNameInput === 'function') onNameInput();
+          }
+        }
+      } catch(e) {}
+      if (window.lucide) lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

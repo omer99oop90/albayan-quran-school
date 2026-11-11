@@ -1,0 +1,32 @@
+[
+  {
+    "file": "اسئلة",
+    "type": "true_false",
+    "question": "القمر جسم سماوي.",
+    "answer": true
+  },
+  {
+    "file": "اسئلة",
+    "type": "true_false",
+    "question": "الثلج يصبح سائلاً عند التسخين.",
+    "answer": true
+  },
+  {
+    "file": "اسئلة",
+    "type": "true_false",
+    "question": "الشمس تدور حول الأرض.",
+    "answer": false
+  },
+  {
+    "file": "اسئلة",
+    "type": "true_false",
+    "question": "الزرافة أطول من الفيل.",
+    "answer": true
+  },
+  {
+    "file": "اسئلة",
+    "type": "true_false",
+    "question": "السماء في الليل تكون بيضاء.",
+    "answer": false
+  }
+]

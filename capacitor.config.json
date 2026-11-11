@@ -1,0 +1,22 @@
+{
+  "appId": "org.albayan.school",
+  "appName": "مدرسة البيان",
+  "webDir": "android/app/src/main/assets/public",
+  "server": {
+    "cleartext": true,
+    "allowNavigation": [
+      "*"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": false,
+    "webContentsDebuggingEnabled": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#0f172a"
+    }
+  }
+}

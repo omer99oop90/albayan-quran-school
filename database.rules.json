@@ -1,0 +1,18 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "students": {
+      ".indexOn": ["circle_id", "name"]
+    },
+    "student_records": {
+      ".indexOn": ["student_id", "circle_id", "month", "year", "date"]
+    },
+    "circles": {
+      ".indexOn": ["id", "name"]
+    },
+    "exams": {
+      ".indexOn": ["student_id", "date", "created_at"]
+    }
+  }
+}

@@ -1,0 +1,434 @@
+{
+  "timestamp": "2026-10-10T11:18:03.883Z",
+  "nodes_checked": {
+    "exams": 4,
+    "circles": 5,
+    "students": 35,
+    "student_records": 73
+  },
+  "duplicates_detected": {
+    "exams": [
+      {
+        "normalized_id": "1",
+        "keys_found": [
+          "1",
+          "exams_1"
+        ],
+        "sample_titles": [
+          "اختبار مادة القران والتربية الإسلامية",
+          "اختبار مادة القران والتربية الإسلامية"
+        ]
+      },
+      {
+        "normalized_id": "3",
+        "keys_found": [
+          "3",
+          "exams_3"
+        ],
+        "sample_titles": [
+          "حذف2",
+          "حذف2"
+        ]
+      }
+    ],
+    "circles": [
+      {
+        "normalized_id": "1791560114689",
+        "keys_found": [
+          "1791560114689",
+          "circles_1791560114689"
+        ],
+        "sample_names": [
+          "خالد",
+          "عخالد"
+        ]
+      }
+    ],
+    "students": [
+      {
+        "name": "عمر أحمد سعيد",
+        "count": 3,
+        "occurrences": [
+          {
+            "key": "2",
+            "circle_id": 1
+          },
+          {
+            "key": "students_2",
+            "circle_id": 1
+          },
+          {
+            "key": "students_9",
+            "circle_id": 3
+          }
+        ]
+      },
+      {
+        "name": "تجربة",
+        "count": 11,
+        "occurrences": [
+          {
+            "key": "1790247352579"
+          },
+          {
+            "key": "1790247355388"
+          },
+          {
+            "key": "1790247356132"
+          },
+          {
+            "key": "1790247356789"
+          },
+          {
+            "key": "1790247357023"
+          },
+          {
+            "key": "1790247357191"
+          },
+          {
+            "key": "1790247357349"
+          },
+          {
+            "key": "1790247357554"
+          },
+          {
+            "key": "1790247358018"
+          },
+          {
+            "key": "1790247358270"
+          },
+          {
+            "key": "1790247358468"
+          }
+        ]
+      },
+      {
+        "name": "جديد",
+        "count": 2,
+        "occurrences": [
+          {
+            "key": "1790247700990"
+          },
+          {
+            "key": "1790247703428"
+          }
+        ]
+      },
+      {
+        "name": "سعيد",
+        "count": 2,
+        "occurrences": [
+          {
+            "key": "1791222164403",
+            "circle_id": 3
+          },
+          {
+            "key": "students_1791222164403",
+            "circle_id": 3
+          }
+        ]
+      },
+      {
+        "name": "مروان",
+        "count": 2,
+        "occurrences": [
+          {
+            "key": "1791281552728",
+            "circle_id": 1791222080425
+          },
+          {
+            "key": "students_1791281552728",
+            "circle_id": 1791222080425
+          }
+        ]
+      },
+      {
+        "name": "خالد غعلي",
+        "count": 2,
+        "occurrences": [
+          {
+            "key": "1791560050472",
+            "circle_id": 1791222080425
+          },
+          {
+            "key": "students_1791560050472",
+            "circle_id": 1791222080425
+          }
+        ]
+      },
+      {
+        "name": "خالد",
+        "count": 3,
+        "occurrences": [
+          {
+            "key": "1791560130074",
+            "circle_id": 1791560114689
+          },
+          {
+            "key": "students_15",
+            "circle_id": 3
+          },
+          {
+            "key": "students_1791560130074",
+            "circle_id": 1791560114689
+          }
+        ]
+      }
+    ],
+    "student_records_multicandidate": [
+      {
+        "group_key": "2_صفر_1448",
+        "candidate_count": 4,
+        "keys": [
+          "2",
+          "2_صفر_1448",
+          "rec_2_monthly_صفر_1448",
+          "student_records_2"
+        ],
+        "timestamps": [
+          "unknown",
+          "unknown",
+          "unknown",
+          "unknown"
+        ]
+      },
+      {
+        "group_key": "9_صفر_1448",
+        "candidate_count": 6,
+        "keys": [
+          "9",
+          "33",
+          "9_صفر_1448",
+          "rec_9_monthly_صفر_1448",
+          "student_records_33",
+          "student_records_9"
+        ],
+        "timestamps": [
+          "unknown",
+          "2026-09-28 14:44:46",
+          "unknown",
+          "unknown",
+          "2026-09-28 14:44:46",
+          "unknown"
+        ]
+      },
+      {
+        "group_key": "13_صفر_1448",
+        "candidate_count": 5,
+        "keys": [
+          "13",
+          "13_صفر_1448",
+          "rec_13_monthly_صفر_1448",
+          "student_records_13",
+          "student_records_34"
+        ],
+        "timestamps": [
+          "unknown",
+          "unknown",
+          "unknown",
+          "unknown",
+          "unknown"
+        ]
+      },
+      {
+        "group_key": "8_صفر_1448",
+        "candidate_count": 2,
+        "keys": [
+          "47",
+          "student_records_47"
+        ],
+        "timestamps": [
+          "unknown",
+          "unknown"
+        ]
+      },
+      {
+        "group_key": "1791222164403_صفر_1448",
+        "candidate_count": 4,
+        "keys": [
+          "1791222164403",
+          "1791222164403_صفر_1448",
+          "rec_1791222164403_monthly_صفر_1448",
+          "student_records_1791222164403"
+        ],
+        "timestamps": [
+          "unknown",
+          "unknown",
+          "unknown",
+          "unknown"
+        ]
+      },
+      {
+        "group_key": "1791281552728_صفر_1448",
+        "candidate_count": 2,
+        "keys": [
+          "1791281552728_صفر_1448",
+          "rec_1791281552728_monthly_صفر_1448"
+        ],
+        "timestamps": [
+          "unknown",
+          "unknown"
+        ]
+      },
+      {
+        "group_key": "1791560050472_صفر_1448",
+        "candidate_count": 2,
+        "keys": [
+          "1791560050472_صفر_1448",
+          "rec_1791560050472_monthly_صفر_1448"
+        ],
+        "timestamps": [
+          "unknown",
+          "unknown"
+        ]
+      },
+      {
+        "group_key": "1791560130074_صفر_1448",
+        "candidate_count": 3,
+        "keys": [
+          "1791560130074_monthly_1448_صفر",
+          "1791560130074_صفر_1448",
+          "rec_1791560130074_monthly_صفر_1448"
+        ],
+        "timestamps": [
+          "unknown",
+          "unknown",
+          "unknown"
+        ]
+      },
+      {
+        "group_key": "11_صفر_1448",
+        "candidate_count": 2,
+        "keys": [
+          "rec_11_monthly_صفر_1448",
+          "student_records_24"
+        ],
+        "timestamps": [
+          "unknown",
+          "unknown"
+        ]
+      }
+    ]
+  },
+  "period_inconsistencies": [
+    {
+      "record_key": "student_records_18",
+      "student_id": 8,
+      "raw_month": "أغسطس",
+      "normalized_month": "اغسطس"
+    },
+    {
+      "record_key": "student_records_19",
+      "student_id": 8,
+      "raw_month": "أغسطس",
+      "normalized_month": "اغسطس"
+    },
+    {
+      "record_key": "student_records_20",
+      "student_id": 9,
+      "raw_month": "أغسطس",
+      "normalized_month": "اغسطس"
+    },
+    {
+      "record_key": "student_records_21",
+      "student_id": 9,
+      "raw_month": "ربيع الأول",
+      "normalized_month": "ربيع الاول"
+    },
+    {
+      "record_key": "student_records_25",
+      "student_id": 11,
+      "raw_month": "الفترة 1 (5 أشهر)",
+      "normalized_month": "الفتره 1 (5 اشهر)"
+    },
+    {
+      "record_key": "student_records_27",
+      "student_id": 9,
+      "raw_month": "الفصل 1 (6 أشهر)",
+      "normalized_month": "الفصل 1 (6 اشهر)"
+    },
+    {
+      "record_key": "student_records_28",
+      "student_id": 8,
+      "raw_month": "الفصل 1 (6 أشهر)",
+      "normalized_month": "الفصل 1 (6 اشهر)"
+    },
+    {
+      "record_key": "student_records_29",
+      "student_id": 6,
+      "raw_month": "الفصل 1 (6 أشهر)",
+      "normalized_month": "الفصل 1 (6 اشهر)"
+    },
+    {
+      "record_key": "student_records_30",
+      "student_id": 12,
+      "raw_month": "الفصل 1 (6 أشهر)",
+      "normalized_month": "الفصل 1 (6 اشهر)"
+    },
+    {
+      "record_key": "student_records_31",
+      "student_id": 13,
+      "raw_month": "الفصل 1 (6 أشهر)",
+      "normalized_month": "الفصل 1 (6 اشهر)"
+    },
+    {
+      "record_key": "student_records_32",
+      "student_id": 5,
+      "raw_month": "الفصل 1 (6 أشهر)",
+      "normalized_month": "الفصل 1 (6 اشهر)"
+    },
+    {
+      "record_key": "student_records_35",
+      "student_id": 13,
+      "raw_month": "الفصل 1 (3 أشهر)",
+      "normalized_month": "الفصل 1 (3 اشهر)"
+    },
+    {
+      "record_key": "student_records_36",
+      "student_id": 13,
+      "raw_month": "الفصل 2 (3 أشهر)",
+      "normalized_month": "الفصل 2 (3 اشهر)"
+    },
+    {
+      "record_key": "student_records_37",
+      "student_id": 13,
+      "raw_month": "الفصل 3 (3 أشهر)",
+      "normalized_month": "الفصل 3 (3 اشهر)"
+    },
+    {
+      "record_key": "student_records_4",
+      "student_id": 4,
+      "raw_month": "أغسطس",
+      "normalized_month": "اغسطس"
+    },
+    {
+      "record_key": "student_records_5",
+      "student_id": 5,
+      "raw_month": "أبريل",
+      "normalized_month": "ابريل"
+    },
+    {
+      "record_key": "student_records_6",
+      "student_id": 4,
+      "raw_month": "أبريل",
+      "normalized_month": "ابريل"
+    },
+    {
+      "record_key": "student_records_7",
+      "student_id": 3,
+      "raw_month": "أبريل",
+      "normalized_month": "ابريل"
+    }
+  ],
+  "summary": {
+    "total_exams_nodes": 4,
+    "duplicate_exams_keys": 2,
+    "total_circles_nodes": 5,
+    "duplicate_circles_keys": 1,
+    "total_students_nodes": 35,
+    "duplicate_student_names": 7,
+    "total_records_nodes": 73,
+    "multicandidate_records": 9,
+    "period_inconsistencies_count": 18
+  }
+}

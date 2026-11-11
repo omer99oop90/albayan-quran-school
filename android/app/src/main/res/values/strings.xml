@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">مدرسة البيان</string>
+    <string name="title_activity_main">مدرسة البيان</string>
+    <string name="package_name">org.albayan.school</string>
+    <string name="custom_url_scheme">org.albayan.school</string>
+</resources>

@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // قواعد مشروع مدرسة البيان لتعليم القرآن (bayan-56e77)
+    
+    // 1. نتائج الاختبارات: يُسمح للطلاب بتقديم النتائج وتسمح للإدارة بقراءتها
+    match /results/{resultId} {
+      allow read, write: if true;
+    }
+    
+    // 2. بطاقات السيرة الذاتية للطلاب: يُسمح بالقراءة للطلاب وأولياء الأمور
+    match /student_cvs/{cvId} {
+      allow read: if true;
+      allow write: if true; // يمكن تقييدها بـ if request.auth != null لاحقاً
+    }
+    
+    // 3. السجلات الشهرية للحلقات والسيرة الذاتية
+    match /student_cv_monthly_records/{recId} {
+      allow read, write: if true;
+    }
+    
+    // 4. الحلقات والطلاب
+    match /circles/{circleId} {
+      allow read, write: if true;
+    }
+    
+    match /students/{studentId} {
+      allow read, write: if true;
+    }
+    
+    match /student_records/{recordId} {
+      allow read, write: if true;
+    }
+    
+    // 5. بنك الأسئلة والاختبارات
+    match /exams/{examId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // بقية المستندات
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

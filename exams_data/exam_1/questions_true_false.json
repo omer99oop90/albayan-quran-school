@@ -1,0 +1,17 @@
+[
+  {
+    "type": "true_false",
+    "question": "القرآن الكريم نزل مفرقاً على النبي ﷺ خلال 23 عاماً.",
+    "answer": false
+  },
+  {
+    "type": "true_false",
+    "question": "سورة الإخلاص تعدل ثلث القرآن الكريم في الأجر والفضل.",
+    "answer": true
+  },
+  {
+    "type": "true_false",
+    "question": "عدد سور القرآن الكريم 110 سور فقط.",
+    "answer": false
+  }
+]
