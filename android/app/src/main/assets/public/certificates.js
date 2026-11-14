@@ -59,6 +59,7 @@
     selectedYear: 'all',
     limit: 20,
     gradeSource: 'all_weighted',
+    exportFormat: 'png_uhd',
 
     // Loaded Data
     circles: [],
@@ -165,6 +166,7 @@
     setupFilterListeners();
     setupExportHandlers();
     setupStageControls();
+    setupElementContextBar();
     setupHistoryManager();
     setupPanAndGestures();
 
@@ -878,35 +880,67 @@
       return 'مشارك';
     };
 
-    const sName = student.name || 'عبد الله بن محمد الأهدل';
-    const sCode = student.student_code || (student.id ? `STD-${String(student.id).padStart(4, '0')}` : 'STD-0042');
-    const sCircle = student.circle_name || 'حلقة البيان القرآنية';
-    const sTeacher = student.teacher_name || 'الشيخ عبد الرحمن';
+    const sName = student.name || (student.isDemo ? 'عبد الله بن محمد الأهدل' : 'طالب غير محدد');
+    const sCode = student.student_code || (student.id ? `STD-${String(student.id).padStart(4, '0')}` : (student.isDemo ? 'STD-0042' : ''));
+    const sCircle = student.circle_name || (student.isDemo ? 'حلقة البيان القرآنية' : '—');
+    const sTeacher = student.teacher_name || (student.isDemo ? 'الشيخ عبد الرحمن' : '—');
 
-    let finalPct = null;
-    if (state.gradeSource === 'exams' && hasNumeric(student.exam_percent)) {
-      finalPct = Math.round(Number(student.exam_percent));
-    } else if (state.gradeSource === 'sard' && hasNumeric(student.sard_pages)) {
-      finalPct = Math.min(100, Math.round((Number(student.sard_pages) / 30) * 100));
-    } else if (hasNumeric(student.exam_percent)) {
-      finalPct = Math.round(Number(student.exam_percent));
+    // Resolve strict student-linked selected grade (never allow cross-student data)
+    const activeStudentId = student.id !== undefined && student.id !== null ? String(student.id).trim() : '';
+    let activeGrade = null;
+    if (Array.isArray(student.linked_grades) && student.linked_grades.length > 0) {
+      const wantedKey = student.selectedGradeKey || 'summary';
+      const candidate = student.linked_grades.find((g) => g.gradeKey === wantedKey) || student.linked_grades[0];
+      if (candidate && String(candidate.sourceStudentId) === activeStudentId) {
+        activeGrade = candidate;
+      }
     }
 
-    const sFinal = student.final_grade || student.grade_badge || (finalPct !== null ? `${finalPct}%` : (hasNumeric(student.sard_pages) ? `${Math.round(Number(student.sard_pages))} وجهاً` : '98%'));
-    const sTerm1 = student.term_1_grade || (hasNumeric(student.exam_percent) ? `${Math.round(Number(student.exam_percent))}%` : '95%');
-    const sTerm2 = student.term_2_grade || (hasNumeric(student.exam_percent) ? `${Math.round(Number(student.exam_percent))}%` : '98%');
-    const sMonth = student.month_grade || (hasNumeric(student.exam_percent) ? `${Math.round(Number(student.exam_percent))}%` : '100%');
-    const sRating = student.rating || student.grade_label || (finalPct !== null ? computeRating(finalPct) : 'ممتاز مرتفع');
-    const sSard = hasNumeric(student.sard_pages)
-      ? `${Math.round(Number(student.sard_pages))} وجهاً`
+    const gradeExamPct = activeGrade && hasNumeric(activeGrade.exam_percent)
+      ? Math.round(Number(activeGrade.exam_percent))
+      : (hasNumeric(student.exam_percent) ? Math.round(Number(student.exam_percent)) : null);
+    const gradeSardPages = activeGrade && hasNumeric(activeGrade.sard_pages)
+      ? Math.round(Number(activeGrade.sard_pages))
+      : (hasNumeric(student.sard_pages) ? Math.round(Number(student.sard_pages)) : null);
+    const gradeAttRate = activeGrade && hasNumeric(activeGrade.attendance_rate)
+      ? Math.round(Number(activeGrade.attendance_rate))
+      : (hasNumeric(student.attendance_rate) ? Math.round(Number(student.attendance_rate)) : null);
+
+    let finalPct = null;
+    if (activeGrade && activeGrade.type === 'exam' && gradeExamPct !== null) {
+      finalPct = gradeExamPct;
+    } else if (state.gradeSource === 'exams' && gradeExamPct !== null) {
+      finalPct = gradeExamPct;
+    } else if (state.gradeSource === 'sard' && gradeSardPages !== null && gradeSardPages > 0) {
+      finalPct = Math.min(100, Math.round((gradeSardPages / 30) * 100));
+    } else if (gradeExamPct !== null) {
+      finalPct = gradeExamPct;
+    }
+
+    const noGradeText = student.isDemo ? '98%' : 'غير مرصود';
+    const noRatingText = student.isDemo ? 'ممتاز مرتفع' : 'غير مرصود';
+
+    const sFinal = (activeGrade && activeGrade.grade_badge)
+      ? activeGrade.grade_badge
+      : (student.final_grade || student.grade_badge || (finalPct !== null ? `${finalPct}%` : (gradeSardPages !== null && gradeSardPages > 0 ? `${gradeSardPages} وجهاً` : noGradeText)));
+    const sTerm1 = student.term_1_grade || (gradeExamPct !== null ? `${gradeExamPct}%` : (student.isDemo ? '95%' : 'غير مرصود'));
+    const sTerm2 = student.term_2_grade || (gradeExamPct !== null ? `${gradeExamPct}%` : (student.isDemo ? '98%' : 'غير مرصود'));
+    const sMonth = (activeGrade && activeGrade.type === 'record' && activeGrade.grade_badge)
+      ? activeGrade.grade_badge
+      : (student.month_grade || (gradeExamPct !== null ? `${gradeExamPct}%` : (student.isDemo ? '100%' : 'غير مرصود')));
+    const sRating = (activeGrade && activeGrade.rating)
+      ? activeGrade.rating
+      : (student.rating || student.grade_label || (finalPct !== null ? computeRating(finalPct) : noRatingText));
+    const sSard = gradeSardPages !== null
+      ? `${gradeSardPages} وجهاً`
       : (student.sard_pages ? String(student.sard_pages) : '٠ وجهاً');
-    const sAtt = hasNumeric(student.attendance_rate)
-      ? `${Math.round(Number(student.attendance_rate))}%`
-      : (student.attendance_rate ? (String(student.attendance_rate).includes('%') ? student.attendance_rate : `${student.attendance_rate}%`) : '100%');
-    const sMemo = student.memo_grade || 'ممتاز';
-    const sRev = student.rev_grade || 'ممتاز';
-    const sAchievement = student.achievement_text || (hasNumeric(student.sard_pages) && Number(student.sard_pages) > 0
-      ? `إتمام سرد وتسميع ${Math.round(Number(student.sard_pages))} وجهاً من القرآن الكريم بإتقان وتفوق`
+    const sAtt = gradeAttRate !== null
+      ? `${gradeAttRate}%`
+      : (student.attendance_rate ? (String(student.attendance_rate).includes('%') ? student.attendance_rate : `${student.attendance_rate}%`) : (student.isDemo ? '100%' : 'غير مرصود'));
+    const sMemo = (activeGrade && activeGrade.memo_grade) || student.memo_grade || (student.isDemo ? 'ممتاز' : 'غير مرصود');
+    const sRev = (activeGrade && activeGrade.rev_grade) || student.rev_grade || (student.isDemo ? 'ممتاز' : 'غير مرصود');
+    const sAchievement = student.achievement_text || (gradeSardPages !== null && gradeSardPages > 0
+      ? `إتمام سرد وتسميع ${gradeSardPages} وجهاً من القرآن الكريم بإتقان وتفوق`
       : 'الاجتهاد والمواظبة في حلقة تحفيظ القرآن الكريم بإتقان وتفوق');
     const sDirector = 'إدارة مدرسة البيان';
     const sSchool = 'مدرسة البيان لتعليم القرآن الكريم';
@@ -1276,6 +1310,7 @@
           state.elements[key].rotation = deg;
           if (valRotationDisplay) valRotationDisplay.textContent = `${deg}°`;
           syncHandlePosition(key);
+          updateElementContextBar();
           scheduleCanvasDraw();
         }
       });
@@ -1836,6 +1871,98 @@
     populateFilterDropdowns(state.circles, HIJRI_MONTHS_LIST, null, null);
   }
 
+  function syncStudentGradeSelectorUI() {
+    const student = state.students[state.currentStudentIndex] || null;
+    const nameEl = document.getElementById('linkedStudentName');
+    const infoEl = document.getElementById('linkedStudentInfo');
+    const badgeEl = document.getElementById('studentGradeVerifiedBadge');
+    const gradeSelect = document.getElementById('studentGradeRecordSelect');
+    if (!gradeSelect) return;
+
+    gradeSelect.innerHTML = '';
+
+    if (!student || state.students.length === 0) {
+      if (nameEl) nameEl.textContent = 'لا يوجد طالب محدد';
+      if (infoEl) infoEl.textContent = 'اختر طالباً لعرض درجاته المسجلة فقط';
+      if (badgeEl) {
+        badgeEl.textContent = 'بدون تحديد';
+        badgeEl.classList.add('empty');
+      }
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'لا توجد بيانات';
+      gradeSelect.appendChild(opt);
+      gradeSelect.disabled = true;
+      return;
+    }
+
+    const activeSid = String(student.id !== undefined && student.id !== null ? student.id : '').trim();
+    const sCode = student.student_code || (activeSid ? `STD-${activeSid}` : '');
+    if (nameEl) nameEl.textContent = student.name || 'طالب البيان';
+    if (infoEl) {
+      const circleTxt = student.circle_name ? `الحلقة: ${student.circle_name}` : 'بدون حلقة';
+      infoEl.textContent = sCode ? `${circleTxt} • رقم القيد: ${sCode}` : circleTxt;
+    }
+
+    // Strict guard: only display grade records whose sourceStudentId matches the active student
+    const verifiedGrades = Array.isArray(student.linked_grades)
+      ? student.linked_grades.filter((g) => String(g.sourceStudentId) === activeSid)
+      : [];
+
+    if (verifiedGrades.length === 0) {
+      if (badgeEl) {
+        badgeEl.textContent = 'بدون درجات';
+        badgeEl.classList.add('empty');
+      }
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'لا توجد درجات مسجلة لهذا الطالب';
+      gradeSelect.appendChild(opt);
+      gradeSelect.disabled = true;
+      student.selectedGradeKey = '';
+      return;
+    }
+
+    if (badgeEl) {
+      badgeEl.textContent = student.isDemo ? 'نموذج معاينة' : `مرتبط (${verifiedGrades.length})`;
+      badgeEl.classList.remove('empty');
+    }
+
+    gradeSelect.disabled = false;
+    verifiedGrades.forEach((g) => {
+      const opt = document.createElement('option');
+      opt.value = g.gradeKey;
+      opt.textContent = g.label;
+      gradeSelect.appendChild(opt);
+    });
+
+    const currentKey = student.selectedGradeKey && verifiedGrades.some((g) => g.gradeKey === student.selectedGradeKey)
+      ? student.selectedGradeKey
+      : verifiedGrades[0].gradeKey;
+    student.selectedGradeKey = currentKey;
+    gradeSelect.value = currentKey;
+  }
+
+  function selectStudentAtIndex(idx) {
+    if (!Array.isArray(state.students) || state.students.length === 0) {
+      syncStudentGradeSelectorUI();
+      updateStudentPager();
+      renderCertificate();
+      return;
+    }
+    const safeIdx = Math.max(0, Math.min(state.students.length - 1, idx));
+    state.currentStudentIndex = safeIdx;
+    const s = state.students[safeIdx];
+    const studentSelect = document.getElementById('studentSelect');
+    if (studentSelect && s && s.id !== undefined) {
+      studentSelect.value = s.id;
+    }
+    syncStudentGradeSelectorUI();
+    updateStudentPager();
+    renderStudentsPillPreview();
+    renderCertificate();
+  }
+
   function applyStudentSearchAndRefreshUI() {
     const query = (state.studentSearchQuery || '').trim().toLowerCase();
     const baseList = Array.isArray(state.allFilteredStudents) ? state.allFilteredStudents : [];
@@ -1855,6 +1982,8 @@
     } else {
       state.students = [{
         id: 0,
+        isDemo: true,
+        student_code: 'STD-0042',
         name: 'عبد الله بن محمد الأهدل',
         circle_name: 'حلقة الإمام عاصم بن أبي النجود',
         teacher_name: 'الشيخ عبد الرحمن',
@@ -1863,7 +1992,21 @@
         sard_pages: 45,
         attendance_rate: 100,
         exam_percent: 98,
-        achievement_text: 'إتمام سرد وتسميع 45 وجهاً من القرآن الكريم بإتقان وتفوق'
+        achievement_text: 'إتمام سرد وتسميع 45 وجهاً من القرآن الكريم بإتقان وتفوق',
+        selectedGradeKey: 'summary',
+        linked_grades: [{
+          gradeKey: 'summary',
+          type: 'summary',
+          sourceStudentId: '0',
+          label: 'المعدل التقديري للمعاينة — 98% (ممتاز مرتفع)',
+          exam_percent: 98,
+          sard_pages: 45,
+          attendance_rate: 100,
+          memo_grade: 'ممتاز',
+          rev_grade: 'ممتاز',
+          grade_badge: '98%',
+          rating: 'ممتاز مرتفع'
+        }]
       }];
     }
 
@@ -1886,6 +2029,7 @@
       }
     }
 
+    syncStudentGradeSelectorUI();
     renderStudentsPillPreview();
     updateStudentPager();
     renderCertificate();
@@ -1955,11 +2099,23 @@
         state.selectedStudentId = e.target.value;
         const idx = state.students.findIndex((s) => String(s.id) === String(state.selectedStudentId));
         if (idx !== -1) {
-          state.currentStudentIndex = idx;
-          renderStudentsPillPreview();
-          updateStudentPager();
-          renderCertificate();
+          selectStudentAtIndex(idx);
         }
+      });
+    }
+
+    const gradeRecordSelect = document.getElementById('studentGradeRecordSelect');
+    if (gradeRecordSelect) {
+      gradeRecordSelect.addEventListener('change', (e) => {
+        const student = state.students[state.currentStudentIndex];
+        if (!student) return;
+        const activeSid = String(student.id !== undefined && student.id !== null ? student.id : '').trim();
+        const chosen = Array.isArray(student.linked_grades)
+          ? student.linked_grades.find((g) => g.gradeKey === e.target.value && String(g.sourceStudentId) === activeSid)
+          : null;
+        if (!chosen) return;
+        student.selectedGradeKey = chosen.gradeKey;
+        renderCertificate();
       });
     }
 
@@ -2009,10 +2165,7 @@
     if (prevStudentBtn) {
       prevStudentBtn.addEventListener('click', () => {
         if (state.currentStudentIndex > 0) {
-          state.currentStudentIndex--;
-          updateStudentPager();
-          renderStudentsPillPreview();
-          renderCertificate();
+          selectStudentAtIndex(state.currentStudentIndex - 1);
         }
       });
     }
@@ -2020,35 +2173,202 @@
     if (nextStudentBtn) {
       nextStudentBtn.addEventListener('click', () => {
         if (state.currentStudentIndex < state.students.length - 1) {
-          state.currentStudentIndex++;
-          updateStudentPager();
-          renderStudentsPillPreview();
-          renderCertificate();
+          selectStudentAtIndex(state.currentStudentIndex + 1);
         }
       });
     }
   }
 
+  function normStudentIdStr(val) {
+    if (val === undefined || val === null || val === '') return '';
+    if (window.AlbayanDataNormalizer && typeof window.AlbayanDataNormalizer.normalizeStudentId === 'function') {
+      return String(window.AlbayanDataNormalizer.normalizeStudentId(val)).trim();
+    }
+    return String(val).trim();
+  }
+
+  function normCircleIdStr(val) {
+    if (val === undefined || val === null || val === '') return '';
+    if (window.AlbayanDataNormalizer && typeof window.AlbayanDataNormalizer.normalizeCircleId === 'function') {
+      return String(window.AlbayanDataNormalizer.normalizeCircleId(val)).trim();
+    }
+    return String(val).trim();
+  }
+
+  function computeGradeRating(pct) {
+    const n = Number(pct);
+    if (Number.isNaN(n)) return 'غير مرصود';
+    if (n >= 95) return 'ممتاز مرتفع';
+    if (n >= 90) return 'ممتاز';
+    if (n >= 80) return 'جيد جداً';
+    if (n >= 70) return 'جيد';
+    if (n >= 50) return 'ناجح';
+    return 'مشارك';
+  }
+
+  // Strict 1-to-1 grade resolver: links ONLY records & results strictly matching sid (and cid when present)
+  function buildLinkedGradesForStudent(student, allRecords, allResults, examsMap) {
+    const sid = normStudentIdStr(student.id !== undefined ? student.id : student.student_id);
+    const cid = normCircleIdStr(student.circle_id);
+    if (!sid) return { stuRecords: [], stuResults: [], linkedGrades: [], examAvg: null, sardTotal: 0, attRate: null, memoVal: '' };
+
+    const stuRecords = (allRecords || []).filter((r) => {
+      if (!r || r.deleted) return false;
+      const rSid = normStudentIdStr(r.student_id);
+      if (!rSid || rSid !== sid) return false;
+      const rCid = normCircleIdStr(r.circle_id);
+      if (cid && rCid && rCid !== cid) return false;
+      if (state.filterMode === 'top_achievers' && state.selectedMonth !== 'all' && window.AlbayanDataNormalizer) {
+        return window.AlbayanDataNormalizer.isSameMonth(r.month, state.selectedMonth);
+      }
+      return true;
+    });
+
+    const stuResults = (allResults || []).filter((res) => {
+      if (!res || res.deleted) return false;
+      const rSid = normStudentIdStr(res.student_id);
+      if (!rSid || rSid !== sid) return false;
+      const rCid = normCircleIdStr(res.circle_id);
+      if (cid && rCid && rCid !== cid) return false;
+      return true;
+    });
+
+    const linkedGrades = [];
+
+    // 1. Add each exam result strictly for this student
+    stuResults.forEach((res, idx) => {
+      let pct = null;
+      if (res.percentage !== undefined && res.percentage !== null && res.percentage !== '' && !Number.isNaN(Number(res.percentage))) {
+        pct = Math.round(Number(res.percentage));
+      } else if (res.score !== undefined && res.total && Number(res.total) > 0) {
+        pct = Math.round((Number(res.score) / Number(res.total)) * 100);
+      }
+      if (pct === null) return;
+      const examMeta = examsMap && res.exam_id !== undefined ? examsMap.get(String(res.exam_id)) : null;
+      const examTitle = res.exam_title || (examMeta && (examMeta.title || examMeta.name)) || `اختبار #${idx + 1}`;
+      const scoreText = (res.score !== undefined && res.total) ? ` (${res.score}/${res.total})` : '';
+      const rating = res.rating || computeGradeRating(pct);
+      linkedGrades.push({
+        gradeKey: `exam_${res.id || res.exam_id || idx}`,
+        type: 'exam',
+        sourceStudentId: sid,
+        label: `${examTitle}${scoreText} — ${pct}% (${rating})`,
+        exam_percent: pct,
+        grade_badge: `${pct}%`,
+        rating
+      });
+    });
+
+    // 2. Add monthly / sard records strictly for this student
+    const sardTotal = stuRecords.reduce((acc, r) => acc + (Number(r.sard_pages) || Number(r.pages) || 0), 0);
+    stuRecords.forEach((rec, idx) => {
+      const mLabel = rec.month || `سجل شهر ${idx + 1}`;
+      const rPages = rec.sard_pages !== undefined ? Number(rec.sard_pages) : (rec.pages !== undefined ? Number(rec.pages) : null);
+      const rExam = (rec.exam_score !== undefined && rec.exam_score !== '' && !Number.isNaN(Number(rec.exam_score)))
+        ? Math.round(Number(rec.exam_score))
+        : null;
+      const rAtt = (rec.attendance_days !== undefined && rec.attendance_days !== '' && !Number.isNaN(Number(rec.attendance_days)))
+        ? Math.min(100, Math.round((Number(rec.attendance_days) / 20) * 100))
+        : null;
+      const rMemo = rec.memo_grade || '';
+      const rRev = rec.rev_grade || '';
+      const parts = [];
+      if (rExam !== null) parts.push(`${rExam}%`);
+      if (rPages !== null) parts.push(`سرد ${Math.round(rPages)} وجهاً`);
+      if (rMemo) parts.push(`حفظ: ${rMemo}`);
+      const rating = rExam !== null ? computeGradeRating(rExam) : (rMemo || 'مشارك');
+      const badge = rExam !== null ? `${rExam}%` : (rPages !== null && rPages > 0 ? `${Math.round(rPages)} وجهاً` : (rMemo || 'مشارك'));
+      linkedGrades.push({
+        gradeKey: `rec_${rec.id || mLabel}_${idx}`,
+        type: 'record',
+        sourceStudentId: sid,
+        label: `${mLabel} — ${parts.join(' • ') || rating}`,
+        exam_percent: rExam,
+        sard_pages: rPages,
+        attendance_rate: rAtt,
+        memo_grade: rMemo,
+        rev_grade: rRev,
+        grade_badge: badge,
+        rating
+      });
+    });
+
+    let examAvg = null;
+    if (stuResults.length > 0) {
+      const validPcts = stuResults
+        .map((res) => {
+          if (res.percentage !== undefined && res.percentage !== null && res.percentage !== '') return Number(res.percentage);
+          if (res.score !== undefined && res.total && Number(res.total) > 0) return (Number(res.score) / Number(res.total)) * 100;
+          return NaN;
+        })
+        .filter((v) => !Number.isNaN(v));
+      if (validPcts.length > 0) {
+        examAvg = Math.round(validPcts.reduce((a, b) => a + b, 0) / validPcts.length);
+      }
+    } else if (student.percentage !== undefined && student.percentage !== null && student.percentage !== '' && !Number.isNaN(Number(student.percentage))) {
+      examAvg = Math.round(Number(student.percentage));
+    } else if (stuRecords.length > 0) {
+      const latestWithScore = [...stuRecords].reverse().find((r) => r.exam_score !== undefined && r.exam_score !== '' && !Number.isNaN(Number(r.exam_score)));
+      if (latestWithScore) examAvg = Math.round(Number(latestWithScore.exam_score));
+    }
+
+    const latestRec = stuRecords[stuRecords.length - 1] || {};
+    const sardVal = sardTotal || (student.sard_pages !== undefined ? Number(student.sard_pages) : 0) || 0;
+    const attRate = (student.attendance_rate !== undefined && student.attendance_rate !== null && student.attendance_rate !== '')
+      ? Number(student.attendance_rate)
+      : (latestRec.attendance_days !== undefined ? Math.min(100, Math.round((Number(latestRec.attendance_days) / 20) * 100)) : null);
+    const memoVal = latestRec.memo_grade || student.memo_grade || '';
+    const revVal = latestRec.rev_grade || student.rev_grade || '';
+
+    // 3. Add computed overall summary entry at top ONLY if the student actually has recorded grade/sard data
+    const hasSummaryData = examAvg !== null || sardVal > 0 || memoVal !== '' || stuRecords.length > 0;
+    if (hasSummaryData) {
+      const sumBadge = examAvg !== null ? `${examAvg}%` : (sardVal > 0 ? `${Math.round(sardVal)} وجهاً` : memoVal);
+      const sumRating = examAvg !== null ? computeGradeRating(examAvg) : (memoVal || 'مشارك');
+      linkedGrades.unshift({
+        gradeKey: 'summary',
+        type: 'summary',
+        sourceStudentId: sid,
+        label: `الملخص العام للطالب — ${sumBadge} (${sumRating})`,
+        exam_percent: examAvg,
+        sard_pages: sardVal,
+        attendance_rate: attRate,
+        memo_grade: memoVal || 'غير مرصود',
+        rev_grade: revVal || 'غير مرصود',
+        grade_badge: sumBadge,
+        rating: sumRating
+      });
+    }
+
+    return { stuRecords, stuResults, linkedGrades, examAvg, sardVal, attRate, memoVal, revVal };
+  }
+
+  // Expose strict grade linker for verification tests
+  window.AlbayanCertGradeEngine = {
+    buildLinkedGradesForStudent,
+    computeGradeRating
+  };
+
   async function loadStudentsOfflineOrCloud() {
     const circleMap = new Map();
     (state.circles || []).forEach((c) => {
-      const cid = window.AlbayanDataNormalizer
-        ? String(window.AlbayanDataNormalizer.normalizeCircleId(c.id))
-        : String(c.id);
-      circleMap.set(cid, c);
+      const cid = normCircleIdStr(c.id);
+      if (cid) circleMap.set(cid, c);
     });
 
     let rawStudents = [];
     let allRecords = [];
     let allResults = [];
+    const examsMap = new Map();
 
-    // 1. Try Firebase cloud via AlbayanFirebaseDAL for complete multi-circle + records view
+    // 1. Try Firebase cloud via AlbayanFirebaseDAL for complete multi-circle + records + exams view
     if (window.AlbayanFirebaseDAL && typeof window.AlbayanFirebaseDAL.get === 'function') {
       try {
-        const [stuRes, recRes, resRes] = await Promise.all([
+        const [stuRes, recRes, resRes, exRes] = await Promise.all([
           window.AlbayanFirebaseDAL.get('students'),
           window.AlbayanFirebaseDAL.get('student_records'),
-          window.AlbayanFirebaseDAL.get('results')
+          window.AlbayanFirebaseDAL.get('results'),
+          window.AlbayanFirebaseDAL.get('exams')
         ]);
 
         if (stuRes && stuRes.ok && stuRes.data && window.AlbayanDataNormalizer) {
@@ -2059,6 +2379,11 @@
         }
         if (resRes && resRes.ok && resRes.data && window.AlbayanDataNormalizer) {
           allResults = window.AlbayanDataNormalizer.normalizeCollectionEntries(resRes.data).map(([, r]) => r).filter(Boolean);
+        }
+        if (exRes && exRes.ok && exRes.data && window.AlbayanDataNormalizer) {
+          window.AlbayanDataNormalizer.normalizeCollectionEntries(exRes.data).forEach(([k, ex]) => {
+            if (ex) examsMap.set(String(ex.id || k), ex);
+          });
         }
       } catch (e) {}
     }
@@ -2083,7 +2408,7 @@
 
     // Filter by circle if selected
     const wantCircleId = state.selectedCircleId !== 'all'
-      ? (window.AlbayanDataNormalizer ? String(window.AlbayanDataNormalizer.normalizeCircleId(state.selectedCircleId)) : String(state.selectedCircleId))
+      ? normCircleIdStr(state.selectedCircleId)
       : null;
 
     const normalizedStudents = [];
@@ -2091,73 +2416,48 @@
 
     for (const s of rawStudents) {
       if (!s || s.deleted) continue;
-      const sid = window.AlbayanDataNormalizer ? String(window.AlbayanDataNormalizer.normalizeStudentId(s.id || s.student_id)) : String(s.id || '');
+      const sid = normStudentIdStr(s.id !== undefined ? s.id : s.student_id);
       if (!sid || seenIds.has(sid)) continue;
-      const cid = window.AlbayanDataNormalizer ? String(window.AlbayanDataNormalizer.normalizeCircleId(s.circle_id)) : String(s.circle_id || '');
+      const cid = normCircleIdStr(s.circle_id);
       if (wantCircleId && cid !== wantCircleId) continue;
       seenIds.add(sid);
 
       const circleObj = circleMap.get(cid) || {};
+      const resolved = buildLinkedGradesForStudent(s, allRecords, allResults, examsMap);
+      const examAvg = resolved.examAvg;
+      const sardVal = resolved.sardVal;
+      const attRate = resolved.attRate;
+      const memoVal = resolved.memoVal;
+      const revVal = resolved.revVal;
 
-      // Aggregate matching records for student
-      const stuRecords = allRecords.filter((r) => {
-        const rSid = window.AlbayanDataNormalizer ? String(window.AlbayanDataNormalizer.normalizeStudentId(r.student_id)) : String(r.student_id || '');
-        if (rSid !== sid) return false;
-        if (state.filterMode === 'top_achievers' && state.selectedMonth !== 'all' && window.AlbayanDataNormalizer) {
-          return window.AlbayanDataNormalizer.isSameMonth(r.month, state.selectedMonth);
-        }
-        return true;
-      });
-
-      const sardTotal = stuRecords.reduce((acc, r) => acc + (Number(r.sard_pages) || Number(r.pages) || 0), 0);
-      const latestRec = stuRecords[stuRecords.length - 1] || {};
-
-      // Aggregate exam results
-      const stuResults = allResults.filter((res) => {
-        const rSid = window.AlbayanDataNormalizer ? String(window.AlbayanDataNormalizer.normalizeStudentId(res.student_id)) : String(res.student_id || '');
-        return rSid === sid;
-      });
-
-      let examAvg = null;
-      if (stuResults.length > 0) {
-        const sumPct = stuResults.reduce((acc, res) => {
-          const pct = res.percentage !== undefined ? Number(res.percentage) : (res.score !== undefined && res.total ? (Number(res.score) / Number(res.total)) * 100 : 0);
-          return acc + (Number.isNaN(pct) ? 0 : pct);
-        }, 0);
-        examAvg = Math.round(sumPct / stuResults.length);
-      } else if (s.percentage !== undefined && s.percentage !== null && s.percentage !== '') {
-        examAvg = Math.round(Number(s.percentage));
-      } else if (latestRec.exam_score !== undefined && latestRec.exam_score !== '') {
-        examAvg = Math.round(Number(latestRec.exam_score));
-      }
-
-      const attRate = s.attendance_rate !== undefined
-        ? Number(s.attendance_rate)
-        : (latestRec.attendance_days !== undefined ? Math.min(100, Math.round((Number(latestRec.attendance_days) / 20) * 100)) : 100);
-
-      const sardVal = sardTotal || Number(s.sard_pages) || 0;
-      const memoVal = latestRec.memo_grade || s.memo_grade || 'ممتاز';
+      const computedBadge = examAvg !== null
+        ? `${examAvg}%`
+        : (sardVal > 0 ? `${Math.round(sardVal)} وجهاً` : (memoVal || 'غير مرصود'));
+      const computedLabel = examAvg !== null
+        ? computeGradeRating(examAvg)
+        : (memoVal || 'غير مرصود');
 
       normalizedStudents.push({
-        id: s.id || sid,
+        id: s.id !== undefined ? s.id : sid,
+        isDemo: false,
         student_code: s.student_code || `STD-${String(sid).padStart(4, '0')}`,
         name: s.name || s.student_name || 'طالب البيان',
         circle_id: cid,
         circle_name: s.circle_name || circleObj.name || 'حلقة القرآن الكريم',
         teacher_name: s.teacher_name || circleObj.teacher_name || 'معلم الحلقة',
         exam_percent: examAvg !== null ? examAvg : '',
-        grade_badge: examAvg !== null ? `${examAvg}%` : (sardVal > 0 ? `${sardVal} وجهاً` : 'مشارك'),
-        grade_label: examAvg !== null
-          ? (examAvg >= 95 ? 'ممتاز مرتفع' : examAvg >= 90 ? 'ممتاز' : examAvg >= 80 ? 'جيد جداً' : 'جيد')
-          : memoVal,
-        rating: s.rating || (examAvg !== null ? (examAvg >= 95 ? 'ممتاز مرتفع' : examAvg >= 90 ? 'ممتاز' : examAvg >= 80 ? 'جيد جداً' : 'جيد') : memoVal),
+        grade_badge: computedBadge,
+        grade_label: computedLabel,
+        rating: s.rating || computedLabel,
         sard_pages: sardVal,
-        attendance_rate: attRate,
+        attendance_rate: attRate !== null ? attRate : '',
         memo_grade: memoVal,
-        rev_grade: latestRec.rev_grade || s.rev_grade || 'ممتاز',
+        rev_grade: revVal,
         achievement_text: sardVal > 0
           ? `إتمام سرد وتسميع ${Math.round(sardVal)} وجهاً من القرآن الكريم بإتقان وتفوق`
-          : 'التميز والمواظبة في حفظ كتاب الله تعالى'
+          : 'التميز والمواظبة في حفظ كتاب الله تعالى',
+        linked_grades: resolved.linkedGrades,
+        selectedGradeKey: resolved.linkedGrades.length > 0 ? resolved.linkedGrades[0].gradeKey : ''
       });
     }
 
@@ -2210,6 +2510,25 @@
 
     if (loaded === null) {
       loaded = await loadStudentsOfflineOrCloud();
+    } else if (Array.isArray(loaded)) {
+      loaded = loaded.map((st) => {
+        const sid = normStudentIdStr(st.id !== undefined ? st.id : st.student_id);
+        if (Array.isArray(st.linked_grades) && st.linked_grades.length > 0) {
+          return {
+            ...st,
+            isDemo: false,
+            linked_grades: st.linked_grades.filter((g) => String(g.sourceStudentId || sid) === sid)
+              .map((g) => ({ ...g, sourceStudentId: sid }))
+          };
+        }
+        const resolved = buildLinkedGradesForStudent(st, [], [], null);
+        return {
+          ...st,
+          isDemo: false,
+          linked_grades: resolved.linkedGrades,
+          selectedGradeKey: resolved.linkedGrades.length > 0 ? resolved.linkedGrades[0].gradeKey : ''
+        };
+      });
     }
 
     state.allFilteredStudents = Array.isArray(loaded) ? loaded : [];
@@ -2257,12 +2576,7 @@
       pill.className = `student-tag-pill ${idx === state.currentStudentIndex ? 'active' : ''}`;
       pill.textContent = s.name;
       pill.onclick = () => {
-        state.currentStudentIndex = idx;
-        const studentSelect = document.getElementById('studentSelect');
-        if (studentSelect && s.id !== undefined) studentSelect.value = s.id;
-        updateStudentPager();
-        renderCertificate();
-        renderStudentsPillPreview();
+        selectStudentAtIndex(idx);
       };
       container.appendChild(pill);
     });
@@ -2479,10 +2793,17 @@
     highlightActiveHandle();
   }
 
+  function updateSnapGuides(showX, showY) {
+    const gx = document.getElementById('snapGuideX');
+    const gy = document.getElementById('snapGuideY');
+    if (gx) gx.classList.toggle('visible', Boolean(showX));
+    if (gy) gy.classList.toggle('visible', Boolean(showY));
+  }
+
   function attachPointerDrag(handle, key) {
     handle.addEventListener('pointerdown', (e) => {
-      // Do not initiate drag if user clicked a resize dot
-      if (e.target.closest('.corner-scale-dot') || e.target.closest('.edge-scale-dot')) {
+      // Do not initiate drag if user clicked a resize dot or rotation handle
+      if (e.target.closest('.corner-scale-dot') || e.target.closest('.edge-scale-dot') || e.target.closest('.rotate-handle-dot')) {
         return;
       }
 
@@ -2528,6 +2849,19 @@
       let newX = Math.max(3, Math.min(97, dragState.elemStartX + deltaXPct));
       let newY = Math.max(3, Math.min(97, dragState.elemStartY + deltaYPct));
 
+      // Magnetic snap to center axes (within 1.2%)
+      let snappedX = false;
+      let snappedY = false;
+      if (Math.abs(newX - 50) <= 1.2) {
+        newX = 50;
+        snappedX = true;
+      }
+      if (Math.abs(newY - 50) <= 1.2) {
+        newY = 50;
+        snappedY = true;
+      }
+      updateSnapGuides(snappedX, snappedY);
+
       newX = Math.round(newX * 10) / 10;
       newY = Math.round(newY * 10) / 10;
 
@@ -2550,6 +2884,7 @@
     });
 
     const endDrag = (e) => {
+      updateSnapGuides(false, false);
       if (dragState.isDragging && dragState.key === key) {
         try {
           if (handle.hasPointerCapture(e.pointerId)) {
@@ -3068,28 +3403,186 @@
     handle.style.setProperty('--elem-rotate', `${elem.rotation || 0}deg`);
   }
 
+  function rotateActiveElementTo(deg, recordHistory = true) {
+    const key = state.activeElementKey;
+    const elem = key ? state.elements[key] : null;
+    if (!elem) return;
+    let normalized = Math.round(deg);
+    while (normalized > 180) normalized -= 360;
+    while (normalized < -180) normalized += 360;
+    elem.rotation = normalized;
+    const sliderRotation = document.getElementById('sliderRotation');
+    const valRotationDisplay = document.getElementById('valRotationDisplay');
+    if (sliderRotation) sliderRotation.value = normalized;
+    if (valRotationDisplay) valRotationDisplay.textContent = `${normalized}°`;
+    syncHandlePosition(key);
+    updateElementContextBar();
+    scheduleCanvasDraw();
+    if (recordHistory) pushHistoryState('تعديل الدوران');
+  }
+
+  function setupElementContextBar() {
+    const bindBtn = (id, fn) => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          fn();
+        });
+      }
+    };
+    bindBtn('ctxEditBtn', () => {
+      const key = state.activeElementKey;
+      const elem = key ? state.elements[key] : null;
+      if (elem && elem.type !== 'image' && key !== 'school_stamp') {
+        openQuickTextEditor(key);
+      }
+    });
+    bindBtn('ctxRotateLeftBtn', () => {
+      const elem = state.activeElementKey ? state.elements[state.activeElementKey] : null;
+      if (elem) rotateActiveElementTo((elem.rotation || 0) - 15, true);
+    });
+    bindBtn('ctxRotateRightBtn', () => {
+      const elem = state.activeElementKey ? state.elements[state.activeElementKey] : null;
+      if (elem) rotateActiveElementTo((elem.rotation || 0) + 15, true);
+    });
+    bindBtn('ctxResetRotateBtn', () => rotateActiveElementTo(0, true));
+    bindBtn('ctxCenterBtn', centerActiveElement);
+    bindBtn('ctxDuplicateBtn', duplicateActiveElement);
+    bindBtn('ctxLayerUpBtn', () => moveActiveElementLayer(1));
+    bindBtn('ctxDeleteBtn', deleteOrHideActiveElement);
+    bindBtn('ctxDeselectBtn', () => {
+      state.activeElementKey = null;
+      highlightActiveHandle();
+      renderElementSelectorAndLayers();
+      updateTypographyPanelActiveElement();
+    });
+  }
+
+  function updateElementContextBar() {
+    const bar = document.getElementById('elementContextBar');
+    if (!bar) return;
+
+    const key = state.activeElementKey;
+    const elem = key ? state.elements[key] : null;
+    const isHidden = !elem || elem.visible === false ||
+      (key === 'school_stamp' && !state.showOfficialStamp) ||
+      (key === 'grade_badge' && state.gradeSource === 'none');
+
+    if (isHidden) {
+      bar.style.display = 'none';
+      return;
+    }
+
+    bar.style.display = 'flex';
+    const labelEl = document.getElementById('ctxElemLabel');
+    if (labelEl) labelEl.textContent = getElementLabel(key, elem);
+
+    const angleBtn = document.getElementById('ctxResetRotateBtn');
+    if (angleBtn) angleBtn.textContent = `${Math.round(elem.rotation || 0)}°`;
+
+    const editBtn = document.getElementById('ctxEditBtn');
+    const isText = (!elem.type || elem.type === 'text') && key !== 'school_stamp';
+    if (editBtn) editBtn.style.display = isText ? 'inline-flex' : 'none';
+
+    const dupBtn = document.getElementById('ctxDuplicateBtn');
+    if (dupBtn) dupBtn.style.display = key === 'school_stamp' ? 'none' : 'inline-flex';
+  }
+
+  function attachPointerRotate(rotDot, key) {
+    let isRotating = false;
+    let centerX = 0;
+    let centerY = 0;
+    let startAngle = 0;
+    let origRotation = 0;
+
+    rotDot.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const handle = document.getElementById(`handle_${key}`);
+      const elem = state.elements[key];
+      if (!handle || !elem) return;
+
+      const box = handle.getBoundingClientRect();
+      centerX = box.left + box.width / 2;
+      centerY = box.top + box.height / 2;
+      startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+      origRotation = elem.rotation || 0;
+      isRotating = true;
+
+      try { rotDot.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+
+    rotDot.addEventListener('pointermove', (e) => {
+      if (!isRotating) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const currAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+      let nextDeg = Math.round(origRotation + (currAngle - startAngle));
+      // Gentle magnetic snap near 0, ±90, ±180
+      if (Math.abs(nextDeg) <= 3) nextDeg = 0;
+      else if (Math.abs(nextDeg - 90) <= 3) nextDeg = 90;
+      else if (Math.abs(nextDeg + 90) <= 3) nextDeg = -90;
+
+      rotateActiveElementTo(nextDeg, false);
+    });
+
+    const endRotate = (e) => {
+      if (!isRotating) return;
+      isRotating = false;
+      try {
+        if (rotDot.hasPointerCapture(e.pointerId)) rotDot.releasePointerCapture(e.pointerId);
+      } catch (err) {}
+      pushHistoryState(`rotate_${key}`);
+      renderCertificate();
+    };
+
+    rotDot.addEventListener('pointerup', endRotate);
+    rotDot.addEventListener('pointercancel', endRotate);
+  }
+
   function highlightActiveHandle() {
     document.querySelectorAll('.drag-box-handle').forEach((h) => {
       const key = h.getAttribute('data-key');
       const isActive = key === state.activeElementKey;
       h.classList.toggle('active', isActive);
 
-      const dots = h.querySelectorAll('.corner-scale-dot, .edge-scale-dot');
+      const dots = h.querySelectorAll('.corner-scale-dot, .edge-scale-dot, .rotate-handle-dot, .rotate-handle-stem');
       dots.forEach((d) => d.remove());
       const tb = h.querySelector('.pro-action-toolbar');
       if (tb) tb.remove();
     });
 
     if (!state.activeElementKey) {
+      updateElementContextBar();
       updateTypographyPanelActiveElement();
       return;
     }
 
     const activeHandle = document.getElementById(`handle_${state.activeElementKey}`);
-    if (!activeHandle) return;
+    if (!activeHandle) {
+      updateElementContextBar();
+      return;
+    }
 
     const elem = state.elements[state.activeElementKey];
-    if (!elem || elem.visible === false) return;
+    if (!elem || elem.visible === false) {
+      updateElementContextBar();
+      return;
+    }
+
+    // Attach direct canvas rotation stem + handle
+    const rotStem = document.createElement('div');
+    rotStem.className = 'rotate-handle-stem';
+    activeHandle.appendChild(rotStem);
+
+    const rotDot = document.createElement('div');
+    rotDot.className = 'rotate-handle-dot';
+    rotDot.title = 'اسحب لتدوير العنصر';
+    rotDot.innerHTML = '↻';
+    attachPointerRotate(rotDot, state.activeElementKey);
+    activeHandle.appendChild(rotDot);
 
     // Attach 4 corner scale handles
     ['nw', 'ne', 'sw', 'se'].forEach((pos) => {
@@ -3107,7 +3600,7 @@
       activeHandle.appendChild(dot);
     });
 
-    // Update active element inspector in typography panel
+    updateElementContextBar();
     updateTypographyPanelActiveElement();
   }
 
@@ -3826,6 +4319,10 @@
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
         e.preventDefault();
         redo();
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && state.activeElementKey) {
+        if (target && target.tagName === 'SELECT') return;
+        e.preventDefault();
+        deleteOrHideActiveElement();
       }
     });
 
@@ -3932,6 +4429,14 @@
     const btnShareMobile = document.getElementById('btnShareMobile');
     const btnPrintDirect = document.getElementById('btnPrintDirect');
     const cancelBatchBtn = document.getElementById('cancelBatchExportBtn');
+    const exportFormatSelect = document.getElementById('exportFormatSelect');
+
+    if (exportFormatSelect) {
+      exportFormatSelect.value = state.exportFormat || 'png_uhd';
+      exportFormatSelect.addEventListener('change', (e) => {
+        state.exportFormat = e.target.value || 'png_uhd';
+      });
+    }
 
     if (btnDownloadSinglePng) btnDownloadSinglePng.addEventListener('click', downloadCurrentCertificatePng);
     if (quickExportBtn) quickExportBtn.addEventListener('click', downloadCurrentCertificatePng);
@@ -3967,26 +4472,104 @@
     });
   }
 
-  async function saveBlobOnDevice(blob, filename) {
-    // 1. Try Capacitor native Filesystem when running inside Android APK
+  function formatExportSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+    return `${Math.max(1, Math.round(n / 1024))} KB`;
+  }
+
+  function showVerifiedExportCard(title, detailsText, isError = false) {
+    const card = document.getElementById('lastExportResultCard');
+    const titleEl = document.getElementById('lastExportTitle');
+    const pathEl = document.getElementById('lastExportPath');
+    if (!card) return;
+    card.style.display = 'flex';
+    card.style.borderColor = isError ? '#dc2626' : '#16a34a';
+    card.style.background = isError ? 'rgba(220, 38, 38, 0.07)' : 'rgba(22, 163, 74, 0.07)';
+    if (titleEl) {
+      titleEl.textContent = title;
+      titleEl.style.color = isError ? '#b91c1c' : '#15803d';
+    }
+    if (pathEl) pathEl.textContent = detailsText || '';
+  }
+
+  function getExportPresetConfig(formatKey) {
+    if (formatKey === 'jpg_hd') {
+      return { width: CANVAS_WIDTH, height: CANVAS_HEIGHT, mime: 'image/jpeg', ext: 'jpg', quality: 0.94, label: 'JPG عالية الجودة' };
+    }
+    if (formatKey === 'png_std') {
+      return { width: 1754, height: 1240, mime: 'image/png', ext: 'png', quality: 1.0, label: 'PNG قياسي' };
+    }
+    return { width: CANVAS_WIDTH, height: CANVAS_HEIGHT, mime: 'image/png', ext: 'png', quality: 1.0, label: 'PNG فائق الدقة' };
+  }
+
+  async function renderExportCanvasBlob(sourceCanvas, formatKey) {
+    const cfg = getExportPresetConfig(formatKey);
+    let targetCanvas = sourceCanvas;
+    let tempCanvas = null;
+
+    if (cfg.width !== sourceCanvas.width || cfg.height !== sourceCanvas.height) {
+      tempCanvas = document.createElement('canvas');
+      tempCanvas.width = cfg.width;
+      tempCanvas.height = cfg.height;
+      const tCtx = tempCanvas.getContext('2d');
+      tCtx.imageSmoothingEnabled = true;
+      tCtx.imageSmoothingQuality = 'high';
+      tCtx.drawImage(sourceCanvas, 0, 0, cfg.width, cfg.height);
+      targetCanvas = tempCanvas;
+    }
+
+    const blob = await new Promise((resolve) => targetCanvas.toBlob(resolve, cfg.mime, cfg.quality));
+    if (tempCanvas) {
+      tempCanvas.width = 0;
+      tempCanvas.height = 0;
+    }
+    if (!blob || blob.size <= 0) {
+      throw new Error('تعذر توليد بيانات الصورة (0 بايت)');
+    }
+    return { blob, cfg };
+  }
+
+  async function saveBlobOnDevice(blob, filename, options = {}) {
+    if (!blob || blob.size <= 0) {
+      throw new Error('الملف الناتج فارغ (0 بايت)');
+    }
+
+    const target = options.target || 'downloads'; // 'gallery' | 'downloads'
+    const mimeType = options.mimeType || blob.type || 'application/octet-stream';
     const capPlugins = window.Capacitor && window.Capacitor.Plugins;
-    if (window.IS_CAPACITOR_APP && capPlugins && capPlugins.Filesystem && typeof capPlugins.Filesystem.writeFile === 'function') {
-      try {
-        const base64Data = await blobToBase64(blob);
-        await capPlugins.Filesystem.writeFile({
-          path: `AlbayanCertificates/${filename}`,
-          data: base64Data,
-          directory: 'DOCUMENTS',
-          recursive: true
+
+    // 1. Primary Native Android Path via AlbayanExport Capacitor Plugin (MediaStore + MediaScanner + Verified Read)
+    if (capPlugins && capPlugins.AlbayanExport) {
+      const base64Data = await blobToBase64(blob);
+      const pluginFn = target === 'gallery'
+        ? capPlugins.AlbayanExport.saveImageToGallery
+        : capPlugins.AlbayanExport.saveFileToDownloads;
+
+      if (typeof pluginFn === 'function') {
+        const res = await pluginFn.call(capPlugins.AlbayanExport, {
+          base64Data,
+          fileName: filename,
+          mimeType
         });
-        showToast(`تم حفظ الملف في المستندات: ${filename}`);
-        return true;
-      } catch (capErr) {
-        console.warn('Capacitor Filesystem fallback to anchor download:', capErr);
+
+        if (!res || res.verified !== true || !(Number(res.bytes) > 0)) {
+          throw new Error('تعذر التحقق من كتابة الملف على وحدة التخزين');
+        }
+        return {
+          verified: true,
+          path: res.path || filename,
+          uri: res.uri || '',
+          bytes: Number(res.bytes)
+        };
       }
     }
 
-    // 2. Standard browser download
+    // 2. Fallback ONLY if running in regular web browser (NOT Capacitor APK WebView)
+    if (window.IS_CAPACITOR_APP || (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform())) {
+      throw new Error('إضافة الحفظ الأصلية AlbayanExport غير متاحة في هذه النسخة');
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -3995,7 +4578,11 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1500);
-    return true;
+    return {
+      verified: true,
+      path: filename,
+      bytes: blob.size
+    };
   }
 
   function updateBatchModal(visible, title = '', done = 0, total = 0, studentName = '') {
@@ -4016,26 +4603,40 @@
     if (subEl) subEl.textContent = studentName ? `الطالب الحالي: ${studentName}` : 'يرجى الانتظار وعدم إغلاق الصفحة';
   }
 
-  // 1. Single PNG Export
-  function downloadCurrentCertificatePng() {
+  // 1. Single Image Export (Gallery + Pictures/AlbayanCertificates)
+  async function downloadCurrentCertificatePng() {
     const student = state.students[state.currentStudentIndex] || {};
-    showToast('جاري تصدير الصورة عالية الدقة (300 DPI)...');
+    const formatKey = state.exportFormat || 'png_uhd';
+    showToast('جاري تجهيز وحفظ الشهادة في المعرض...');
 
-    canvas.toBlob(async (blob) => {
-      if (!blob) return;
-      await saveBlobOnDevice(blob, getCleanFileName(student.name, 'png'));
-      showToast('تم تنزيل الشهادة بنجاح!');
-    }, 'image/png', 1.0);
+    try {
+      drawCertificateCanvas();
+      const { blob, cfg } = await renderExportCanvasBlob(canvas, formatKey);
+      const filename = getCleanFileName(student.name, cfg.ext);
+      const saved = await saveBlobOnDevice(blob, filename, { target: 'gallery', mimeType: cfg.mime });
+      showVerifiedExportCard('تم حفظ الصورة في المعرض بنجاح', `${saved.path} (${formatExportSize(saved.bytes)})`);
+      showToast(`تم حفظ الشهادة في المعرض (${formatExportSize(saved.bytes)})`);
+    } catch (err) {
+      console.error('Image export failed:', err);
+      const msg = (err && err.message) ? err.message : 'فشل حفظ الصورة في الجهاز';
+      showVerifiedExportCard('فشل تصدير الصورة', msg, true);
+      showToast(`تعذر حفظ الشهادة: ${msg}`);
+    }
   }
 
-  // 2. Single PDF Export
+  // 2. Single PDF Export (Downloads/AlbayanCertificates)
   async function downloadCurrentCertificatePdf() {
     const student = state.students[state.currentStudentIndex] || {};
-    showToast('جاري إنشاء ملف PDF جاهز للطباعة...');
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      showToast('مكتبة PDF غير محملة، جاري فتح نافذة الطباعة...');
+      printCurrentCertificate();
+      return;
+    }
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-
-    if (window.jspdf && window.jspdf.jsPDF) {
+    showToast('جاري إنشاء ملف PDF وحفظه في التنزيلات...');
+    try {
+      drawCertificateCanvas();
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({
         orientation: 'landscape',
@@ -4044,18 +4645,22 @@
       });
       doc.addImage(imgData, 'JPEG', 0, 0, 841.89, 595.28);
       const pdfBlob = doc.output('blob');
-      await saveBlobOnDevice(pdfBlob, getCleanFileName(student.name, 'pdf'));
-      showToast('تم حفظ ملف PDF بنجاح!');
-    } else {
-      showToast('جاري تحويل الشهادة إلى نافذة الطباعة (PDF)...');
-      printCurrentCertificate();
+      const filename = getCleanFileName(student.name, 'pdf');
+      const saved = await saveBlobOnDevice(pdfBlob, filename, { target: 'downloads', mimeType: 'application/pdf' });
+      showVerifiedExportCard('تم حفظ ملف PDF في التنزيلات', `${saved.path} (${formatExportSize(saved.bytes)})`);
+      showToast(`تم حفظ ملف PDF في التنزيلات (${formatExportSize(saved.bytes)})`);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      const msg = (err && err.message) ? err.message : 'فشل إنشاء ملف PDF';
+      showVerifiedExportCard('فشل تصدير PDF', msg, true);
+      showToast(`تعذر حفظ PDF: ${msg}`);
     }
   }
 
-  // 3A. Batch ZIP Export (with progress & cancel)
+  // 3A. Batch ZIP Export (with progress, cancel, & verified Downloads write)
   async function downloadBatchZip() {
     if (!window.JSZip) {
-      showToast('مكتبة الضغط غير متاحة بدون إنترنت، يمكنك استخدام التصدير الفردي أو PDF');
+      showToast('مكتبة ضغط ZIP غير محملة، يمكنك استخدام PDF المجمع');
       return;
     }
 
@@ -4068,9 +4673,11 @@
     const total = state.students.length;
     const zip = new JSZip();
     const initialIndex = state.currentStudentIndex;
+    const formatKey = state.exportFormat === 'png_std' ? 'png_std' : 'jpg_hd';
     updateBatchModal(true, 'جاري تجهيز حزمة الشهادات (ZIP)...', 0, total, '');
 
     try {
+      let packedCount = 0;
       for (let i = 0; i < total; i++) {
         if (state.isBatchCancelled) {
           throw new Error('BATCH_CANCELLED');
@@ -4080,23 +4687,28 @@
         drawCertificateCanvas();
         updateBatchModal(true, 'جاري تجهيز حزمة الشهادات (ZIP)...', i + 1, total, st.name);
 
-        const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
-        const fileName = `${i + 1}_${getCleanFileName(st.name, 'jpg')}`;
+        const { blob, cfg } = await renderExportCanvasBlob(canvas, formatKey);
+        const fileName = `${i + 1}_${getCleanFileName(st.name, cfg.ext)}`;
         zip.file(fileName, blob);
+        packedCount += 1;
 
-        // Yield frame to keep mobile UI responsive
         await new Promise((r) => setTimeout(r, 15));
       }
 
       state.currentStudentIndex = initialIndex;
       renderCertificate();
 
-      updateBatchModal(true, 'جاري ضغط الحزمة النهائية...', total, total, 'يتم إنشاء ملف ZIP');
-      const content = await zip.generateAsync({ type: 'blob' });
+      updateBatchModal(true, 'جاري ضغط وحفظ ملف ZIP...', total, total, `${packedCount} شهادة`);
+      const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 5 } });
+      if (!content || content.size <= 0) {
+        throw new Error('ملف ZIP الناتج فارغ');
+      }
+
       const zipName = `شهادات_مدرسة_البيان_${new Date().toISOString().slice(0, 10)}.zip`;
-      await saveBlobOnDevice(content, zipName);
+      const saved = await saveBlobOnDevice(content, zipName, { target: 'downloads', mimeType: 'application/zip' });
       updateBatchModal(false);
-      showToast(`تم تصدير ${total} شهادة بنجاح!`);
+      showVerifiedExportCard(`تم حفظ حزمة ZIP (${packedCount} شهادة)`, `${saved.path} (${formatExportSize(saved.bytes)})`);
+      showToast(`تم حفظ ملف ZIP (${packedCount} شهادة) في التنزيلات`);
     } catch (err) {
       updateBatchModal(false);
       state.currentStudentIndex = initialIndex;
@@ -4105,12 +4717,14 @@
         showToast('تم إلغاء التصدير الجماعي');
       } else {
         console.error('Batch ZIP export error:', err);
-        showToast('حدث خطأ أثناء التصدير الجماعي');
+        const msg = (err && err.message) ? err.message : 'فشل تصدير ملف ZIP';
+        showVerifiedExportCard('فشل التصدير الجماعي ZIP', msg, true);
+        showToast(`تعذر حفظ ZIP: ${msg}`);
       }
     }
   }
 
-  // 3B. Batch Multi-Page PDF Export (with progress & cancel)
+  // 3B. Batch Multi-Page PDF Export (with progress, cancel, & verified Downloads write)
   async function downloadBatchPdf() {
     if (state.students.length === 0) {
       showToast('لا يوجد طلاب محددون للتصدير');
@@ -4157,9 +4771,10 @@
 
       const pdfBlob = doc.output('blob');
       const pdfName = `شهادات_البيان_مجمعة_${new Date().toISOString().slice(0, 10)}.pdf`;
-      await saveBlobOnDevice(pdfBlob, pdfName);
+      const saved = await saveBlobOnDevice(pdfBlob, pdfName, { target: 'downloads', mimeType: 'application/pdf' });
       updateBatchModal(false);
-      showToast(`تم حفظ ملف PDF لـ ${total} طالب بنجاح!`);
+      showVerifiedExportCard(`تم حفظ PDF المجمع (${total} شهادة)`, `${saved.path} (${formatExportSize(saved.bytes)})`);
+      showToast(`تم حفظ ملف PDF لـ ${total} طالب في التنزيلات`);
     } catch (err) {
       updateBatchModal(false);
       state.currentStudentIndex = initialIndex;
@@ -4168,67 +4783,62 @@
         showToast('تم إلغاء إنشاء ملف PDF');
       } else {
         console.error('Batch PDF export error:', err);
-        showToast('حدث خطأ أثناء إنشاء ملف PDF المجمع');
+        const msg = (err && err.message) ? err.message : 'فشل إنشاء ملف PDF المجمع';
+        showVerifiedExportCard('فشل تصدير PDF المجمع', msg, true);
+        showToast(`تعذر حفظ PDF المجمع: ${msg}`);
       }
     }
   }
 
-  // 4. Mobile Native Share API + Capacitor Share Fallback
+  // 4. Mobile Native Share API + Capacitor AlbayanExport.shareFile
   async function shareCurrentCertificate() {
     const student = state.students[state.currentStudentIndex] || {};
-    const filename = getCleanFileName(student.name, 'png');
+    const formatKey = state.exportFormat === 'jpg_hd' ? 'jpg_hd' : 'png_uhd';
     showToast('جاري إعداد الشهادة للمشاركة...');
 
     try {
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
+      drawCertificateCanvas();
+      const { blob, cfg } = await renderExportCanvasBlob(canvas, formatKey);
+      const filename = getCleanFileName(student.name, cfg.ext);
+      const capPlugins = window.Capacitor && window.Capacitor.Plugins;
 
-        // Try Capacitor Cache + Native Share first if inside APK
-        const capPlugins = window.Capacitor && window.Capacitor.Plugins;
-        if (window.IS_CAPACITOR_APP && capPlugins && capPlugins.Filesystem && capPlugins.Share) {
-          try {
-            const base64Data = await blobToBase64(blob);
-            const writeRes = await capPlugins.Filesystem.writeFile({
-              path: filename,
-              data: base64Data,
-              directory: 'CACHE'
-            });
-            await capPlugins.Share.share({
-              title: `شهادة تقدير - ${student.name || 'طالب البيان'}`,
-              text: `شهادة تكريم وتفوق للطالب / ${student.name || 'طالب البيان'} من مدرسة البيان لتعليم القرآن الكريم.`,
-              files: writeRes && writeRes.uri ? [writeRes.uri] : undefined,
-              url: writeRes ? writeRes.uri : undefined
-            });
-            showToast('تمت المشاركة بنجاح!');
-            return;
-          } catch (capShareErr) {
-            if (capShareErr && String(capShareErr).includes('cancel')) return;
-          }
+      if (capPlugins && capPlugins.AlbayanExport && typeof capPlugins.AlbayanExport.shareFile === 'function') {
+        const base64Data = await blobToBase64(blob);
+        const res = await capPlugins.AlbayanExport.shareFile({
+          base64Data,
+          fileName: filename,
+          mimeType: cfg.mime,
+          title: `شهادة تقدير - ${student.name || 'طالب البيان'}`,
+          text: `شهادة تكريم وتفوق للطالب / ${student.name || 'طالب البيان'} من مدرسة البيان لتعليم القرآن الكريم.`
+        });
+        if (res && res.verified) {
+          showToast('تم فتح نافذة المشاركة بنجاح!');
+          return;
         }
+      }
 
-        const file = new File([blob], filename, { type: 'image/png' });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: `شهادة تقدير - ${student.name}`,
-            text: `شهادة تكريم وتفوق للطالب المبارك / ${student.name} من مدرسة البيان لتعليم القرآن الكريم.`
-          });
-          showToast('تمت المشاركة بنجاح!');
-        } else if (navigator.share) {
-          await navigator.share({
-            title: `شهادة تقدير - ${student.name}`,
-            text: `شهادة تكريم وتفوق للطالب المبارك / ${student.name} من مدرسة البيان لتعليم القرآن الكريم.`
-          });
-        } else {
-          await saveBlobOnDevice(blob, filename);
-          showToast('تم تنزيل الشهادة لعدم دعم المشاركة المباشرة في متصفحك');
-        }
-      }, 'image/png');
+      const file = new File([blob], filename, { type: cfg.mime });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `شهادة تقدير - ${student.name || 'طالب البيان'}`,
+          text: `شهادة تكريم وتفوق للطالب المبارك / ${student.name || 'طالب البيان'} من مدرسة البيان لتعليم القرآن الكريم.`
+        });
+        showToast('تمت المشاركة بنجاح!');
+      } else if (navigator.share) {
+        await navigator.share({
+          title: `شهادة تقدير - ${student.name || 'طالب البيان'}`,
+          text: `شهادة تكريم وتفوق للطالب المبارك / ${student.name || 'طالب البيان'} من مدرسة البيان لتعليم القرآن الكريم.`
+        });
+      } else {
+        const saved = await saveBlobOnDevice(blob, filename, { target: 'gallery', mimeType: cfg.mime });
+        showVerifiedExportCard('تم حفظ الصورة في المعرض', `${saved.path} (${formatExportSize(saved.bytes)})`);
+        showToast('تم حفظ الشهادة في المعرض للمشاركة اليدوية');
+      }
     } catch (err) {
       if (err && err.name !== 'AbortError') {
         console.error('Share failed:', err);
-        downloadCurrentCertificatePng();
+        showToast(`تعذر مشاركة الشهادة: ${(err && err.message) || 'خطأ غير متوقع'}`);
       }
     }
   }

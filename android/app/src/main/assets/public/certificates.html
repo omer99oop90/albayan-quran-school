@@ -24,9 +24,11 @@
   <script src="lucide.min.js"></script>
   <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
 
-  <!-- JSZip & jsPDF for batch and PDF exports (with offline fallbacks) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- JSZip & jsPDF for batch and PDF exports (Offline Vendored + CDN fallback) -->
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script>if(!window.jspdf){document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>');}</script>
+  <script src="vendor/jszip.min.js"></script>
+  <script>if(!window.JSZip){document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\/script>');}</script>
 </head>
 <body class="cert-studio-body">
 
@@ -121,10 +123,48 @@
           <div class="cert-canvas-frame" id="certCanvasFrame">
             <canvas id="certCanvas" width="3508" height="2480"></canvas>
 
+            <!-- Snap Alignment Crosshair Guides -->
+            <div class="snap-guide-line x" id="snapGuideX"></div>
+            <div class="snap-guide-line y" id="snapGuideY"></div>
+
             <!-- Interactive Drag Overlay System -->
             <div class="cert-drag-overlay" id="certDragOverlay">
               <!-- Position Handles & Selection Bounding Box will be rendered here dynamically -->
             </div>
+          </div>
+
+          <!-- Instant Element Context Action Bar (Zero-Shadow Docked Pill) -->
+          <div class="element-context-bar" id="elementContextBar" style="display:none;" role="toolbar" aria-label="أدوات العنصر المحدد">
+            <span class="ctx-elem-label" id="ctxElemLabel">العنصر</span>
+            <button type="button" class="ctx-action-btn" id="ctxEditBtn" title="تعديل النص">
+              <i data-lucide="edit-3" style="width:15px; height:15px;"></i>
+              <span>تعديل</span>
+            </button>
+            <div class="ctx-divider"></div>
+            <button type="button" class="ctx-action-btn" id="ctxRotateLeftBtn" title="تدوير -15°">
+              <i data-lucide="rotate-ccw" style="width:15px; height:15px;"></i>
+            </button>
+            <button type="button" class="ctx-angle-badge" id="ctxResetRotateBtn" title="إعادة الزاوية إلى 0°">0°</button>
+            <button type="button" class="ctx-action-btn" id="ctxRotateRightBtn" title="تدوير +15°">
+              <i data-lucide="rotate-cw" style="width:15px; height:15px;"></i>
+            </button>
+            <div class="ctx-divider"></div>
+            <button type="button" class="ctx-action-btn" id="ctxCenterBtn" title="توسيط في الشهادة">
+              <i data-lucide="align-center" style="width:15px; height:15px;"></i>
+            </button>
+            <button type="button" class="ctx-action-btn" id="ctxDuplicateBtn" title="تكرار العنصر">
+              <i data-lucide="copy" style="width:15px; height:15px;"></i>
+            </button>
+            <button type="button" class="ctx-action-btn" id="ctxLayerUpBtn" title="تقديم طبقة للأمام">
+              <i data-lucide="layers" style="width:15px; height:15px;"></i>
+            </button>
+            <button type="button" class="ctx-action-btn danger" id="ctxDeleteBtn" title="حذف أو إخفاء العنصر (Delete)">
+              <i data-lucide="trash-2" style="width:15px; height:15px;"></i>
+              <span>حذف</span>
+            </button>
+            <button type="button" class="ctx-close-btn" id="ctxDeselectBtn" title="إلغاء التحديد" aria-label="إلغاء التحديد">
+              <i data-lucide="x" style="width:14px; height:14px;"></i>
+            </button>
           </div>
 
           <!-- Floating Stage Controls: PURE ICONS ONLY -->
@@ -427,7 +467,7 @@
                     <span>الدوران:</span>
                     <span class="slider-val" id="valRotationDisplay">0°</span>
                   </div>
-                  <input type="range" id="sliderRotation" min="-45" max="45" step="1" value="0" class="android-slider">
+                  <input type="range" id="sliderRotation" min="-180" max="180" step="1" value="0" class="android-slider">
                 </div>
               </div>
 
@@ -554,6 +594,22 @@
               </select>
             </div>
 
+            <!-- Strict Student-Linked Grade Selection Card -->
+            <div class="panel-section student-grade-link-card" id="studentGradeLinkCard">
+              <div class="section-header-flex">
+                <label class="section-label" style="margin-bottom:0;">ربط الدرجة بالطالب المسجل:</label>
+                <span class="student-grade-verified-badge" id="studentGradeVerifiedBadge">متطابق</span>
+              </div>
+              <div class="linked-student-meta" id="linkedStudentMeta">
+                <strong id="linkedStudentName">لم يتم اختيار طالب</strong>
+                <small id="linkedStudentInfo">اختر طالباً لعرض درجاته المسجلة فقط</small>
+              </div>
+              <div style="margin-top:8px;">
+                <label class="form-label-sm" for="studentGradeRecordSelect">الدرجة المختارة لهذا الطالب:</label>
+                <select id="studentGradeRecordSelect" class="form-select-sm"></select>
+              </div>
+            </div>
+
             <!-- Top Achievers Criteria -->
             <div class="panel-section achievers-subpanel" id="achieversSubpanel" style="display:none;">
               <label class="section-label">معيار التفوق والتميز:</label>
@@ -639,8 +695,17 @@
           <!-- TAB 5: التصدير والمشاركة (Export & Share) -->
           <div class="sheet-tab-panel" id="tabPanelExport">
             <div class="panel-section">
-              <label class="section-label">خيارات التصدير عالي الدقة (300 DPI):</label>
-              
+              <label class="section-label">خيارات التصدير والحفظ المباشر:</label>
+
+              <div class="export-options-row" style="margin-bottom:10px;">
+                <label class="form-label-sm" for="exportFormatSelect">صيغة ودقة الصورة عند التنزيل:</label>
+                <select id="exportFormatSelect" class="form-select-sm">
+                  <option value="png_uhd" selected>PNG فائق الدقة (3508×2480 — 300 DPI)</option>
+                  <option value="jpg_hd">JPG عالية الجودة (3508×2480 — حجم أخف)</option>
+                  <option value="png_std">PNG قياسي (1754×1240 — سريع)</option>
+                </select>
+              </div>
+
               <div class="pure-export-actions-bar">
                 <button type="button" class="pure-icon-btn export-action-icon export-icon-green" id="btnShareMobile" title="مشاركة فورية (واتساب / هاتف)" aria-label="مشاركة واتساب">
                   <i data-lucide="share-2" style="width:28px; height:28px;"></i>
@@ -706,6 +771,12 @@
                     <small>إرسال الشهادة الحالية مباشرة للطابعة</small>
                   </div>
                 </div>
+              </div>
+
+              <!-- Verified Export Result Card -->
+              <div class="export-status-card" id="lastExportResultCard" style="display:none;">
+                <strong id="lastExportTitle">تم التحقق من حفظ الملف</strong>
+                <small id="lastExportPath"></small>
               </div>
             </div>
           </div>
