@@ -65,7 +65,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew clean assembleDebug --no-daemon
+          ./gradlew clean assembleDebug --no-daemon -Dorg.gradle.java.home="$JAVA_HOME"
 
       - name: Prepare APK artifact
         run: |
