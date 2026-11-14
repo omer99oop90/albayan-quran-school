@@ -26,6 +26,7 @@ function validateArabicTripleName(name) {
 }
 
 async function checkStudentAlreadyTaken(studentName, inputElem, feedbackElem, lockElem, qAreaElem, btnElem) {
+  if (window.IS_CAPACITOR_APP) return;
   if (studentCheckTimeout) clearTimeout(studentCheckTimeout);
   studentCheckTimeout = setTimeout(async () => {
     try {

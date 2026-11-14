@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="">
+  <title>الإعدادات - مدرسة البيان لتعليم القرآن</title>
+
+  <!-- Immediate Theme Initializer -->
+  <script src="theme-init.js"></script>
+
+  <!-- Google Fonts: Cairo & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+
+  <!-- Unified Stylesheets -->
+  <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="dark_theme.css?v=3.0">
+  <link rel="stylesheet" href="settings.css?v=4.4">
+</head>
+
+<body class="settings-body">
+  <!-- Main Page Container -->
+  <div class="settings-mobile-container">
+
+    <!-- ═══════════════════════════════════════════════════
+         1. Top Navigation Bar
+         ═══════════════════════════════════════════════════ -->
+    <header class="settings-top-bar">
+      <a href="more.html" class="btn-circular-back" title="العودة لصفحة المزيد">
+        <i data-lucide="chevron-right" style="width:22px; height:22px;"></i>
+      </a>
+      <h1 class="page-nav-title">الإعدادات</h1>
+      <div class="top-bar-placeholder"></div>
+    </header>
+
+    <!-- Global Toast Alert Message -->
+    <div id="alertMsg" class="alert-box" style="display:none;"></div>
+
+    <!-- Hidden compatibility elements for existing script bindings -->
+    <span id="loggedUsername" style="display:none;">...</span>
+    <span id="loggedRole" style="display:none;">...</span>
+
+    <!-- ═══════════════════════════════════════════════════
+         2. Profile Card
+         ═══════════════════════════════════════════════════ -->
+    <section class="profile-preview-card" onclick="openSheet('sheet-profile')">
+      <div class="profile-card-left">
+        <div class="avatar-ring-container">
+          <div class="profile-avatar-circle" id="userAvatar">
+            <i data-lucide="user" style="width:26px; height:26px;"></i>
+          </div>
+        </div>
+
+        <div class="profile-card-info">
+          <div class="profile-name-row">
+            <h2 id="heroUsername" class="profile-user-name">جاري التحميل...</h2>
+            <span class="profile-role-pill" id="heroRoleBadge">معلم</span>
+          </div>
+          <span class="profile-handle" id="heroUserMeta">@albayan_user</span>
+        </div>
+      </div>
+
+      <button type="button" class="btn-profile-edit" onclick="event.stopPropagation(); openSheet('sheet-profile');" title="تعديل اسم المستخدم" aria-label="تعديل اسم المستخدم">
+        <i data-lucide="pen-line" style="width:16px; height:16px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pen-line"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </i>
+      </button>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════
+         3. Settings Items List Group
+         ═══════════════════════════════════════════════════ -->
+    <section class="settings-group-card">
+
+      <!-- Item 1: Change Password -->
+      <div class="settings-row-item" onclick="openSheet('sheet-password')">
+        <div class="row-left">
+          <div class="row-icon-circle">
+            <i data-lucide="lock"></i>
+          </div>
+          <span class="row-title">تغيير الرمز السرّي</span>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item 2: Avatar & Visual Identity -->
+      <div class="settings-row-item" onclick="openSheet('sheet-avatar')">
+        <div class="row-left">
+          <div class="row-icon-circle">
+            <i data-lucide="sparkles"></i>
+          </div>
+          <span class="row-title">الهوية والشعار الرمزي (Avatar)</span>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item 3: Notifications -->
+      <div class="settings-row-item">
+        <div class="row-left">
+          <div class="row-icon-circle">
+            <i data-lucide="bell"></i>
+          </div>
+          <span class="row-title">الإشعارات والتنبيهات</span>
+        </div>
+        <div class="row-right" onclick="event.stopPropagation();">
+          <label class="custom-toggle-switch">
+            <input type="checkbox" id="notificationsToggle" checked onchange="handleNotificationsToggle(this)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Item 4: Dark Theme Switch -->
+      <div class="settings-row-item">
+        <div class="row-left">
+          <div class="row-icon-circle">
+            <i id="themeRowIcon" data-lucide="moon"></i>
+          </div>
+          <span class="row-title">الوضع الليلي (Dark Mode)</span>
+        </div>
+        <div class="row-right" onclick="event.stopPropagation();">
+          <label class="custom-toggle-switch">
+            <input type="checkbox" id="themeToggle" checked onchange="handleThemeToggle(this)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Item 5: Circles View Mode -->
+      <div class="settings-row-item" onclick="openSheet('sheet-view-mode')">
+        <div class="row-left">
+          <div class="row-icon-circle">
+            <i data-lucide="layout-grid"></i>
+          </div>
+          <span class="row-title">طريقة عرض الحلقات القرآنية</span>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item: Font Selection & Custom Typography -->
+      <div class="settings-row-item" onclick="openSheet('sheet-font-selection')">
+        <div class="row-left">
+          <div class="row-icon-circle" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
+            <i data-lucide="type"></i>
+          </div>
+          <div>
+            <span class="row-title">نوع الخط والمظهر الطباعي (Typography)</span>
+            <div id="currentFontFamilyBadge" style="font-size: 0.75rem; color: #a855f7; font-weight: 700; margin-top: 2px;">خط كايرو (الافتراضي)</div>
+          </div>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item: Quranic Record Period / Duration -->
+      <div class="settings-row-item" onclick="openSheet('sheet-record-period')">
+        <div class="row-left">
+          <div class="row-icon-circle" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">
+            <i data-lucide="calendar-range"></i>
+          </div>
+          <div>
+            <span class="row-title">مدة ونظام السجل القرآني</span>
+            <div id="currentRecordPeriodBadge" style="font-size: 0.75rem; color: #10B981; font-weight: 700; margin-top: 2px;">شهري (الافتراضي)</div>
+          </div>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item 6: Account Details & Permissions -->
+      <div class="settings-row-item" onclick="openSheet('sheet-account')">
+        <div class="row-left">
+          <div class="row-icon-circle">
+            <i data-lucide="shield-check"></i>
+          </div>
+          <span class="row-title">تفاصيل وبيانات الحساب</span>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item 7: Download Backup -->
+      <div class="settings-row-item" onclick="downloadBackup()">
+        <div class="row-left">
+          <div class="row-icon-circle">
+            <i data-lucide="download-cloud"></i>
+          </div>
+          <span class="row-title">تنزيل النسخة الاحتياطية (ZIP)</span>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item 8: Restore Backup -->
+      <div class="settings-row-item" onclick="openSheet('sheet-restore')">
+        <div class="row-left">
+          <div class="row-icon-circle">
+            <i data-lucide="upload-cloud"></i>
+          </div>
+          <span class="row-title">استعادة النسخة الاحتياطية</span>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item 8.5: Firebase Cloud Sync -->
+      <div class="settings-row-item" onclick="openSheet('sheet-firebase-sync')">
+        <div class="row-left">
+          <div class="row-icon-circle" style="background: rgba(37, 99, 235, 0.15); color: #2563EB;">
+            <i data-lucide="cloud"></i>
+          </div>
+          <div>
+            <span class="row-title">الربط والمزامنة السحابية (Firebase)</span>
+            <div id="settingsSyncStatusBadge" style="font-size: 0.75rem; color: #2563EB; font-weight: 700; margin-top: 2px;">فحص السحابة...</div>
+          </div>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item 8.6: LAN Server Connection (الربط بالسيرفر المحلي) -->
+      <div class="settings-row-item" onclick="openSheet('sheet-lan-server')">
+        <div class="row-left">
+          <div class="row-icon-circle" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">
+            <i data-lucide="wifi"></i>
+          </div>
+          <div>
+            <span class="row-title">الربط بالسيرفر المحلي (LAN Server)</span>
+            <div id="settingsLanServerBadge" style="font-size: 0.75rem; color: #10B981; font-weight: 700; margin-top: 2px;">يعمل بوضع الجوال (محلي)</div>
+          </div>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item 9: System Info -->
+      <div class="settings-row-item" onclick="openSheet('sheet-system')">
+        <div class="row-left">
+          <div class="row-icon-circle">
+            <i data-lucide="layers"></i>
+          </div>
+          <span class="row-title">معلومات المنظومة والإصدار</span>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Item 10: Logout -->
+      <div class="settings-row-item danger-row" onclick="openSheet('sheet-logout')">
+        <div class="row-left">
+          <div class="row-icon-circle danger-icon">
+            <i data-lucide="log-out"></i>
+          </div>
+          <span class="row-title danger-text">تسجيل الخروج من المنظومة</span>
+        </div>
+        <div class="row-right">
+          <i data-lucide="chevron-left" class="row-chevron"></i>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Bottom Spacing -->
+    <div style="height: 35px;"></div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       4. Interactive Glass Modals / Bottom Sheets
+       ═══════════════════════════════════════════════════ -->
+
+  <!-- Overlay Backdrop -->
+  <div class="sheet-backdrop" id="sheetBackdrop" onclick="closeAllSheets()"></div>
+
+  <!-- Sheet 1: Edit Profile Name -->
+  <div class="bottom-sheet" id="sheet-profile">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble blue"><i data-lucide="user-check"></i></div>
+        <div>
+          <h3>تعديل اسم المستخدم</h3>
+          <p>تحديث الاسم المعروض في السجلات ولوحات المتابعة</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-profile')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <form onsubmit="handleUpdateProfile(event)" class="sheet-form">
+        <div class="dark-form-group">
+          <label for="usernameInput"><i data-lucide="user" style="width:16px; height:16px;"></i> اسم المستخدم الجديد</label>
+          <input type="text" id="usernameInput" required minlength="3" placeholder="ادخل اسم المستخدم..." autocomplete="off">
+          <small class="dark-help-text">يظهر هذا الاسم في كافة تقارير وشهادات الطلاب الرسمية.</small>
+        </div>
+
+        <button type="submit" class="btn-action-primary" id="btnSaveProfile">
+          <i data-lucide="check" style="width:18px; height:18px;"></i> حفظ وتحديث الاسم
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sheet 2: Change Passcode -->
+  <div class="bottom-sheet" id="sheet-password">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble blue"><i data-lucide="lock"></i></div>
+        <div>
+          <h3>الأمان والرمز السرّي</h3>
+          <p>تحديث الرمز الرقمي السري لحماية حسابك</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-password')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <form onsubmit="handleChangeCode(event)" class="sheet-form">
+        <div class="dark-form-group">
+          <label for="currentCodeInput"><i data-lucide="shield" style="width:15px; height:15px;"></i> الرمز السرّي الحالي</label>
+          <div class="password-field-wrapper">
+            <input type="password" id="currentCodeInput" required placeholder="ادخل الرمز الحالي..." autocomplete="current-password">
+            <button type="button" class="eye-toggle-btn" onclick="togglePasswordVisibility('currentCodeInput', this)" title="إظهار/إخفاء" aria-label="إظهار أو إخفاء الرمز">
+              <i data-lucide="eye" style="width:18px; height:18px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="dark-form-group">
+          <label for="newCodeInput"><i data-lucide="key" style="width:15px; height:15px;"></i> الرمز السرّي الجديد</label>
+          <div class="password-field-wrapper">
+            <input type="password" id="newCodeInput" required minlength="4" placeholder="4 خانات على الأقل..." autocomplete="new-password">
+            <button type="button" class="eye-toggle-btn" onclick="togglePasswordVisibility('newCodeInput', this)" title="إظهار/إخفاء" aria-label="إظهار أو إخفاء الرمز">
+              <i data-lucide="eye" style="width:18px; height:18px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="dark-form-group">
+          <label for="confirmCodeInput"><i data-lucide="check-circle" style="width:15px; height:15px;"></i> تأكيد الرمز السرّي الجديد</label>
+          <div class="password-field-wrapper">
+            <input type="password" id="confirmCodeInput" required minlength="4" placeholder="إعادة إدخال الرمز الجديد..." autocomplete="new-password" oninput="checkPasswordMatch()">
+            <button type="button" class="eye-toggle-btn" onclick="togglePasswordVisibility('confirmCodeInput', this)" title="إظهار/إخفاء" aria-label="إظهار أو إخفاء الرمز">
+              <i data-lucide="eye" style="width:18px; height:18px;"></i>
+            </button>
+          </div>
+          <small id="matchMessage" class="dark-help-text" style="display:none;"></small>
+        </div>
+
+        <button type="submit" class="btn-action-primary" id="btnSaveCode" style="margin-top:6px;">
+          <i data-lucide="lock" style="width:18px; height:18px;"></i> تحديث الرمز السرّي الآن
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sheet 3: Avatar & Visual Identity -->
+  <div class="bottom-sheet" id="sheet-avatar">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble purple"><i data-lucide="sparkles"></i></div>
+        <div>
+          <h3>الهوية والرمزية البصرية</h3>
+          <p>اختر الرمز والشعار المعبر عن دورك في المدرسة</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-avatar')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="avatar-picker-grid">
+        <button type="button" class="avatar-option-btn active" data-avatar="initials" onclick="setAvatarPreset('initials')" title="الحرف الأول من اسمك" id="avbtn-initials">
+          <div class="avatar-preview-wrap">
+            <span class="avatar-preview-box initials-box" id="avatarOptionInitials">م</span>
+            <span class="avatar-check-mark"><i data-lucide="check" style="width:14px; height:14px;"></i></span>
+          </div>
+          <span>حرف الاسم</span>
+        </button>
+
+        <button type="button" class="avatar-option-btn" data-avatar="quran" onclick="setAvatarPreset('quran')" title="المصحف الشريف" id="avbtn-quran">
+          <div class="avatar-preview-wrap">
+            <span class="avatar-preview-box icon-box emerald"><i data-lucide="book-open"></i></span>
+            <span class="avatar-check-mark"><i data-lucide="check" style="width:14px; height:14px;"></i></span>
+          </div>
+          <span>المصحف</span>
+        </button>
+
+        <button type="button" class="avatar-option-btn" data-avatar="minaret" onclick="setAvatarPreset('minaret')" title="المعلم القرآني" id="avbtn-minaret">
+          <div class="avatar-preview-wrap">
+            <span class="avatar-preview-box icon-box orange-box"><i data-lucide="landmark"></i></span>
+            <span class="avatar-check-mark"><i data-lucide="check" style="width:14px; height:14px;"></i></span>
+          </div>
+          <span>الصرح</span>
+        </button>
+
+        <button type="button" class="avatar-option-btn" data-avatar="star" onclick="setAvatarPreset('star')" title="نجمة التميز" id="avbtn-star">
+          <div class="avatar-preview-wrap">
+            <span class="avatar-preview-box icon-box amber"><i data-lucide="star"></i></span>
+            <span class="avatar-check-mark"><i data-lucide="check" style="width:14px; height:14px;"></i></span>
+          </div>
+          <span>التميز</span>
+        </button>
+
+        <button type="button" class="avatar-option-btn" data-avatar="pen" onclick="setAvatarPreset('pen')" title="القلم والتعليم" id="avbtn-pen">
+          <div class="avatar-preview-wrap">
+            <span class="avatar-preview-box icon-box warm-box"><i data-lucide="pen"></i></span>
+            <span class="avatar-check-mark"><i data-lucide="check" style="width:14px; height:14px;"></i></span>
+          </div>
+          <span>القلم</span>
+        </button>
+
+        <button type="button" class="avatar-option-btn" data-avatar="grad" onclick="setAvatarPreset('grad')" title="وسام الشرف" id="avbtn-grad">
+          <div class="avatar-preview-wrap">
+            <span class="avatar-preview-box icon-box rose"><i data-lucide="award"></i></span>
+            <span class="avatar-check-mark"><i data-lucide="check" style="width:14px; height:14px;"></i></span>
+          </div>
+          <span>الوسام</span>
+        </button>
+
+        <button type="button" class="avatar-option-btn" data-avatar="shield" onclick="setAvatarPreset('shield')" title="درع الأمانة" id="avbtn-shield">
+          <div class="avatar-preview-wrap">
+            <span class="avatar-preview-box icon-box emerald"><i data-lucide="shield"></i></span>
+            <span class="avatar-check-mark"><i data-lucide="check" style="width:14px; height:14px;"></i></span>
+          </div>
+          <span>الدرع</span>
+        </button>
+
+        <button type="button" class="avatar-option-btn" data-avatar="academic" onclick="setAvatarPreset('academic')" title="التعليم الأكاديمي" id="avbtn-academic">
+          <div class="avatar-preview-wrap">
+            <span class="avatar-preview-box icon-box orange-box"><i data-lucide="graduation-cap"></i></span>
+            <span class="avatar-check-mark"><i data-lucide="check" style="width:14px; height:14px;"></i></span>
+          </div>
+          <span>التعليم</span>
+        </button>
+
+        <button type="button" class="avatar-option-btn" data-avatar="moon" onclick="setAvatarPreset('moon')" title="الهلال المبارك" id="avbtn-moon">
+          <div class="avatar-preview-wrap">
+            <span class="avatar-preview-box icon-box teal"><i data-lucide="moon"></i></span>
+            <span class="avatar-check-mark"><i data-lucide="check" style="width:14px; height:14px;"></i></span>
+          </div>
+          <span>الهلال</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sheet 4: Circles View Mode Layout -->
+  <div class="bottom-sheet" id="sheet-view-mode">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble blue"><i data-lucide="layout-grid"></i></div>
+        <div>
+          <h3>طريقة عرض الحلقات</h3>
+          <p>تخصيص أسلوب تنظيم بطاقات الحلقات في لوحة المتابعة</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-view-mode')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="view-mode-grid">
+        <label class="view-mode-card" id="vm-details">
+          <input type="radio" name="circles_view" value="details" onchange="saveViewMode(this.value)">
+          <div class="vm-icon"><i data-lucide="list"></i></div>
+          <div class="vm-text">
+            <strong>تفاصيل كاملة</strong>
+            <small>عرض موسع مع تفاصيل الطلاب الكاملة</small>
+          </div>
+        </label>
+
+        <label class="view-mode-card" id="vm-boards">
+          <input type="radio" name="circles_view" value="boards" onchange="saveViewMode(this.value)">
+          <div class="vm-icon"><i data-lucide="layout"></i></div>
+          <div class="vm-text">
+            <strong>لوحات (بطاقات)</strong>
+            <small>العرض القياسي الذكي للحلقات</small>
+          </div>
+        </label>
+
+        <label class="view-mode-card" id="vm-small_icons">
+          <input type="radio" name="circles_view" value="small_icons" onchange="saveViewMode(this.value)">
+          <div class="vm-icon"><i data-lucide="grid"></i></div>
+          <div class="vm-text">
+            <strong>أيقونات صغيرة</strong>
+            <small>شبكة مدمجة للمساحات الضيقة</small>
+          </div>
+        </label>
+
+        <label class="view-mode-card" id="vm-large_icons">
+          <input type="radio" name="circles_view" value="large_icons" onchange="saveViewMode(this.value)">
+          <div class="vm-icon"><i data-lucide="box"></i></div>
+          <div class="vm-text">
+            <strong>أيقونات كبيرة</strong>
+            <small>بطاقات بارزة بأيقونات واضحة</small>
+          </div>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sheet: Font Selection & Custom Typography Settings -->
+  <div class="bottom-sheet" id="sheet-font-selection">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
+          <i data-lucide="type"></i>
+        </div>
+        <div>
+          <h3>نوع الخط والمظهر الطباعي (Typography)</h3>
+          <p>اختر من بين 5 خطوط عربية فائقة الاحترافية أو ارفع خطاً مخصصاً من جهازك</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-font-selection')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body" style="padding-bottom: 30px;">
+      <!-- Five Curated Master Fonts -->
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px;">
+        
+        <!-- Font 1: Cairo -->
+        <label class="font-select-card" data-font="Cairo" onclick="selectAppFont('Cairo')">
+          <input type="radio" name="app_font_choice" value="Cairo">
+          <div class="font-card-content">
+            <div class="font-card-header">
+              <div class="font-name-wrap">
+                <span class="font-name-ar">خط كايرو (Cairo)</span>
+                <span class="font-badge-tag tag-default">الافتراضي • عصري متزن</span>
+              </div>
+              <div class="font-radio-circle"></div>
+            </div>
+            <div class="font-specimen" style="font-family: 'Cairo', sans-serif;">
+              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ • مدرسة البيان لتعليم القرآن الكريم وتدريسه
+            </div>
+          </div>
+        </label>
+
+        <!-- Font 2: Tajawal -->
+        <label class="font-select-card" data-font="Tajawal" onclick="selectAppFont('Tajawal')">
+          <input type="radio" name="app_font_choice" value="Tajawal">
+          <div class="font-card-content">
+            <div class="font-card-header">
+              <div class="font-name-wrap">
+                <span class="font-name-ar">خط تجوال (Tajawal)</span>
+                <span class="font-badge-tag tag-elegant">انسيابي • فائق الأناقة</span>
+              </div>
+              <div class="font-radio-circle"></div>
+            </div>
+            <div class="font-specimen" style="font-family: 'Tajawal', 'Cairo', sans-serif;">
+              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ • مدرسة البيان لتعليم القرآن الكريم وتدريسه
+            </div>
+          </div>
+        </label>
+
+        <!-- Font 3: Alexandria -->
+        <label class="font-select-card" data-font="Alexandria" onclick="selectAppFont('Alexandria')">
+          <input type="radio" name="app_font_choice" value="Alexandria">
+          <div class="font-card-content">
+            <div class="font-card-header">
+              <div class="font-name-wrap">
+                <span class="font-name-ar">خط الإسكندرية (Alexandria)</span>
+                <span class="font-badge-tag tag-modern">هندسي • طابع فريد</span>
+              </div>
+              <div class="font-radio-circle"></div>
+            </div>
+            <div class="font-specimen" style="font-family: 'Alexandria', 'Cairo', sans-serif;">
+              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ • مدرسة البيان لتعليم القرآن الكريم وتدريسه
+            </div>
+          </div>
+        </label>
+
+        <!-- Font 4: Amiri -->
+        <label class="font-select-card" data-font="Amiri" onclick="selectAppFont('Amiri')">
+          <input type="radio" name="app_font_choice" value="Amiri">
+          <div class="font-card-content">
+            <div class="font-card-header">
+              <div class="font-name-wrap">
+                <span class="font-name-ar">خط أميري (Amiri)</span>
+                <span class="font-badge-tag tag-quran">نسخي • تراثي قرآني فخم</span>
+              </div>
+              <div class="font-radio-circle"></div>
+            </div>
+            <div class="font-specimen" style="font-family: 'Amiri', 'Cairo', serif; font-size: 15.5px;">
+              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ • مدرسة البيان لتعليم القرآن الكريم وتدريسه
+            </div>
+          </div>
+        </label>
+
+        <!-- Font 5: Almarai -->
+        <label class="font-select-card" data-font="Almarai" onclick="selectAppFont('Almarai')">
+          <input type="radio" name="app_font_choice" value="Almarai">
+          <div class="font-card-content">
+            <div class="font-card-header">
+              <div class="font-name-wrap">
+                <span class="font-name-ar">خط المراعي (Almarai)</span>
+                <span class="font-badge-tag tag-tech">رقمي • وضوح فائق للجداول</span>
+              </div>
+              <div class="font-radio-circle"></div>
+            </div>
+            <div class="font-specimen" style="font-family: 'Almarai', 'Cairo', sans-serif;">
+              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ • مدرسة البيان لتعليم القرآن الكريم وتدريسه
+            </div>
+          </div>
+        </label>
+
+        <!-- Optional 6th Card: Custom Uploaded Font (visible when custom font exists) -->
+        <label class="font-select-card" id="customFontSelectCard" data-font="custom" onclick="selectAppFont('custom')" style="display:none;">
+          <input type="radio" name="app_font_choice" value="custom">
+          <div class="font-card-content">
+            <div class="font-card-header">
+              <div class="font-name-wrap">
+                <span class="font-name-ar">خط مخصص (محلي من جهازك)</span>
+                <span class="font-badge-tag tag-custom" id="customFontBadgeName">تم التثبيت</span>
+              </div>
+              <div class="font-radio-circle"></div>
+            </div>
+            <div class="font-specimen" style="font-family: 'CustomUserFont', 'Cairo', sans-serif;">
+              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ • مدرسة البيان لتعليم القرآن الكريم وتدريسه
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Upload Custom Font from Device Section -->
+      <div class="custom-font-upload-panel">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+          <div style="width: 34px; height: 34px; border-radius: 10px; background: rgba(168, 85, 247, 0.12); color: #a855f7; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i data-lucide="upload-cloud" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div>
+            <h4 style="margin: 0; font-size: 14.5px; font-weight: 800; color: var(--app-text, #0f172a);">إضافة خط من جهازك (Custom Font)</h4>
+            <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--app-text-muted, #64748b);">يدعم صيغ الخطوط: TTF, OTF, WOFF, WOFF2 (حتى 4 ميغابايت)</p>
+          </div>
+        </div>
+
+        <input type="file" id="customFontFileInput" accept=".ttf,.otf,.woff,.woff2" style="display:none;" onchange="handleCustomFontUpload(event)">
+
+        <div id="customFontEmptyBox" style="display: block;">
+          <button type="button" class="btn-action-primary" style="width: 100%; justify-content: center; padding: 11px 16px; font-size: 13.5px; border-radius: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); border:none; color:white; font-weight:700;" onclick="document.getElementById('customFontFileInput').click()">
+            <i data-lucide="file-up" style="width: 17px; height: 17px;"></i>
+            <span>اختيار وتثبيت ملف خط من الجهاز</span>
+          </button>
+        </div>
+
+        <div id="customFontActiveBox" style="display: none; background: rgba(168, 85, 247, 0.05); border: 1.5px dashed rgba(168, 85, 247, 0.35); border-radius: 12px; padding: 12px 14px; margin-top: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="check-circle" style="width: 18px; height: 18px; color: #16a34a;"></i>
+              <div>
+                <strong id="customFontFileName" style="font-size: 13px; color: var(--app-text, #0f172a); display: block;">font.ttf</strong>
+                <small id="customFontFileSize" style="font-size: 11px; color: var(--app-text-muted, #64748b);">250 KB</small>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn-action" style="padding: 6px 12px; font-size: 12px; border-radius: 8px; border: 1px solid var(--app-card-border, #e2e8f0); background: var(--app-bg-card, #ffffff); cursor: pointer; color:var(--app-text);" onclick="document.getElementById('customFontFileInput').click()">استبدال</button>
+              <button type="button" class="btn-action" style="padding: 6px 12px; font-size: 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.08); color: #ef4444; cursor: pointer;" onclick="removeCustomFont()">حذف</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sheet: Quranic Record Period Settings -->
+  <div class="bottom-sheet" id="sheet-record-period">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble emerald" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">
+          <i data-lucide="calendar-range"></i>
+        </div>
+        <div>
+          <h3>مدة ونظام السجل القرآني</h3>
+          <p>تحديد الدورة الزمنية لحساب سجلات الحفظ والمراجعة في الحلقات</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-record-period')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="period-info-pill">
+        <i data-lucide="info" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; color: #10B981; margin-left: 6px; flex-shrink: 0;"></i>
+        <span>تغيير النظام يقوم بعزل السجلات تلقائياً مع <strong>الاحتفاظ الكامل بكافة البيانات السابقة</strong> دون أي حذف، بحيث يمكنك العودة إليها في أي وقت.</span>
+      </div>
+
+      <!-- Dropdown Field for Quran Record System -->
+      <div class="form-group-pure">
+        <label class="form-label-pure" for="recordPeriodSelect">
+          <i data-lucide="layers" style="width:15px; height:15px; color:#10B981;"></i>
+          اختر نظام دورة السجل القرآني:
+        </label>
+        <div class="custom-select-wrapper">
+          <select id="recordPeriodSelect" class="record-period-dropdown" onchange="handleRecordPeriodDropdownChange(this.value)">
+            <option value="monthly">نظام شهري (الافتراضي) - سجل منفصل لكل شهر</option>
+            <option value="daily">نظام يومي - متابعة يومية وتجميع شهري</option>
+            <option value="custom">نظام مخصص (فصل بعدد أشهر)...</option>
+          </select>
+          <i data-lucide="chevron-down" class="select-arrow-icon"></i>
+        </div>
+      </div>
+
+      <!-- Active Mode Live Summary Card -->
+      <div id="periodActiveSummaryCard" class="period-summary-card">
+        <div class="summary-card-icon emerald" id="summaryCardIcon">
+          <i data-lucide="calendar" id="summaryCardIconInner"></i>
+        </div>
+        <div class="summary-card-content">
+          <div class="summary-card-header">
+            <strong id="summaryCardTitle">نظام شهري (الافتراضي)</strong>
+            <span id="summaryCardBadge" class="summary-card-badge">النظام المختار</span>
+          </div>
+          <p id="summaryCardDesc">حساب السجلات حسب الأشهر الهجرية/الميلادية (سجل منفصل لكل شهر).</p>
+          <div id="customMonthsActionRow" style="display:none; margin-top: 10px;">
+            <button type="button" class="btn-edit-months" onclick="openCustomMonthsModal()">
+              <i data-lucide="sliders-horizontal" style="width:14px; height:14px;"></i>
+              <span>تعديل عدد الأشهر (<span id="summaryCustomMonthsCount">6</span> أشهر)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-footer" style="display: flex; gap: 10px; padding: 16px 20px; border-top: 1px solid var(--border-color);">
+      <button type="button" class="btn-action-cancel" onclick="closeSheet('sheet-record-period')" style="flex: 1;">إلغاء</button>
+      <button type="button" class="btn-action-primary" id="btnSaveRecordPeriod" onclick="saveRecordPeriodSettings()" style="flex: 2;">
+        <span class="btn-txt">حفظ وتطبيق النظام</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal/Sheet: Custom Months Selector (Floating Desktop / Popup Mobile) -->
+  <div class="bottom-sheet custom-months-sheet" id="sheet-custom-months">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble purple" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
+          <i data-lucide="calendar-plus"></i>
+        </div>
+        <div>
+          <h3>تحديد عدد أشهر الفصل المخصص</h3>
+          <p>حدد عدد الأشهر لدورة السجل القرآني</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="cancelCustomMonthsModal()" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="custom-months-box">
+        <span class="custom-months-box-label">عدد أشهر الفصل المخصص:</span>
+        
+        <div class="custom-stepper-control">
+          <button type="button" class="btn-stepper" onclick="stepCustomMonths(-1)" title="تقليل شهر" aria-label="تقليل شهر">
+            <i data-lucide="minus" style="width:18px; height:18px;"></i>
+          </button>
+          <input type="number" id="customMonthsModalInput" min="1" max="12" value="6" class="custom-months-input-pure" oninput="onCustomMonthsModalInput(this.value)">
+          <button type="button" class="btn-stepper" onclick="stepCustomMonths(1)" title="زيادة شهر" aria-label="زيادة شهر">
+            <i data-lucide="plus" style="width:18px; height:18px;"></i>
+          </button>
+        </div>
+        
+        <div id="modalTermsPreviewBadge" class="terms-preview-badge">
+          🗓️ فصل كل 6 أشهر (فصلان في السنة)
+        </div>
+      </div>
+
+      <!-- Quick Presets -->
+      <div class="custom-presets-wrap">
+        <span class="presets-title">خيارات شائعة وسريعة:</span>
+        <div class="presets-row">
+          <button type="button" class="btn-preset-chip" onclick="setCustomMonthsPreset(3)">3 أشهر (4 فصول)</button>
+          <button type="button" class="btn-preset-chip" onclick="setCustomMonthsPreset(4)">4 أشهر (3 فصول)</button>
+          <button type="button" class="btn-preset-chip" onclick="setCustomMonthsPreset(6)">6 أشهر (فصلان)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-footer" style="display: flex; gap: 10px; padding: 16px 20px; border-top: 1px solid var(--border-color);">
+      <button type="button" class="btn-action-cancel" onclick="cancelCustomMonthsModal()" style="flex: 1;">إلغاء</button>
+      <button type="button" class="btn-action-primary" onclick="confirmCustomMonthsModal()" style="flex: 2; background: linear-gradient(135deg, #9333ea, #7e22ce);">
+        <span class="btn-txt">تأكيد المدة</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Sheet 5: Account Details & Permissions -->
+  <div class="bottom-sheet" id="sheet-account">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble blue"><i data-lucide="shield-check"></i></div>
+        <div>
+          <h3>بيانات وصلاحيات الحساب</h3>
+          <p>تفاصيل السجل والتراخيص الممنوحة لك بالمنصة</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-account')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="dark-meta-info-grid">
+        <div class="meta-item">
+          <span class="meta-label">معرّف الحساب (ID)</span>
+          <strong class="meta-value" id="metaUserId">#--</strong>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">تاريخ الإنشاء</span>
+          <strong class="meta-value" id="metaCreatedAt">--/--/----</strong>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">آخر نشاط</span>
+          <strong class="meta-value" id="metaLastSeen">الآن</strong>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">تاريخ الانضمام</span>
+          <strong class="meta-value" id="hqsJoinDate">--</strong>
+        </div>
+      </div>
+
+      <div class="dark-form-group" style="margin-top:16px;">
+        <label><i data-lucide="key" style="width:16px; height:16px;"></i> الصلاحيات والتراخيص المتاحة</label>
+        <div class="permissions-chips" id="permissionsList">
+          <span class="chip-item">جاري الفحص...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sheet 6: Restore Backup Modal -->
+  <div class="bottom-sheet" id="sheet-restore">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble cyan"><i data-lucide="upload-cloud"></i></div>
+        <div>
+          <h3>استعادة النسخة الاحتياطية</h3>
+          <p>استرجاع بيانات النظام من ملف احتياطي سابق بكل أمان</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-restore')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <form onsubmit="handleRestoreBackup(event)" class="sheet-form">
+        <div class="file-dropzone" id="fileDropzone" onclick="document.getElementById('backupFileInput').click()"
+             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)">
+          <div class="dropzone-icon-wrap">
+            <i data-lucide="archive" class="dropzone-icon"></i>
+          </div>
+          <strong id="dropzoneLabel">انقر هنا أو اسحب ملف النسخة الاحتياطية (.zip أو .db)</strong>
+          <small>سيتم استرجاع الجداول والأسئلة والنتائج فوراً</small>
+          <input type="file" id="backupFileInput" accept=".zip,.db,.sqlite" style="display:none;" onchange="onBackupFileSelected(this)">
+        </div>
+
+        <!-- Restore Progress Bar -->
+        <div class="restore-progress" id="restoreProgress" style="display:none; margin-top:14px;">
+          <div class="restore-progress-label">
+            <span id="restoreProgressText">جاري استعادة البيانات...</span>
+            <span id="restoreProgressPct">0%</span>
+          </div>
+          <div class="restore-progress-track">
+            <div class="restore-progress-fill" id="restoreProgressFill"></div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-action-primary" id="btnRestoreBackup" disabled style="margin-top:16px;">
+          <i data-lucide="refresh-cw" style="width:18px; height:18px;"></i> بدء استعادة البيانات الآن
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sheet 7: System & Platform Info -->
+  <div class="bottom-sheet" id="sheet-system">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble blue"><i data-lucide="layers"></i></div>
+        <div>
+          <h3>معلومات المنظومة والإصدار</h3>
+          <p>نظرة سريعة على حالة النظام والمواصفات التشغيلية</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-system')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="dark-sysinfo-grid">
+        <div class="sysinfo-item">
+          <div class="sysinfo-icon green"><i data-lucide="check-circle-2"></i></div>
+          <div class="sysinfo-meta">
+            <span class="sysinfo-label">حالة المنظومة وقاعدة البيانات</span>
+            <strong class="sysinfo-value green-text" id="sysDbStatus">متصلة وتعمل بكفاءة 100%</strong>
+          </div>
+        </div>
+
+        <div class="sysinfo-item">
+          <div class="sysinfo-icon blue"><i data-lucide="tag"></i></div>
+          <div class="sysinfo-meta">
+            <span class="sysinfo-label">إصدار النظام الحالي</span>
+            <strong class="sysinfo-value" id="sysVersion">Al-Bayan Quran System v5.2.0</strong>
+          </div>
+        </div>
+
+        <div class="sysinfo-item">
+          <div class="sysinfo-icon purple"><i data-lucide="sun-moon"></i></div>
+          <div class="sysinfo-meta">
+            <span class="sysinfo-label">وضع الواجهة المعتمد</span>
+            <strong class="sysinfo-value" id="sysThemeMode">الوضع النشط</strong>
+          </div>
+        </div>
+
+        <div class="sysinfo-item">
+          <div class="sysinfo-icon green"><i data-lucide="monitor"></i></div>
+          <div class="sysinfo-meta">
+            <span class="sysinfo-label">المتصفح وبيئة التشغيل</span>
+            <strong class="sysinfo-value" id="sysBrowser">جاهز</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sheet: Firebase Cloud Sync & Remote Access -->
+  <div class="bottom-sheet" id="sheet-firebase-sync">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble blue"><i data-lucide="cloud"></i></div>
+        <div>
+          <h3>الربط والمزامنة السحابية (Firebase)</h3>
+          <p>ربط المنظومة المحلية بالإنترنت ومزامنة البيانات في الوقت الفعلي</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-firebase-sync')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;"></i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <!-- Status Card -->
+      <div style="background:var(--app-card-subtle, #f8fafc); border:1px solid var(--app-border, #e2e8f0); border-radius:14px; padding:16px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:700; color:var(--app-text-main, #0f172a);">حالة الاتصال بالسحابة:</span>
+          <span id="fbSyncModalStatusPill" style="font-size:12px; font-weight:800; padding:4px 10px; border-radius:20px; background:#dbeafe; color:#1e40af;">جاري الفحص...</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:12.5px; color:var(--app-text-muted, #64748b); margin-bottom:6px;">
+          <span>مشروع Firebase:</span>
+          <strong style="color:var(--app-text-main, #0f172a);" id="fbProjectIdVal">bayan-56e77</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:12.5px; color:var(--app-text-muted, #64748b); margin-bottom:6px;">
+          <span>السجلات المعلقة للمزامنة:</span>
+          <strong style="color:#2563eb;" id="fbPendingCountVal">0</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:12.5px; color:var(--app-text-muted, #64748b); margin-bottom:8px;">
+          <span>آخر وقت مزامنة:</span>
+          <strong style="color:var(--app-text-main, #0f172a);" id="fbLastSyncTimeVal">-</strong>
+        </div>
+        <div id="fbSyncDiagnosticBox" style="font-size:11.5px; line-height:1.5; padding:8px 12px; border-radius:8px; background:#fff; border:1px dashed #cbd5e1; color:#475569;">
+          جاري الاتصال...
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button type="button" id="fbTriggerSyncBtn" class="btn-primary" style="width:100%; justify-content:center; padding:12px; font-size:14px;" onclick="handleManualSyncInSettings()">
+          <i data-lucide="refresh-cw" style="width:17px; height:17px;"></i>
+          <span>مزامنة السحابة الآن</span>
+        </button>
+
+        <button type="button" class="btn-action-cancel" style="width:100%; justify-content:center; padding:10px; font-size:13px;" onclick="checkFirebaseConnectionInSettings()">
+          <i data-lucide="activity" style="width:15px; height:15px;"></i>
+          <span>إعادة فحص الاتصال والتحديث</span>
+        </button>
+      </div>
+
+      <!-- Quick Guidance for Firebase Console -->
+      <div style="margin-top:16px; padding:12px; border-radius:10px; background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.3);">
+        <div style="display:flex; align-items:center; gap:6px; color:#b45309; font-weight:800; font-size:12.5px; margin-bottom:4px;">
+          <i data-lucide="info" style="width:15px; height:15px;"></i>
+          <span>تنبيه خطوة تفعيل السحابة:</span>
+        </div>
+        <p style="margin:0; font-size:11.5px; color:#92400e; line-height:1.5;">
+          عند إنشاء مشروع جديد، يرجى الدخول إلى <strong>Firebase Console</strong> ثم <strong>Firestore Database</strong> والضغط على <strong>Create database</strong> لتفعيل قاعدة البيانات السحابية واستقبال التعديلات فوراً.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sheet: Local LAN Server Connection (الربط بالسيرفر المحلي) -->
+  <div class="bottom-sheet" id="sheet-lan-server">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble" style="background: rgba(16, 185, 129, 0.15); color: #10B981;"><i data-lucide="wifi"></i></div>
+        <div>
+          <h3>الربط بالسيرفر المحلي (LAN Server)</h3>
+          <p>ربط التطبيق بجهاز الكمبيوتر في المدرسة على نفس شبكة الواي فاي</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-lan-server')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;"></i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <!-- Status Card -->
+      <div style="background:var(--app-card-subtle, #f8fafc); border:1px solid var(--app-border, #e2e8f0); border-radius:14px; padding:16px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:700; color:var(--app-text-main, #0f172a);">حالة السيرفر المحلي:</span>
+          <span id="lanServerStatusPill" style="font-size:12px; font-weight:800; padding:4px 10px; border-radius:20px; background:#e2e8f0; color:#475569;">محلي (بدون خادم)</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:12.5px; color:var(--app-text-muted, #64748b); margin-bottom:6px;">
+          <span>السيرفر المحفوظ:</span>
+          <strong style="color:var(--app-text-main, #0f172a); direction:ltr;" id="lanSavedUrlVal">غير محدد</strong>
+        </div>
+        <div id="lanServerDiagnosticBox" style="font-size:11.5px; line-height:1.5; padding:8px 12px; border-radius:8px; background:#fff; border:1px dashed #cbd5e1; color:#475569; margin-top:8px;">
+          التطبيق يعمل بشكل كامل وتلقائي حتى بدون اتصال بالسيرفر عبر قاعدة البيانات الداخلية للجهاز.
+        </div>
+      </div>
+
+      <!-- IP Input Box -->
+      <div style="margin-bottom:16px;">
+        <label for="lanServerInput" style="display:block; font-size:13px; font-weight:700; color:var(--app-text-main, #0f172a); margin-bottom:6px;">
+          عنوان الخادم على الشبكة (LAN IP):
+        </label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="lanServerInput" style="flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--app-border, #cbd5e1); font-size:14px; direction:ltr; text-align:left; background:var(--input-bg, #fff); color:var(--app-text-main, #0f172a);" placeholder="http://10.104.106.182:5000">
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button type="button" id="lanTestConnectBtn" class="btn-primary" style="width:100%; justify-content:center; padding:12px; font-size:14px;" onclick="testAndSaveLanServer()">
+          <i data-lucide="check-circle" style="width:17px; height:17px;"></i>
+          <span>فحص وحفظ الاتصال بالخادم</span>
+        </button>
+
+        <button type="button" class="btn-action-cancel" style="width:100%; justify-content:center; padding:10px; font-size:13px; color:#ef4444; border-color:rgba(239, 68, 68, 0.3);" onclick="disconnectLanServer()">
+          <i data-lucide="slash" style="width:15px; height:15px;"></i>
+          <span>إلغاء الربط والعمل كوضع محلي فقط</span>
+        </button>
+      </div>
+
+      <!-- Quick Guidance -->
+      <div style="margin-top:16px; padding:12px; border-radius:10px; background:rgba(37, 99, 235, 0.08); border:1px solid rgba(37, 99, 235, 0.25);">
+        <div style="display:flex; align-items:center; gap:6px; color:#1d4ed8; font-weight:800; font-size:12.5px; margin-bottom:4px;">
+          <i data-lucide="info" style="width:15px; height:15px;"></i>
+          <span>معلومات الربط المحلي:</span>
+        </div>
+        <p style="margin:0; font-size:11.5px; color:#1e40af; line-height:1.5;">
+          - لربط الجوال بالكمبيوتر، تأكد أن كلاهما متصلان بنفس شبكة الواي فاي.<br>
+          - يمكنك العمل ورصد الدرجات دون الحاجة للسيرفر، وسيتم حفظ كل شيء على هاتفك تلقائياً.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sheet 8: Logout Confirmation Modal -->
+  <div class="bottom-sheet" id="sheet-logout">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-title-group">
+        <div class="sheet-icon-bubble rose"><i data-lucide="log-out"></i></div>
+        <div>
+          <h3>تسجيل الخروج</h3>
+          <p>تأكيد إنهاء الجلسة والرجوع لشاشة الدخول</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-logout')" title="إغلاق" aria-label="إغلاق">
+        <i data-lucide="x" style="width:18px; height:18px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </i>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <p style="color:var(--app-text-muted); font-size:13.5px; line-height:1.6; margin:0 0 20px;">
+        هل أنت متأكد من رغبتك في تسجيل الخروج من منظومة مدرسة البيان؟ ستحتاج إلى إدخال الرمز السري مرة أخرى للوصول إلى لوحة المتابعة.
+      </p>
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="btn-action-cancel" onclick="closeSheet('sheet-logout')" style="flex:1;">
+          إلغاء والتراجع
+        </button>
+        <button type="button" class="btn-action-danger" onclick="confirmLogout()" style="flex:1;">
+          <i data-lucide="log-out" style="width:16px; height:16px;"></i> نعم، تسجيل الخروج
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="mobile-db.js?v=2.0"></script>
+  <script src="hijri_date.js?v=1.0"></script>
+  <script src="mobile_bottom_nav.js?v=2.0"></script>
+  <script src="settings.js?v=5.2"></script>
+  <script src="firebase-client.js?v=3.0"></script>
+</body>
+</html>

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="">
+  <title>إدارة الحسابات والمستخدمين - مدرسة البيان</title>
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dark_theme.css?v=2.2">
+  <link rel="stylesheet" href="circles.css">
+  <link rel="stylesheet" href="users.css?v=3.0">
+  <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
+  <!-- Lucide Icons (Local with CDN fallback) -->
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon" style="display:inline-flex; align-items:center; justify-content:center;"><img src="logo.png" alt="شعار مدرسة البيان" style="width:48px; height:48px; object-fit:contain; filter: brightness(0) invert(1);"></span>
+        <div>
+          <h2>مدرسة البيان</h2>
+          <small>لتعليم القرآن الكريم</small>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="circles.html" class="menu-item"><svg style="width:18px; height:18px; vertical-align:middle; fill:currentColor;" viewBox="0 0 100 100"><circle cx="50" cy="22" r="14"/><path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/><path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> الحلقات القرآنية</a>
+        <a href="admin.html" class="menu-item"><i data-lucide="file-text" style="width:18px; height:18px;"></i> إدارة الاختبارات</a>
+        <a href="analytics.html" class="menu-item"><i data-lucide="bar-chart-3" style="width:18px; height:18px;"></i> الإحصائيات المتقدمة</a>
+        <a href="student_cv.html" class="menu-item" id="studentCvMenuLink"><i data-lucide="contact" style="width:18px; height:18px;"></i> السيرة الذاتية للطالب</a>
+        <a href="certificates.html" class="menu-item" id="certificatesMenuLink"><i data-lucide="award" style="width:18px; height:18px;"></i> استوديو الشهادات</a>
+        <a href="users.html" class="menu-item active" id="usersMenuLink"><i data-lucide="user-cog" style="width:18px; height:18px;"></i> إدارة المستخدمين</a>
+        <a href="settings.html" class="menu-item"><i data-lucide="settings" style="width:18px; height:18px;"></i> إعدادات الحساب</a>
+        <a href="circles.html" class="menu-item"><i data-lucide="graduation-cap" style="width:18px; height:18px;"></i> الحلقات القرآنية</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info-box">
+          <strong id="loggedUsername">مسؤول النظام</strong>
+          <small id="loggedRoleBadge">صلاحيات كاملة</small>
+        </div>
+        <button type="button" class="btn-danger-outline" onclick="logout()">تسجيل الخروج <i data-lucide="log-out" style="width:16px; height:16px;"></i></button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Page Header -->
+      <header class="users-page-header">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <a href="more.html" class="users-back-btn" title="الرجوع إلى صفحة المزيد">
+            <i data-lucide="arrow-right" style="width:18px; height:18px;"></i>
+            <span>المزيد</span>
+          </a>
+          <div class="users-header-title-box">
+            <h1 id="pageMainHeading">إدارة الحسابات والمستخدمين</h1>
+            <p id="pageSubHeading">التحكم الكامل بكادر النظام، المشرفين، المعلمين، وحسابات الطلاب القرآنية مع إدارة الرموز والصلاحيات.</p>
+          </div>
+        </div>
+        <div class="users-header-actions" id="headerActionsWrap">
+          <button type="button" class="btn-add-user-main" id="btnAddStaffMain" onclick="openAddUserModal()">
+            <i data-lucide="user-plus" style="width:18px; height:18px;"></i>
+            <span>إنشاء حساب كادر</span>
+          </button>
+          <button type="button" class="btn-add-user-main green-btn" id="btnAddStudentMain" style="display:none;" onclick="openAddStudentModal()">
+            <i data-lucide="user-plus" style="width:18px; height:18px;"></i>
+            <span>إضافة حساب طالب</span>
+          </button>
+          <button type="button" class="btn-excel-export" id="btnExportStudentsExcel" style="display:none;" onclick="exportStudentsExcel()">
+            <i data-lucide="download" style="width:16px; height:16px;"></i>
+            <span>تصدير كشف Excel</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Alert Notification Banner -->
+      <div id="usersAlertBox" class="alert-box ok" style="display:none;"></div>
+
+      <!-- SECTION 1: STAFF & ADMINISTRATORS -->
+      <section id="staffSection" class="tab-section-content active">
+        <!-- Quick Statistics 2x2 Grid -->
+        <div id="usersStatsCards" class="users-kpi-grid"></div>
+
+        <!-- Search & Swipeable Filter Chips Toolbar -->
+        <div class="users-filter-box">
+          <div class="users-search-input-wrap">
+            <i data-lucide="search" style="width:18px; height:18px;"></i>
+            <input type="text" id="searchUsersInput" placeholder="ابحث باسم المستخدم أو الدور..." oninput="filterUsersTable()" autocomplete="off">
+          </div>
+
+          <div class="users-role-chips" id="usersRoleChips">
+            <button type="button" class="user-role-chip active" data-role="all" onclick="setUserRoleFilter('all', this)">
+              <i data-lucide="users" style="width:14px; height:14px;"></i> الكل
+            </button>
+            <button type="button" class="user-role-chip" data-role="admin" onclick="setUserRoleFilter('admin', this)">
+              <i data-lucide="shield" style="width:14px; height:14px;"></i> مسؤولو النظام
+            </button>
+            <button type="button" class="user-role-chip" data-role="supervisor" onclick="setUserRoleFilter('supervisor', this)">
+              <i data-lucide="shield-check" style="width:14px; height:14px;"></i> المشرفون
+            </button>
+            <button type="button" class="user-role-chip" data-role="teacher" onclick="setUserRoleFilter('teacher', this)">
+              <i data-lucide="book-open" style="width:14px; height:14px;"></i> معلمو الحلقات
+            </button>
+            <button type="button" class="user-role-chip" data-role="students" onclick="setUserRoleFilter('students', this)">
+              <i data-lucide="graduation-cap" style="width:14px; height:14px;"></i> الطلاب
+            </button>
+            <button type="button" class="user-role-chip" data-role="active" onclick="setUserRoleFilter('active', this)">
+              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> النشطة
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile User Cards Feed (< 769px) -->
+        <div id="usersMobileFeed" class="users-mobile-feed"></div>
+
+        <!-- Desktop Executive Data Table (>= 769px) -->
+        <div class="users-desktop-table-wrap">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th style="width:50px;">#</th>
+                <th>اسم المستخدم</th>
+                <th style="white-space: nowrap;">نوع الحساب / الدور</th>
+                <th>الصلاحيات الممنوحة</th>
+                <th style="white-space: nowrap;">حالة التسجيل</th>
+                <th id="thStaffPassword" style="white-space: nowrap; display:none;">الرمز / كلمة المرور</th>
+                <th style="white-space: nowrap;">تاريخ الإنشاء</th>
+                <th style="text-align:center; width:120px;">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr>
+                <td colspan="7" style="text-align:center; padding:24px; color:var(--muted);">جارٍ تحميل حسابات الكادر...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 2: STUDENTS ACCOUNTS -->
+      <section id="studentsSection" class="tab-section-content" style="display:none;">
+        <div id="studentsStatsCards" class="users-kpi-grid"></div>
+
+        <div class="users-filter-box students-filter-box">
+          <div class="users-search-input-wrap">
+            <i data-lucide="search" style="width:18px; height:18px;"></i>
+            <input type="text" id="searchStudentsInput" placeholder="ابحث باسم الطالب أو الحلقة أو المعلم..." oninput="filterStudentsTable()" autocomplete="off">
+          </div>
+
+          <div class="student-circle-filter-wrap">
+            <select id="filterStudentCircleSelect" onchange="filterStudentsTable()">
+              <option value="all">جميع الحلقات القرآنية</option>
+            </select>
+          </div>
+
+          <div class="users-role-chips" id="studentsStatusChips">
+            <button type="button" class="user-role-chip active" data-status="all" onclick="setStudentStatusFilter('all', this)">
+              <i data-lucide="users" style="width:14px; height:14px;"></i> جميع الطلاب
+            </button>
+            <button type="button" class="user-role-chip" data-status="has_pin" onclick="setStudentStatusFilter('has_pin', this)">
+              <i data-lucide="key" style="width:14px; height:14px; color:#059669;"></i> مفعّل برمز سري
+            </button>
+            <button type="button" class="user-role-chip" data-status="no_pin" onclick="setStudentStatusFilter('no_pin', this)">
+              <i data-lucide="clock" style="width:14px; height:14px; color:#d97706;"></i> بانتظار تعيين الرمز
+            </button>
+            <button type="button" class="user-role-chip" onclick="setUserRoleFilter('all', null)">
+              <i data-lucide="shield" style="width:14px; height:14px;"></i> كادر النظام والمشرفين
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Students Cards Feed (< 769px) -->
+        <div id="studentsMobileFeed" class="users-mobile-feed"></div>
+
+        <!-- Desktop Students Data Table (>= 769px) -->
+        <div class="users-desktop-table-wrap">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th style="width:50px;">#</th>
+                <th>اسم الطالب</th>
+                <th style="white-space: nowrap;">الحلقة القرآنية</th>
+                <th style="white-space: nowrap;">المعلم المشرف</th>
+                <th style="white-space: nowrap;">حالة الرمز السري</th>
+                <th style="white-space: nowrap;">الرمز السري (PIN)</th>
+                <th style="white-space: nowrap;">تاريخ التسجيل</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody">
+              <tr>
+                <td colspan="7" style="text-align:center; padding:24px; color:var(--muted);">جارٍ تحميل حسابات الطلاب...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL 1: CREATE / EDIT STAFF USER -->
+  <div id="userModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeModal('userModal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="userModalTitle">إنشاء حساب كادر وتحديد الصلاحيات</h3>
+        <button type="button" class="close-modal-btn" onclick="closeModal('userModal')" aria-label="إغلاق النافذة">
+          <i data-lucide="x" style="width:20px; height:20px;"></i>
+        </button>
+      </div>
+      <form class="modal-body" onsubmit="saveUser(event)">
+        <input type="hidden" id="editUserId" value="">
+        <div class="field">
+          <label for="newUsername">اسم المستخدم <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="newUsername" placeholder="مثال: teacher_ahmed" required autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label for="newCode">الرمز الرقمي السري / كلمة المرور <span id="newCodeReqStar" style="color:var(--danger)">*</span></label>
+          <div style="position:relative; display:flex; align-items:center;">
+            <input type="password" id="newCode" placeholder="ادخل الرمز الرقمي للحساب" required autocomplete="off" style="padding-left:42px;">
+            <button type="button" class="btn-toggle-pwd-input" onclick="toggleInputPasswordVisibility('newCode', 'newCodeEyeIcon')" title="إظهار / إخفاء كلمة المرور" style="position:absolute; left:10px; background:none; border:none; cursor:pointer; color:var(--muted); display:flex; align-items:center; z-index:2;">
+              <i data-lucide="eye" id="newCodeEyeIcon" style="width:18px; height:18px;"></i>
+            </button>
+          </div>
+          <small id="newCodeHelper" style="color:var(--muted); font-size:12px; display:none; margin-top:4px;">يمكن لمشرف النظام رؤية وتعديل الرمز الحالي ومشاركته مع المعلم إذا نسيه.</small>
+        </div>
+
+        <div class="field">
+          <label for="userRole">نوع الحساب / الدور</label>
+          <select id="userRole">
+            <option value="teacher">معلم حلقة قرآنية</option>
+            <option value="supervisor">مشرف تعليمي</option>
+            <option value="admin">مسؤول نظام</option>
+          </select>
+        </div>
+
+        <div class="field" id="userStatusField" style="display:none;">
+          <label for="userActiveStatus">حالة الحساب</label>
+          <select id="userActiveStatus">
+            <option value="1">نشط ومفعّل (يمكنه الدخول للنظام)</option>
+            <option value="0">معطّل ومجمد (ممنوع من الدخول)</option>
+          </select>
+        </div>
+
+        <fieldset class="picker-fieldset">
+          <legend style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+            <span><i data-lucide="key" style="width:16px; height:16px; vertical-align:-2px; color:var(--user-primary);"></i> تحديد الصلاحيات الممنوحة</span>
+            <span style="font-size:12px; display:flex; gap:8px;">
+              <a href="javascript:void(0)" onclick="toggleAllPerms(true)" style="color:var(--user-primary); text-decoration:none; font-weight:700;">[تحديد الكل]</a>
+              <a href="javascript:void(0)" onclick="toggleAllPerms(false)" style="color:var(--muted); text-decoration:none;">[إلغاء الكل]</a>
+            </span>
+          </legend>
+          <div style="display:flex; flex-direction:column; gap:8px; padding:6px 0;">
+            <label class="perm-checkbox-item">
+              <input type="checkbox" name="perm" value="circles" checked>
+              <i data-lucide="users" style="width:16px; height:16px; color:#059669;"></i>
+              <span>إدارة الحلقات القرآنية والطلاب</span>
+            </label>
+            <label class="perm-checkbox-item">
+              <input type="checkbox" name="perm" value="all_circles">
+              <i data-lucide="globe" style="width:16px; height:16px; color:#2563eb;"></i>
+              <span>التحكم في جميع الحلقات القرآنية (وليس حلقته فقط)</span>
+            </label>
+            <label class="perm-checkbox-item">
+              <input type="checkbox" name="perm" value="exams" checked>
+              <i data-lucide="file-text" style="width:16px; height:16px; color:#d97706;"></i>
+              <span>إدارة وإنشاء وتفعيل الاختبارات</span>
+            </label>
+            <label class="perm-checkbox-item">
+              <input type="checkbox" name="perm" value="analytics" checked>
+              <i data-lucide="bar-chart-3" style="width:16px; height:16px; color:#7e22ce;"></i>
+              <span>معاينة الإحصائيات المتقدمة والتقارير</span>
+            </label>
+            <label class="perm-checkbox-item">
+              <input type="checkbox" name="perm" value="student_cv" checked>
+              <i data-lucide="contact" style="width:16px; height:16px; color:#0284c7;"></i>
+              <span>إدارة بطاقات وسير الطلاب الذاتية</span>
+            </label>
+            <label class="perm-checkbox-item">
+              <input type="checkbox" name="perm" value="users">
+              <i data-lucide="user-cog" style="width:16px; height:16px; color:#dc2626;"></i>
+              <span>إدارة المستخدمين والصلاحيات (للمسؤولين فقط)</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+          <button type="button" id="deleteUserBtn" class="btn-danger-outline" style="display:none; padding:11px 16px; font-size:14px; align-items:center; gap:6px; min-height:44px;" onclick="deleteCurrentUserFromModal()">
+            <i data-lucide="trash-2" style="width:16px; height:16px;"></i> حذف الحساب
+          </button>
+          <button type="submit" id="saveUserBtn" class="btn-primary" style="flex:1; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+            <span>حفظ وإنشاء الحساب</span>
+            <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: CREATE / EDIT STUDENT ACCOUNT & PIN -->
+  <div id="studentModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeModal('studentModal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="studentModalTitle">إدارة حساب الطالب والرمز السري</h3>
+        <button type="button" class="close-modal-btn" onclick="closeModal('studentModal')" aria-label="إغلاق النافذة">
+          <i data-lucide="x" style="width:20px; height:20px;"></i>
+        </button>
+      </div>
+      <form class="modal-body" onsubmit="saveStudent(event)">
+        <input type="hidden" id="editStudentId" value="">
+
+        <div class="field">
+          <label for="studentNameInput">اسم الطالب الثلاثي أو الرباعي <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="studentNameInput" placeholder="مثال: عبد الرحمن محمد أحمد" required autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label for="studentCircleSelect">الحلقة القرآنية الملتحق بها <span style="color:var(--danger)">*</span></label>
+          <select id="studentCircleSelect" required>
+            <option value="">-- اختر الحلقة القرآنية --</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+            <label for="studentPinInput" style="margin:0;">الرمز السري الخاص بالطالب (PIN)</label>
+            <button type="button" class="btn-text-action" onclick="generateRandomStudentPin()">
+              <i data-lucide="sparkles" style="width:13px; height:13px;"></i> توليد رمز عشوائي
+            </button>
+          </div>
+          <div style="position:relative; display:flex; gap:6px;">
+            <div style="position:relative; flex:1; display:flex; align-items:center;">
+              <input type="password" id="studentPinInput" placeholder="مثال: 1234 أو اتركه فارغاً لتعيينه لاحقاً" autocomplete="off" style="font-family:monospace; font-weight:700; letter-spacing:1px; padding-left:42px; width:100%;">
+              <button type="button" class="btn-toggle-pwd-input" onclick="toggleInputPasswordVisibility('studentPinInput', 'studentPinEyeIcon')" title="إظهار / إخفاء الرمز" style="position:absolute; left:10px; background:none; border:none; cursor:pointer; color:var(--muted); display:flex; align-items:center; z-index:2;">
+                <i data-lucide="eye" id="studentPinEyeIcon" style="width:18px; height:18px;"></i>
+              </button>
+            </div>
+            <button type="button" id="btnModalResetPin" class="btn-secondary" style="white-space:nowrap; padding:0 12px; font-size:12px; display:none;" onclick="resetCurrentStudentPinFromModal()" title="تصفير الرمز ليقوم الطالب بوضعه عند الدخول">
+              <i data-lucide="rotate-ccw" style="width:14px; height:14px;"></i> تصفير
+            </button>
+          </div>
+          <small id="studentPinHelper" style="color:var(--muted); font-size:12px; margin-top:4px; display:block;">
+            إذا تُرك الرمز فارغاً، سيُطلب من الطالب وضع رمزه السري بنفسه عند تسجيل دخوله الأول.
+          </small>
+        </div>
+
+        <div id="studentQuickShareBox" class="student-share-card-box" style="display:none;">
+          <div class="student-share-header">
+            <span style="font-size:12px; font-weight:700; color:var(--text);"><i data-lucide="share-2" style="width:14px; height:14px; vertical-align:-2px;"></i> بيانات دخول الطالب</span>
+            <button type="button" class="btn-copy-card" onclick="copyCurrentStudentCredentials()">
+              <i data-lucide="copy" style="width:13px; height:13px;"></i> نسخ للمشاركة
+            </button>
+          </div>
+          <div id="studentSharePreviewText" class="student-share-preview"></div>
+        </div>
+
+        <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+          <button type="button" id="deleteStudentBtn" class="btn-danger-outline" style="display:none; padding:11px 16px; font-size:14px; align-items:center; gap:6px; min-height:44px;" onclick="deleteCurrentStudentFromModal()">
+            <i data-lucide="trash-2" style="width:16px; height:16px;"></i> حذف الطالب
+          </button>
+          <button type="submit" id="saveStudentBtn" class="btn-primary" style="flex:1; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+            <span>حفظ بيانات الحساب</span>
+            <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="albayan_dialog.js?v=2.0"></script>
+  <script src="mobile-db.js?v=2.0"></script>
+  <script src="hijri_date.js?v=1.0"></script>
+  <script src="mobile_bottom_nav.js?v=2.0"></script>
+  <script defer src="users.js?v=3.1"></script>
+  <script src="firebase-client.js?v=3.0"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

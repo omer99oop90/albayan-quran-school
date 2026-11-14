@@ -39,9 +39,9 @@ service cloud.firestore {
       allow write: if true;
     }
     
-    // بقية المستندات
+    // بقية المستندات غير المصرح بها
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

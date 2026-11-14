@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="">
+  <title>سجل العمليات والتعديلات - مدرسة البيان</title>
+  
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dark_theme.css?v=2.2">
+  <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+
+  <style>
+    :root {
+      --logs-bg: var(--bg, #f8fafc);
+      --logs-card: var(--card-bg, #ffffff);
+      --logs-border: var(--line, #e2e8f0);
+      --logs-text: var(--text, #0f172a);
+      --logs-muted: var(--muted, #64748b);
+      --logs-primary: var(--primary, #2563eb);
+    }
+
+    body {
+      background: var(--logs-bg);
+      color: var(--logs-text);
+      font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .logs-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px 100px 20px;
+    }
+
+    .logs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--logs-border);
+    }
+
+    .logs-header-title h1 {
+      margin: 0 0 6px 0;
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--logs-text);
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logs-header-title p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--logs-muted);
+    }
+
+    .logs-header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      font-family: inherit;
+    }
+
+    .btn-action-primary {
+      background: var(--logs-primary);
+      color: white;
+    }
+    .btn-action-primary:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    .btn-action-secondary {
+      background: var(--logs-card);
+      color: var(--logs-text);
+      border-color: var(--logs-border);
+    }
+    .btn-action-secondary:hover {
+      background: var(--input-bg, #f1f5f9);
+    }
+
+    .btn-action-danger {
+      background: rgba(239, 68, 68, 0.08);
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+    .btn-action-danger:hover {
+      background: rgba(239, 68, 68, 0.16);
+    }
+
+    /* KPI Summary Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--logs-card);
+      border: 1px solid var(--logs-border);
+      border-radius: 16px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .kpi-card:hover {
+      border-color: var(--logs-primary);
+      transform: translateY(-2px);
+    }
+
+    .kpi-icon-wrap {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .kpi-icon-blue { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
+    .kpi-icon-emerald { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+    .kpi-icon-purple { background: rgba(147, 51, 234, 0.1); color: #9333ea; }
+    .kpi-icon-amber { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+
+    .kpi-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .kpi-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--logs-muted);
+      margin-bottom: 4px;
+    }
+    .kpi-val {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--logs-text);
+      line-height: 1.1;
+    }
+
+    /* Toolbar: Filters & Search */
+    .logs-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-bottom: 18px;
+      background: var(--logs-card);
+      padding: 12px 16px;
+      border: 1px solid var(--logs-border);
+      border-radius: 16px;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .tab-btn {
+      padding: 7px 14px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--logs-muted);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      font-family: inherit;
+    }
+    .tab-btn:hover {
+      background: var(--input-bg, #f1f5f9);
+      color: var(--logs-text);
+    }
+    .tab-btn.active {
+      background: var(--logs-primary);
+      color: white;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--input-bg, #f8fafc);
+      border: 1px solid var(--logs-border);
+      border-radius: 10px;
+      padding: 6px 12px;
+      min-width: 240px;
+    }
+    .search-box input {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--logs-text);
+      width: 100%;
+    }
+
+    /* Log Feed List */
+    .logs-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .log-item {
+      background: var(--logs-card);
+      border: 1px solid var(--logs-border);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+      animation: fadeInLog 0.2s ease-out;
+    }
+    @keyframes fadeInLog {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .log-item:hover {
+      border-color: #cbd5e1;
+      background: rgba(248, 250, 252, 0.7);
+    }
+    .dark-theme .log-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: #475569;
+    }
+
+    .log-badge-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    .badge-dot-edit { background: #2563eb; box-shadow: 0 0 8px rgba(37, 99, 235, 0.4); }
+    .badge-dot-sync { background: #9333ea; box-shadow: 0 0 8px rgba(147, 51, 234, 0.4); }
+    .badge-dot-circle { background: #059669; box-shadow: 0 0 8px rgba(5, 150, 105, 0.4); }
+    .badge-dot-student { background: #d97706; box-shadow: 0 0 8px rgba(217, 119, 6, 0.4); }
+    .badge-dot-danger { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+
+    .log-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .log-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .log-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .log-type-tag {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #eff6ff;
+      color: #1e40af;
+    }
+    .log-type-tag.sync { background: #f3e8ff; color: #6b21a8; }
+    .log-type-tag.circle { background: #ecfdf5; color: #047857; }
+    .log-type-tag.student { background: #fffbeb; color: #b45309; }
+    .log-type-tag.danger { background: #fef2f2; color: #b91c1c; }
+
+    .log-actor {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--logs-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .log-time {
+      font-size: 11.5px;
+      color: var(--logs-muted);
+      direction: ltr;
+      text-align: left;
+    }
+
+    .log-desc {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--logs-text);
+      margin: 2px 0 4px 0;
+    }
+
+    .log-details {
+      font-size: 12.5px;
+      color: var(--logs-muted);
+      background: var(--input-bg, #f8fafc);
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px dashed var(--logs-border);
+      margin-top: 6px;
+      display: inline-block;
+      line-height: 1.4;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      background: var(--logs-card);
+      border: 1px dashed var(--logs-border);
+      border-radius: 16px;
+      color: var(--logs-muted);
+    }
+    .empty-state svg {
+      width: 44px;
+      height: 44px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+    .empty-state h3 {
+      margin: 0 0 6px 0;
+      color: var(--logs-text);
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logs-container">
+    <!-- Header -->
+    <header class="logs-header">
+      <div class="logs-header-title">
+        <a href="more.html" class="btn-action btn-action-secondary" style="margin-bottom: 10px; display: inline-flex; width: fit-content; padding: 5px 12px; font-size: 12.5px;">
+          <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> العودة لخيارات المزيد
+        </a>
+        <h1>
+          <i data-lucide="activity" style="width:28px; height:28px; color:var(--logs-primary);"></i>
+          سجل العمليات والتعديلات
+        </h1>
+        <p>متابعة وتوثيق كافة التعديلات، إدخال الدرجات، وأنشطة المزامنة في النظام لحظة بلحظة.</p>
+      </div>
+
+      <div class="logs-header-actions">
+        <button type="button" class="btn-action btn-action-primary" onclick="loadLogsData()" id="btnRefreshLogs">
+          <i data-lucide="refresh-cw" style="width:16px; height:16px;"></i> تحديث السجل
+        </button>
+        <button type="button" class="btn-action btn-action-danger" onclick="confirmClearLogs()" id="btnClearLogs" style="display:none;">
+          <i data-lucide="trash-2" style="width:16px; height:16px;"></i> مسح السجل
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI Summary Cards -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap kpi-icon-blue">
+          <i data-lucide="edit-3" style="width:24px; height:24px;"></i>
+        </div>
+        <div class="kpi-info">
+          <div class="kpi-title">إجمالي حالات التعديل</div>
+          <div class="kpi-val" id="kpiTotalEdits">0</div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap kpi-icon-emerald">
+          <i data-lucide="calendar-check" style="width:24px; height:24px;"></i>
+        </div>
+        <div class="kpi-info">
+          <div class="kpi-title">تعديلات اليوم</div>
+          <div class="kpi-val" id="kpiTodayEdits">0</div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap kpi-icon-purple">
+          <i data-lucide="cloud" style="width:24px; height:24px;"></i>
+        </div>
+        <div class="kpi-info">
+          <div class="kpi-title">عمليات المزامنة</div>
+          <div class="kpi-val" id="kpiTotalSync">0</div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon-wrap kpi-icon-amber">
+          <i data-lucide="clock" style="width:24px; height:24px;"></i>
+        </div>
+        <div class="kpi-info">
+          <div class="kpi-title">آخر نشاط مسجل</div>
+          <div class="kpi-val" id="kpiLastActivity" style="font-size: 15px; font-weight: 700;">-</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Toolbar: Tabs & Search -->
+    <div class="logs-toolbar">
+      <div class="filter-tabs" id="filterTabs">
+        <button type="button" class="tab-btn active" data-cat="all" onclick="setCategory('all', this)">الكل</button>
+        <button type="button" class="tab-btn" data-cat="edits" onclick="setCategory('edits', this)">تعديلات السجلات والدرجات</button>
+        <button type="button" class="tab-btn" data-cat="circles" onclick="setCategory('circles', this)">الحلقات والطلاب</button>
+        <button type="button" class="tab-btn" data-cat="sync" onclick="setCategory('sync', this)">المزامنة السحابية</button>
+      </div>
+
+      <div class="search-box">
+        <i data-lucide="search" style="width:16px; height:16px; color:var(--logs-muted);"></i>
+        <input type="text" id="logSearchInput" placeholder="بحث بالاسم، المعلم، أو العملية..." oninput="handleSearch(this.value)">
+      </div>
+    </div>
+
+    <!-- Logs Feed -->
+    <div class="logs-feed" id="logsFeed">
+      <div class="empty-state">
+        <i data-lucide="loader" class="lucide-spin"></i>
+        <h3>جارٍ تحميل سجل العمليات...</h3>
+      </div>
+    </div>
+  </div>
+
+  <script src="firebase-client.js?v=3.0"></script>
+  <script src="mobile_bottom_nav.js?v=2.0"></script>
+  <script src="albayan_dialog.js?v=2.0"></script>
+
+  <script>
+    let currentCategory = 'all';
+    let currentSearch = '';
+    let searchDebounce = null;
+    let isAdmin = false;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      await checkUserAuth();
+      await loadLogsData();
+      if (window.lucide) lucide.createIcons();
+    });
+
+    async function checkUserAuth() {
+      try {
+        const res = await fetch("/api/me");
+        const data = await res.json();
+        if (data.logged_in) {
+          isAdmin = data.role === "admin" || data.is_superadmin === 1;
+          const clearBtn = document.getElementById("btnClearLogs");
+          if (clearBtn && isAdmin) clearBtn.style.display = "inline-flex";
+        }
+      } catch (e) {}
+    }
+
+    function setCategory(cat, btn) {
+      currentCategory = cat;
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      loadLogsData();
+    }
+
+    function handleSearch(val) {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        currentSearch = val.trim();
+        loadLogsData();
+      }, 250);
+    }
+
+    async function loadLogsData() {
+      const feed = document.getElementById("logsFeed");
+      const refreshBtn = document.getElementById("btnRefreshLogs");
+      if (refreshBtn) refreshBtn.classList.add("opacity-50");
+
+      const cacheKey = `albayan_logs_cache_${currentCategory}_${currentSearch}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.data) {
+            if (parsed.stats) {
+              document.getElementById("kpiTotalEdits").textContent = parsed.stats.total_edits || 0;
+              document.getElementById("kpiTodayEdits").textContent = parsed.stats.today_count || 0;
+              document.getElementById("kpiTotalSync").textContent = parsed.stats.total_sync || 0;
+              document.getElementById("kpiLastActivity").textContent = parsed.stats.last_activity_time ? formatRelativeTime(parsed.stats.last_activity_time) : "لا يوجد بعد";
+            }
+            renderLogs(parsed.data || []);
+          }
+        }
+      } catch(e) {}
+
+      try {
+        const url = `/api/logs?category=${encodeURIComponent(currentCategory)}&search=${encodeURIComponent(currentSearch)}&limit=150`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (refreshBtn) refreshBtn.classList.remove("opacity-50");
+
+        if (!data.success) {
+          if (!feed.children || feed.children.length === 0) {
+            feed.innerHTML = `<div class="empty-state"><h3>تعذر جلب السجلات.</h3></div>`;
+          }
+          return;
+        }
+
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({ data: data.logs || [], stats: data.stats || {} }));
+        } catch(e) {}
+
+        // Update KPIs
+        if (data.stats) {
+          document.getElementById("kpiTotalEdits").textContent = data.stats.total_edits || 0;
+          document.getElementById("kpiTodayEdits").textContent = data.stats.today_count || 0;
+          document.getElementById("kpiTotalSync").textContent = data.stats.total_sync || 0;
+          document.getElementById("kpiLastActivity").textContent = data.stats.last_activity_time ? formatRelativeTime(data.stats.last_activity_time) : "لا يوجد بعد";
+        }
+
+        renderLogs(data.logs || []);
+      } catch (err) {
+        console.error(err);
+        if (!feed.children || feed.children.length === 0) {
+          feed.innerHTML = `<div class="empty-state"><h3>حدث خطأ أثناء تحميل السجل.</h3></div>`;
+        }
+      }
+    }
+
+    function renderLogs(logs) {
+      const feed = document.getElementById("logsFeed");
+      if (!logs || logs.length === 0) {
+        feed.innerHTML = `
+          <div class="empty-state">
+            <i data-lucide="clipboard-list"></i>
+            <h3>لا توجد سجلات تطابق البحث أو الفلتر</h3>
+            <p>كافة التعديلات والعمليات الجديدة ستظهر هنا تلقائياً.</p>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      feed.innerHTML = logs.map(item => {
+        const actionType = item.action_type || "عملية";
+        let dotClass = "badge-dot-edit";
+        let tagClass = "";
+
+        if (actionType.includes("مزامنة")) {
+          dotClass = "badge-dot-sync";
+          tagClass = "sync";
+        } else if (actionType.includes("حلقة")) {
+          dotClass = "badge-dot-circle";
+          tagClass = "circle";
+        } else if (actionType.includes("طالب")) {
+          dotClass = "badge-dot-student";
+          tagClass = "student";
+        } else if (actionType.includes("حذف")) {
+          dotClass = "badge-dot-danger";
+          tagClass = "danger";
+        }
+
+        const relativeTime = formatRelativeTime(item.created_at);
+        const detailsHtml = item.details ? `<div class="log-details">${escapeHtml(item.details)}</div>` : "";
+
+        return `
+          <div class="log-item">
+            <div class="log-badge-dot ${dotClass}"></div>
+            <div class="log-content">
+              <div class="log-top-row">
+                <div class="log-title-group">
+                  <span class="log-type-tag ${tagClass}">${escapeHtml(actionType)}</span>
+                  <span class="log-actor">
+                    <i data-lucide="user" style="width:13px; height:13px;"></i>
+                    ${escapeHtml(item.username || "النظام")}
+                  </span>
+                </div>
+                <span class="log-time" title="${escapeHtml(item.created_at || '')}">${relativeTime}</span>
+              </div>
+              <div class="log-desc">${escapeHtml(item.description || '')}</div>
+              ${detailsHtml}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    async function confirmClearLogs() {
+      const ok = window.AlbayanDialog
+        ? await AlbayanDialog.confirm("هل أنت متأكد من رغبتك في تفريغ ومسح سجل العمليات والتعديلات؟ لا يمكن التراجع عن هذا الإجراء.", "مسح السجل", { isDestructive: true })
+        : confirm("هل أنت متأكد من رغبتك في تفريغ ومسح سجل العمليات والتعديلات؟");
+      if (!ok) return;
+
+      try {
+        const res = await fetch("/api/logs/clear", { method: "POST" });
+        const data = await res.json();
+        if (data.success) {
+          if (window.AlbayanDialog) AlbayanDialog.toast("تم مسح السجلات بنجاح.", "success");
+          loadLogsData();
+        }
+      } catch (err) {
+        if (window.AlbayanDialog) AlbayanDialog.alert("فشل مسح السجلات.", "خطأ", "danger");
+        else alert("فشل مسح السجلات.");
+      }
+    }
+
+    function formatRelativeTime(dateStr) {
+      if (!dateStr) return "";
+      try {
+        const cleanStr = dateStr.replace("T", " ").split(".")[0];
+        const past = new Date(cleanStr.replace(/-/g, "/"));
+        const now = new Date();
+        const diffMs = now - past;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHours = Math.floor(diffMin / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffSec < 45) return "الآن";
+        if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
+        if (diffHours < 24) return `منذ ${diffHours} ساعة`;
+        if (diffDays === 1) return "أمس";
+        if (diffDays < 7) return `منذ ${diffDays} أيام`;
+        return dateStr.split(" ")[0];
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>

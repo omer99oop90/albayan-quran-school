@@ -1161,7 +1161,6 @@
       metaStore.put({ key: 'db_version', value: DB_VERSION });
 
       tx.oncomplete = () => {
-        console.log('AlbayanLocalDB: Full database bundle imported successfully.');
         resolve(true);
       };
       tx.onerror = (e) => reject(e.target.error);

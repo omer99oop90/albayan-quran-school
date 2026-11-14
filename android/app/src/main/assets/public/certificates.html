@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="csrf-token" content="">
+  <title>استوديو تصدير الشهادات الاحترافية - مدرسة البيان لتعليم القرآن</title>
+
+  <!-- Base Application Styles -->
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css?v=2.1">
+  <link rel="stylesheet" href="dark_theme.css?v=1.0">
+  <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
+ 
+  <!-- Certificates Studio CSS -->
+  <link rel="stylesheet" href="certificates.css?v=2.0">
+
+  <!-- Arabic Calligraphy & Modern Typography from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@400;600;700;800;900&family=El+Messiri:wght@600;700&family=Reem+Kufi:wght@500;700&family=Scheherazade+New:wght@400;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+
+  <!-- JSZip & jsPDF for batch and PDF exports (with offline fallbacks) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body class="cert-studio-body">
+
+  <div class="app-layout">
+    <!-- Desktop Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon" style="display:inline-flex; align-items:center; justify-content:center;">
+          <img src="logo.png" alt="شعار مدرسة البيان" style="width:48px; height:48px; object-fit:contain; filter: brightness(0) invert(1);">
+        </span>
+        <div>
+          <h2>مدرسة البيان</h2>
+          <small>لتعليم القرآن الكريم</small>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="circles.html" class="menu-item"><svg style="width:18px; height:18px; vertical-align:middle; fill:currentColor;" viewBox="0 0 100 100"><circle cx="50" cy="22" r="14"/><path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/><path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> الحلقات القرآنية</a>
+        <a href="admin.html" class="menu-item"><i data-lucide="file-text" style="width:18px; height:18px;"></i> إدارة الاختبارات</a>
+        <a href="analytics.html" class="menu-item"><i data-lucide="bar-chart-3" style="width:18px; height:18px;"></i> الإحصائيات المتقدمة</a>
+        <a href="student_cv.html" class="menu-item" id="studentCvMenuLink"><i data-lucide="contact" style="width:18px; height:18px;"></i> السيرة الذاتية للطالب</a>
+        <a href="certificates.html" class="menu-item active" id="certificatesMenuLink"><i data-lucide="award" style="width:18px; height:18px;"></i> استوديو الشهادات</a>
+        <a href="users.html" class="menu-item" id="usersMenuLink"><i data-lucide="user-cog" style="width:18px; height:18px;"></i> إدارة المستخدمين</a>
+        <a href="settings.html" class="menu-item"><i data-lucide="settings" style="width:18px; height:18px;"></i> إعدادات الحساب</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info-box">
+          <strong id="loggedUsername">الكادر التعليمي</strong>
+          <small id="loggedRole">استوديو الشهادات الذكي</small>
+        </div>
+        <button type="button" class="pure-icon-btn sidebar-logout-btn" onclick="logout()" title="تسجيل الخروج" aria-label="تسجيل الخروج">
+          <i data-lucide="log-out" style="width:22px; height:22px; color:#ef4444;"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-content cert-main-content">
+
+      <!-- Android-Style Top App Bar -->
+      <header class="cert-app-bar">
+        <div class="bar-leading">
+          <a href="more.html" class="pure-icon-btn icon-btn" id="backToMoreBtn" aria-label="الرجوع إلى صفحة المزيد" title="الرجوع لصفحة المزيد" style="display:inline-flex; align-items:center; justify-content:center; text-decoration:none; color:inherit;">
+            <i data-lucide="arrow-right" style="width:22px; height:22px;"></i>
+          </a>
+          <div class="bar-titles">
+            <h1 class="bar-title">استوديو الشهادات الاحترافية</h1>
+            <span class="bar-subtitle" id="certSubtitle">تصميم وتصدير شهادات التكريم والتفوق</span>
+          </div>
+        </div>
+
+        <!-- Student Carousel Controls in Top Bar -->
+        <div class="bar-student-nav">
+          <button type="button" class="pure-icon-btn nav-arrow-btn" id="prevStudentBtn" title="الطالب السابق" disabled aria-label="الطالب السابق">
+            <i data-lucide="chevron-right" style="width:20px; height:20px;"></i>
+          </button>
+          <div class="student-pill" id="studentPill">
+            <span class="student-curr-name" id="currentStudentName">جاري التحميل...</span>
+            <span class="student-counter" id="studentCounter">(0 / 0)</span>
+          </div>
+          <button type="button" class="pure-icon-btn nav-arrow-btn" id="nextStudentBtn" title="الطالب التالي" disabled aria-label="الطالب التالي">
+            <i data-lucide="chevron-left" style="width:20px; height:20px;"></i>
+          </button>
+        </div>
+
+        <!-- History & Quick Export / Share Actions -->
+        <div class="bar-actions">
+          <button type="button" class="pure-icon-btn" id="undoBtn" title="تراجع (Ctrl+Z)" disabled aria-label="تراجع">
+            <i data-lucide="undo-2" style="width:20px; height:20px;"></i>
+          </button>
+          <button type="button" class="pure-icon-btn" id="redoBtn" title="إعادة (Ctrl+Y)" disabled aria-label="إعادة">
+            <i data-lucide="redo-2" style="width:20px; height:20px;"></i>
+          </button>
+          <div class="bar-divider"></div>
+          <button type="button" class="pure-icon-btn action-share" id="quickShareBtn" title="مشاركة عبر واتساب أو الهاتف" aria-label="مشاركة">
+            <i data-lucide="share-2" style="width:22px; height:22px; color:#16a34a;"></i>
+          </button>
+          <button type="button" class="pure-icon-btn action-download" id="quickExportBtn" title="تنزيل الشهادة الحالية (PNG)" aria-label="تنزيل الشهادة">
+            <i data-lucide="download" style="width:22px; height:22px; color:var(--cert-primary);"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Responsive Workspace Wrapper -->
+      <div class="studio-workspace" id="studioWorkspace">
+
+        <!-- Central Studio Stage -->
+        <div class="cert-stage-container" id="certStageContainer">
+          
+          <!-- Canvas Viewport Frame -->
+          <div class="cert-canvas-frame" id="certCanvasFrame">
+            <canvas id="certCanvas" width="3508" height="2480"></canvas>
+
+            <!-- Interactive Drag Overlay System -->
+            <div class="cert-drag-overlay" id="certDragOverlay">
+              <!-- Position Handles & Selection Bounding Box will be rendered here dynamically -->
+            </div>
+          </div>
+
+          <!-- Floating Stage Controls: PURE ICONS ONLY -->
+          <div class="stage-floating-controls">
+            <button type="button" class="pure-icon-btn floating-btn" id="addTextBtn" title="إضافة نص جديد" aria-label="إضافة نص">
+              <i data-lucide="type" style="width:20px; height:20px;"></i>
+            </button>
+            <button type="button" class="pure-icon-btn floating-btn" id="addImageBtn" title="إضافة صورة أو ملصق" aria-label="إضافة صورة">
+              <i data-lucide="image-plus" style="width:20px; height:20px;"></i>
+            </button>
+            <input type="file" id="customStickerInput" accept="image/*" class="hidden-file-input" style="display:none;">
+            <input type="color" id="proColorPicker" style="display:none;">
+
+            <div class="floating-divider"></div>
+
+            <button type="button" class="pure-icon-btn floating-btn" id="zoomInBtn" title="تكبير" aria-label="تكبير">
+              <i data-lucide="zoom-in" style="width:20px; height:20px;"></i>
+            </button>
+            <button type="button" class="pure-icon-btn floating-btn" id="zoomOutBtn" title="تصغير" aria-label="تصغير">
+              <i data-lucide="zoom-out" style="width:20px; height:20px;"></i>
+            </button>
+            <button type="button" class="pure-icon-btn floating-btn" id="zoomFitBtn" title="ملاءمة الشاشة" aria-label="ملاءمة الشاشة">
+              <i data-lucide="maximize" style="width:20px; height:20px;"></i>
+            </button>
+            <button type="button" class="pure-icon-btn floating-btn" id="toggleOverlayBtn" title="إظهار/إخفاء إطار التحديد" aria-label="إطار التحديد">
+              <i data-lucide="move" style="width:20px; height:20px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Backdrop overlay for bottom sheets on mobile -->
+        <div class="sheet-backdrop" id="sheetBackdrop"></div>
+
+      <!-- Android Bottom Sheet Container -->
+      <div class="bottom-sheet" id="bottomSheet">
+        <div class="sheet-drag-handle-area" id="sheetDragHandle">
+          <div class="sheet-drag-pill"></div>
+        </div>
+
+        <div class="sheet-header">
+          <div class="sheet-header-title-wrap">
+            <h3 class="sheet-title" id="sheetTitle">القوالب والخلفيات</h3>
+          </div>
+          <button type="button" class="sheet-close-btn" id="sheetCloseBtn" aria-label="إغلاق">
+            <i data-lucide="x" style="width:20px; height:20px;"></i>
+          </button>
+        </div>
+
+        <!-- Studio Section Tabs Bar: PURE ICONS ONLY -->
+        <nav class="studio-tabs-bar" id="studioTabsBar" aria-label="أقسام الاستوديو">
+          <button type="button" class="pure-icon-btn studio-tab-btn active" data-tab="Templates" title="القوالب والخلفيات" aria-label="القوالب">
+            <i data-lucide="palette" style="width:20px; height:20px;"></i>
+          </button>
+          <button type="button" class="pure-icon-btn studio-tab-btn" data-tab="Typography" title="إعدادات النص" aria-label="إعدادات النص">
+            <i data-lucide="sliders" style="width:20px; height:20px;"></i>
+          </button>
+          <button type="button" class="pure-icon-btn studio-tab-btn" data-tab="Students" title="ترشيح الطلاب والمميزين" aria-label="الطلاب">
+            <i data-lucide="users" style="width:20px; height:20px;"></i>
+          </button>
+          <button type="button" class="pure-icon-btn studio-tab-btn" data-tab="Export" title="التصدير والمشاركة" aria-label="التصدير">
+            <i data-lucide="download" style="width:20px; height:20px;"></i>
+          </button>
+        </nav>
+
+        <div class="sheet-content">
+
+          <!-- TAB 1: القوالب والخلفيات (Templates & Backgrounds) -->
+          <div class="sheet-tab-panel active" id="tabPanelTemplates">
+            <div class="panel-section">
+              <label class="section-label">اختر قالباً أو خلفية مخصصة:</label>
+              <div class="template-grid">
+                <div class="template-card" data-template="blank">
+                  <div class="tpl-preview tpl-blank">
+                    <span class="tpl-badge">فارغ</span>
+                  </div>
+                  <span class="tpl-name">صفحة فارغة (أبيض)</span>
+                </div>
+                <div class="template-card" data-template="gold">
+                  <div class="tpl-preview tpl-gold">
+                    <span class="tpl-badge">ملكي</span>
+                  </div>
+                  <span class="tpl-name">الذهبي الملكي</span>
+                </div>
+                <div class="template-card" data-template="emerald">
+                  <div class="tpl-preview tpl-emerald">
+                    <span class="tpl-badge">قرآني</span>
+                  </div>
+                  <span class="tpl-name">الزمردي القرآني</span>
+                </div>
+                <div class="template-card" data-template="navy">
+                  <div class="tpl-preview tpl-navy">
+                    <span class="tpl-badge">فخم</span>
+                  </div>
+                  <span class="tpl-name">الكحلي الإمبراطوري</span>
+                </div>
+                <div class="template-card active" data-template="academic">
+                  <div class="tpl-preview tpl-academic">
+                    <span class="tpl-badge">أكاديمي</span>
+                  </div>
+                  <span class="tpl-name">العاجي الأكاديمي</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Custom Background Upload from Phone / PC -->
+            <div class="panel-section upload-bg-section">
+              <label class="section-label">أو ارفع خلفية مخصصة من هاتفك:</label>
+              <div class="upload-dropzone" id="bgUploadZone">
+                <i data-lucide="image-plus" style="width:32px; height:32px; color:var(--primary);"></i>
+                <div class="upload-text">
+                  <strong>انقر لاختيار صورة من هاتفك أو جهازك</strong>
+                  <small>يدعم JPG, PNG, WEBP بدقة عالية</small>
+                </div>
+                <input type="file" id="customBgInput" accept="image/*" class="hidden-file-input">
+              </div>
+              <div class="custom-bg-actions" id="customBgActions" style="display:none;">
+                <span class="custom-bg-status" id="customBgStatus">تم تحميل صورة مخصصة</span>
+                <button type="button" class="pure-icon-btn" id="removeCustomBgBtn" title="إلغاء واستعادة القالب الافتراضي" aria-label="إلغاء واستعادة القالب">
+                  <i data-lucide="trash-2" style="width:20px; height:20px; color:#ef4444;"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Decorations & Branding Elements -->
+            <div class="panel-section">
+              <label class="section-label">الزخارف والشعارات الرسمية:</label>
+              <div class="decorations-toggle-grid">
+                <label class="decoration-toggle-card">
+                  <input type="checkbox" id="showOrnamentalBorder" checked>
+                  <span>الإطار الزخرفي</span>
+                </label>
+                <label class="decoration-toggle-card">
+                  <input type="checkbox" id="showSchoolLogo" checked>
+                  <span>شعار المدرسة</span>
+                </label>
+                <label class="decoration-toggle-card">
+                  <input type="checkbox" id="showQuranEmblem" checked>
+                  <span>المصحف الشريف</span>
+                </label>
+                <label class="decoration-toggle-card">
+                  <input type="checkbox" id="showOfficialStamp" checked>
+                  <span>الختم الرسمي</span>
+                </label>
+              </div>
+
+              <div class="grade-source-row" style="margin-top: 12px;">
+                <label class="form-label-sm" for="gradeSourceSelect">مصدر الدرجات في التقدير:</label>
+                <select id="gradeSourceSelect" class="form-select-sm">
+                  <option value="all_weighted" selected>المعدل العام المرجح</option>
+                  <option value="exams">درجات الاختبارات فقط</option>
+                  <option value="sard">إنجاز السرد والحفظ فقط</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Design Presets & Auto-Save Actions -->
+            <div class="panel-section">
+              <div class="section-header-flex">
+                <label class="section-label" style="margin-bottom:0;">التصاميم المحفوظة:</label>
+                <div class="preset-header-actions">
+                  <button type="button" class="panel-sub-btn" id="saveDesignPresetBtn" title="حفظ التصميم الحالي كقالب جاهز">
+                    <i data-lucide="bookmark-plus" style="width:15px; height:15px;"></i>
+                    <span>حفظ</span>
+                  </button>
+                  <button type="button" class="panel-sub-btn danger" id="resetStudioDesignBtn" title="استعادة التصميم الافتراضي بالكامل">
+                    <i data-lucide="rotate-ccw" style="width:15px; height:15px;"></i>
+                    <span>افتراضي</span>
+                  </button>
+                </div>
+              </div>
+              <div id="savedPresetsList" class="saved-presets-list"></div>
+            </div>
+          </div>
+
+          <!-- TAB 2: فاحص العنصر والنصوص (Unified Element Inspector) -->
+          <div class="sheet-tab-panel" id="tabPanelTypography">
+            <!-- Quick Elements / Layers Switcher -->
+            <div class="panel-section inspector-section">
+              <div class="section-header-flex">
+                <label class="section-label" style="margin-bottom:0;">طبقات وعناصر الشهادة:</label>
+                <span class="layers-hint-text">انقر للتحديد أو العين للإظهار</span>
+              </div>
+              <div id="panelElementSelectorPills" class="elements-pills-strip"></div>
+              <div id="layersListContainer" class="layers-list-container"></div>
+            </div>
+
+            <div id="inspectorActiveContainer">
+              <div class="panel-section inspector-section">
+                <div class="section-header-flex">
+                  <label class="section-label" id="panelActiveElemBadge" style="margin-bottom:0;">إعدادات النص المحدد</label>
+                  <div class="inspector-header-btns">
+                    <button type="button" class="pure-icon-btn" id="panelEditTextBtn" title="فتح محرر النصوص الموسع" aria-label="تعديل النص">
+                      <i data-lucide="edit-3" style="width:16px; height:16px; color:var(--cert-primary);"></i>
+                    </button>
+                    <button type="button" class="pure-icon-btn deselect-btn" id="deselectElemBtn" title="إلغاء التحديد" aria-label="إلغاء التحديد">
+                      <i data-lucide="x" style="width:16px; height:16px;"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div id="inspectorTextControls" class="inspector-sub-group">
+                  <div class="direct-textarea-wrap">
+                    <textarea id="panelDirectTextarea" class="form-textarea inline-editor-textarea" rows="2" placeholder="اكتب أو عدل النص هنا مباشرة..."></textarea>
+                  </div>
+
+                  <div class="inspector-variables-strip" id="panelVariablesStrip">
+                    <div class="variables-strip-scroll" id="panelVariablesScroll">
+                      <button type="button" class="mini-mention-pill" data-insert="{{اسم_الطالب}}">اسم الطالب</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{العلامة_النهائية}}">العلامة</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{التقدير}}">التقدير</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{اسم_الحلقة}}">الحلقة</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{اسم_المعلم}}">المعلم</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{التاريخ_الهجري}}">التاريخ الهجري</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{التاريخ_الميلادي}}">التاريخ الميلادي</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{العام_الدراسي}}">العام الدراسي</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{أوجه_السرد}}">أوجه السرد</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{نسبة_الحضور}}">المواظبة</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{علامة_الفصل_الأول}}">الفصل الأول</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{علامة_الفصل_الثاني}}">الفصل الثاني</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{علامة_الشهر}}">علامة الشهر</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{رقم_الطالب}}">رقم الطالب</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{اسم_المدير}}">اسم المدير</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{اسم_المدرسة}}">المدرسة</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{درجة_الحفظ}}">درجة الحفظ</button>
+                      <button type="button" class="mini-mention-pill" data-insert="{{نص_التكريم}}">نص التكريم</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty Selection State -->
+            <div id="inspectorNoSelectionContainer" class="no-selection-container" style="display:none;">
+              <div class="no-selection-card">
+                <i data-lucide="mouse-pointer-click" style="width:36px; height:36px; color:var(--cert-primary); margin-bottom:6px;"></i>
+                <strong style="font-size:0.95rem; color:var(--cert-text-main);">لم يتم تحديد أي نص</strong>
+                <span style="font-size:0.82rem; color:var(--cert-text-muted); text-align:center; line-height:1.5;">انقر على أي نص في الشهادة لتعديل خياراته، أو اضغط زر إضافة نص جديد:</span>
+                <button type="button" class="quick-add-item-btn" id="panelAddTextQuickBtn" style="margin-top:12px; width:100%;">
+                  <i data-lucide="plus" style="width:18px; height:18px; color:var(--cert-primary);"></i>
+                  <span>إضافة نص جديد للشهادة</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Typography & Appearance Card -->
+            <div class="panel-section inspector-section" id="inspectorTypographySection">
+              <div class="section-header-flex">
+                <label class="section-label">الخط العربي والمظهر:</label>
+                <label for="customFontInput" class="pure-icon-btn" title="رفع خط (.ttf / .otf)" aria-label="رفع خط">
+                  <i data-lucide="upload" style="width:18px; height:18px; color:var(--cert-primary);"></i>
+                </label>
+                <input type="file" id="customFontInput" accept=".ttf,.otf,.woff,.woff2" class="hidden-file-input">
+              </div>
+
+              <div class="font-select-wrap">
+                <select id="fontFamilySelect" class="form-select font-dropdown">
+                  <option value="Amiri" style="font-family:'Amiri', serif;" selected>خط الأميري (نسخي فاخر)</option>
+                  <option value="Aref Ruqaa" style="font-family:'Aref Ruqaa', serif;">خط عارف رقعة (رقعة كلاسيكي)</option>
+                  <option value="Reem Kufi" style="font-family:'Reem Kufi', sans-serif;">خط ريم كوفي (كوفي هندسي)</option>
+                  <option value="Scheherazade New" style="font-family:'Scheherazade New', serif;">خط شهرزاد (نسخي تقليدي)</option>
+                  <option value="Cairo" style="font-family:'Cairo', sans-serif;">خط كايرو (عصري واضح)</option>
+                  <option value="El Messiri" style="font-family:'El Messiri', sans-serif;">خط المسيري (ديواني رشيق)</option>
+                </select>
+              </div>
+              <div id="loadedCustomFontsList" class="custom-fonts-pills"></div>
+
+              <div class="slider-control" style="margin-top: 10px;">
+                <div class="slider-header">
+                  <span>حجم العنصر / المقياس:</span>
+                  <span class="slider-val" id="valSizeDisplay">90px</span>
+                </div>
+                <input type="range" id="sliderSize" min="20" max="260" step="2" value="90" class="android-slider">
+              </div>
+
+              <div class="typography-style-row">
+                <button type="button" class="panel-sub-btn style-toggle-btn" id="btnToggleBold" title="خط عريض (Bold)">
+                  <i data-lucide="bold" style="width:15px; height:15px;"></i>
+                  <span>عريض</span>
+                </button>
+                <button type="button" class="panel-sub-btn" id="btnLayerUp" title="إحضار للأمام (طبقة أعلى)">
+                  <i data-lucide="arrow-up" style="width:15px; height:15px;"></i>
+                  <span>للأمام</span>
+                </button>
+                <button type="button" class="panel-sub-btn" id="btnLayerDown" title="إرسال للخلف (طبقة أدنى)">
+                  <i data-lucide="arrow-down" style="width:15px; height:15px;"></i>
+                  <span>للخلف</span>
+                </button>
+              </div>
+
+              <div class="dual-mini-sliders">
+                <div class="slider-control">
+                  <div class="slider-header">
+                    <span>الشفافية:</span>
+                    <span class="slider-val" id="valOpacityDisplay">100%</span>
+                  </div>
+                  <input type="range" id="sliderOpacity" min="10" max="100" step="5" value="100" class="android-slider">
+                </div>
+                <div class="slider-control">
+                  <div class="slider-header">
+                    <span>الدوران:</span>
+                    <span class="slider-val" id="valRotationDisplay">0°</span>
+                  </div>
+                  <input type="range" id="sliderRotation" min="-45" max="45" step="1" value="0" class="android-slider">
+                </div>
+              </div>
+
+              <div class="color-palette-section" style="margin-top: 8px;">
+                <div class="color-palette-picker">
+                  <button type="button" class="color-dot active" data-color="#1B3A4B" style="background:#1B3A4B;" title="كحلي داكن"></button>
+                  <button type="button" class="color-dot" data-color="#0F5132" style="background:#0F5132;" title="زمردي إسلامي"></button>
+                  <button type="button" class="color-dot" data-color="#C59B27" style="background:#C59B27;" title="ذهبي ملكي"></button>
+                  <button type="button" class="color-dot" data-color="#845EC2" style="background:#845EC2;" title="بنفسجي ملكي"></button>
+                  <button type="button" class="color-dot" data-color="#8B1E0F" style="background:#8B1E0F;" title="عنابي فاخر"></button>
+                  <button type="button" class="color-dot" data-color="#111827" style="background:#111827;" title="أسود كربوني"></button>
+                  <label class="custom-color-wrapper" title="لون مخصص">
+                    <input type="color" id="customColorPicker" value="#1B3A4B">
+                    <i data-lucide="pipette" style="width:16px; height:16px;"></i>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Placement & Alignment Card -->
+            <div class="panel-section inspector-section" id="inspectorPlacementSection">
+              <label class="section-label">الموضع والمحاذاة:</label>
+
+              <div class="slider-control">
+                <div class="slider-header">
+                  <span>الموقع الأفقي (X):</span>
+                  <span class="slider-val" id="valXDisplay">50%</span>
+                </div>
+                <input type="range" id="sliderX" min="5" max="95" step="0.5" value="50" class="android-slider">
+              </div>
+
+              <div class="slider-control">
+                <div class="slider-header">
+                  <span>الموقع الرأسي (Y):</span>
+                  <span class="slider-val" id="valYDisplay">46%</span>
+                </div>
+                <input type="range" id="sliderY" min="5" max="95" step="0.5" value="46" class="android-slider">
+              </div>
+
+              <div class="alignment-row">
+                <span>المحاذاة:</span>
+                <div class="align-icon-group">
+                  <button type="button" class="pure-icon-btn seg-btn" data-align="right" title="محاذاة لليمين" aria-label="يمين">
+                    <i data-lucide="align-right" style="width:18px; height:18px;"></i>
+                  </button>
+                  <button type="button" class="pure-icon-btn seg-btn active" data-align="center" title="توسيط" aria-label="توسيط">
+                    <i data-lucide="align-center" style="width:18px; height:18px;"></i>
+                  </button>
+                  <button type="button" class="pure-icon-btn seg-btn" data-align="left" title="محاذاة لليسار" aria-label="يسار">
+                    <i data-lucide="align-left" style="width:18px; height:18px;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="panel-elem-actions-grid" style="margin-top: 12px;">
+                <button type="button" class="panel-sub-btn" id="panelCenterElemBtn" title="توسيط العنصر في المنتصف">
+                  <i data-lucide="align-center" style="width:16px; height:16px;"></i>
+                  <span>توسيط</span>
+                </button>
+                <button type="button" class="panel-sub-btn" id="panelDuplicateElemBtn" title="تكرار العنصر">
+                  <i data-lucide="copy" style="width:16px; height:16px;"></i>
+                  <span>تكرار</span>
+                </button>
+                <button type="button" class="panel-sub-btn" id="resetElemPosBtn" title="إعادة للموضع الافتراضي">
+                  <i data-lucide="rotate-ccw" style="width:16px; height:16px;"></i>
+                  <span>إعادة ضبط</span>
+                </button>
+                <button type="button" class="panel-sub-btn danger" id="panelDeleteElemBtn" title="إخفاء أو حذف العنصر">
+                  <i data-lucide="trash-2" style="width:16px; height:16px;"></i>
+                  <span>إخفاء</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick Add Elements Row -->
+            <div class="panel-section inspector-section">
+              <label class="section-label">إضافة عناصر إضافية:</label>
+              <div class="add-elements-quick-row">
+                <button type="button" class="quick-add-item-btn" id="panelAddTextBtn">
+                  <i data-lucide="type" style="width:18px; height:18px; color:var(--cert-primary);"></i>
+                  <span>إضافة نص جديد</span>
+                </button>
+                <button type="button" class="quick-add-item-btn" id="panelAddImageBtn">
+                  <i data-lucide="image-plus" style="width:18px; height:18px; color:var(--cert-emerald);"></i>
+                  <span>إضافة صورة / ملصق</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- TAB 4: الطلاب والمميزين (Students & Achievers Filter) -->
+          <div class="sheet-tab-panel" id="tabPanelStudents">
+            <div class="panel-section">
+              <label class="section-label">فئة التصدير المطلوبة:</label>
+              <div class="pure-icons-bar mode-icons-bar" id="filterModeIcons">
+                <button type="button" class="pure-icon-btn mode-icon-btn active" data-mode="all" title="جميع الطلاب" aria-label="جميع الطلاب">
+                  <i data-lucide="users" style="width:24px; height:24px;"></i>
+                </button>
+                <button type="button" class="pure-icon-btn mode-icon-btn" data-mode="circle" title="حلقة محددة" aria-label="حلقة محددة">
+                  <i data-lucide="book-open" style="width:24px; height:24px;"></i>
+                </button>
+                <button type="button" class="pure-icon-btn mode-icon-btn" data-mode="single" title="طالب واحد فقط" aria-label="طالب واحد فقط">
+                  <i data-lucide="user-check" style="width:24px; height:24px;"></i>
+                </button>
+                <button type="button" class="pure-icon-btn mode-icon-btn highlight-achievers" data-mode="top_achievers" title="المتفوقين والمميزين" aria-label="المتفوقين والمميزين">
+                  <i data-lucide="sparkles" style="width:24px; height:24px;"></i>
+                </button>
+              </div>
+              <span class="mode-selected-label" id="modeSelectedLabel">جميع الطلاب</span>
+            </div>
+
+            <div class="panel-section filter-row" id="circleSelectRow">
+              <label class="section-label">اختر الحلقة القرآنية:</label>
+              <select id="circleSelect" class="form-select">
+                <option value="all">كل الحلقات</option>
+              </select>
+            </div>
+
+            <div class="panel-section filter-row" id="singleStudentSelectRow" style="display:none;">
+              <label class="section-label">اختر الطالب:</label>
+              <select id="studentSelect" class="form-select">
+                <option value="">اختر طالباً...</option>
+              </select>
+            </div>
+
+            <!-- Top Achievers Criteria -->
+            <div class="panel-section achievers-subpanel" id="achieversSubpanel" style="display:none;">
+              <label class="section-label">معيار التفوق والتميز:</label>
+              <div class="criteria-grid">
+                <label class="criteria-card active">
+                  <input type="radio" name="achieverCriteria" value="top_sard" checked>
+                  <div class="criteria-body">
+                    <strong>📖 الأكثر حفظاً وسرداً</strong>
+                    <small>أعلى عدد أوجه وسور منجزة</small>
+                  </div>
+                </label>
+                <label class="criteria-card">
+                  <input type="radio" name="achieverCriteria" value="top_exams">
+                  <div class="criteria-body">
+                    <strong>🏆 الأوائل في الاختبارات</strong>
+                    <small>الحاصلون على 85% فأعلى أو الدرجات التامة</small>
+                  </div>
+                </label>
+                <label class="criteria-card">
+                  <input type="radio" name="achieverCriteria" value="top_memo">
+                  <div class="criteria-body">
+                    <strong>🌟 تقييم ممتاز في الحفظ</strong>
+                    <small>أصحاب التقييمات الشهرية المتميزة</small>
+                  </div>
+                </label>
+                <label class="criteria-card">
+                  <input type="radio" name="achieverCriteria" value="top_attendance">
+                  <div class="criteria-body">
+                    <strong>⏱️ المواظبة وعدم الغياب</strong>
+                    <small>الطلاب الأكثر التزاماً بالحضور الكامل</small>
+                  </div>
+                </label>
+              </div>
+
+              <div class="timeframe-row" style="margin-top: 8px;">
+                <label class="section-label">النطاق الزمني للتفوق:</label>
+                <select id="timeframeSelect" class="form-select">
+                  <option value="month" selected>خلال الشهر الحالي</option>
+                  <option value="term">خلال الفصل الدراسي</option>
+                  <option value="year">خلال العام كاملاً</option>
+                </select>
+              </div>
+
+              <div class="filter-flex-row" id="monthYearFilterRow">
+                <div class="form-group flex-1">
+                  <label class="form-label-sm">الشهر:</label>
+                  <select id="monthSelect" class="form-select-sm">
+                    <option value="all">كل الشهور</option>
+                  </select>
+                </div>
+                <div class="form-group flex-1">
+                  <label class="form-label-sm">السنة:</label>
+                  <select id="yearSelect" class="form-select-sm"></select>
+                </div>
+                <div class="form-group flex-1">
+                  <label class="form-label-sm">العدد الأقصى:</label>
+                  <select id="limitSelect" class="form-select-sm">
+                    <option value="10">أفضل 10 طلاب</option>
+                    <option value="20" selected>أفضل 20 طالباً</option>
+                    <option value="50">أفضل 50 طالباً</option>
+                    <option value="500">جميع المستحقين</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Students List Summary -->
+            <div class="panel-section">
+              <div class="students-summary-bar">
+                <span class="students-count-badge" id="studentsCountBadge">0 طلاب محددين</span>
+                <button type="button" class="pure-icon-btn" id="refreshStudentsBtn" title="تحديث القائمة" aria-label="تحديث القائمة">
+                  <i data-lucide="refresh-cw" style="width:18px; height:18px; color:var(--cert-primary);"></i>
+                </button>
+              </div>
+              <div class="student-search-wrap">
+                <i data-lucide="search" style="width:16px; height:16px; color:var(--cert-text-muted);"></i>
+                <input type="search" id="studentSearchInput" class="student-search-input" placeholder="ابحث باسم الطالب أو الحلقة..." autocomplete="off">
+              </div>
+              <div class="students-pill-preview" id="studentsPillPreview"></div>
+            </div>
+          </div>
+
+          <!-- TAB 5: التصدير والمشاركة (Export & Share) -->
+          <div class="sheet-tab-panel" id="tabPanelExport">
+            <div class="panel-section">
+              <label class="section-label">خيارات التصدير عالي الدقة (300 DPI):</label>
+              
+              <div class="pure-export-actions-bar">
+                <button type="button" class="pure-icon-btn export-action-icon export-icon-green" id="btnShareMobile" title="مشاركة فورية (واتساب / هاتف)" aria-label="مشاركة واتساب">
+                  <i data-lucide="share-2" style="width:28px; height:28px;"></i>
+                </button>
+                <button type="button" class="pure-icon-btn export-action-icon export-icon-gold" id="btnDownloadSinglePng" title="تنزيل صورة PNG عالية الدقة (300 DPI)" aria-label="تنزيل PNG">
+                  <i data-lucide="image" style="width:28px; height:28px;"></i>
+                </button>
+                <button type="button" class="pure-icon-btn export-action-icon export-icon-red" id="btnDownloadSinglePdf" title="تنزيل كملف PDF جاهز للطباعة" aria-label="تنزيل PDF">
+                  <i data-lucide="file-down" style="width:28px; height:28px;"></i>
+                </button>
+                <button type="button" class="pure-icon-btn export-action-icon export-icon-amber" id="btnDownloadBatchZip" title="تصدير حزمة ZIP لجميع الطلاب" aria-label="تصدير ZIP">
+                  <i data-lucide="archive" style="width:28px; height:28px;"></i>
+                </button>
+                <button type="button" class="pure-icon-btn export-action-icon export-icon-purple" id="btnDownloadBatchPdf" title="تصدير ملف PDF مجمع لكل الطلاب" aria-label="تصدير PDF مجمع">
+                  <i data-lucide="files" style="width:28px; height:28px;"></i>
+                </button>
+                <button type="button" class="pure-icon-btn export-action-icon export-icon-blue" id="btnPrintDirect" title="طباعة مباشرة" aria-label="طباعة">
+                  <i data-lucide="printer" style="width:28px; height:28px;"></i>
+                </button>
+              </div>
+
+              <!-- Explanatory Guide -->
+              <div class="export-guide-list">
+                <div class="export-guide-item">
+                  <span class="guide-dot dot-green"></span>
+                  <div class="guide-text">
+                    <strong>مشاركة فورية</strong>
+                    <small>إرسال مباشر عبر تطبيقات الهاتف لأولياء الأمور</small>
+                  </div>
+                </div>
+                <div class="export-guide-item">
+                  <span class="guide-dot dot-gold"></span>
+                  <div class="guide-text">
+                    <strong>تنزيل صورة PNG</strong>
+                    <small>صورة فائقة الجودة بدقة 3508×2480 (300 DPI)</small>
+                  </div>
+                </div>
+                <div class="export-guide-item">
+                  <span class="guide-dot dot-red"></span>
+                  <div class="guide-text">
+                    <strong>تنزيل ملف PDF</strong>
+                    <small>مقاس A4 أفقي جاهز لمطابع الشهادات</small>
+                  </div>
+                </div>
+                <div class="export-guide-item">
+                  <span class="guide-dot dot-amber"></span>
+                  <div class="guide-text">
+                    <strong>تصدير حزمة مجمعة (ZIP)</strong>
+                    <small id="batchCountHint">تحميل شهادات جميع الطلاب دفعة واحدة</small>
+                  </div>
+                </div>
+                <div class="export-guide-item">
+                  <span class="guide-dot dot-purple"></span>
+                  <div class="guide-text">
+                    <strong>ملف PDF مجمع للطباعة</strong>
+                    <small>دمج شهادات جميع الطلاب المحددين في ملف PDF واحد</small>
+                  </div>
+                </div>
+                <div class="export-guide-item">
+                  <span class="guide-dot dot-blue"></span>
+                  <div class="guide-text">
+                    <strong>طباعة فورية</strong>
+                    <small>إرسال الشهادة الحالية مباشرة للطابعة</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div> <!-- /studio-workspace -->
+
+    <!-- Android Bottom Navigation Bar -->
+    <nav class="android-bottom-nav" id="androidBottomNav" aria-label="التنقل السفلي">
+      <button type="button" class="pure-icon-btn bottom-nav-item active" data-target="Templates" title="القوالب" aria-label="القوالب">
+        <i data-lucide="palette" style="width:24px; height:24px;"></i>
+      </button>
+      <button type="button" class="pure-icon-btn bottom-nav-item" data-target="Typography" title="إعدادات النص" aria-label="إعدادات النص">
+        <i data-lucide="sliders" style="width:24px; height:24px;"></i>
+      </button>
+      <button type="button" class="pure-icon-btn bottom-nav-item" data-target="Students" title="الطلاب" aria-label="الطلاب">
+        <i data-lucide="users" style="width:24px; height:24px;"></i>
+      </button>
+      <button type="button" class="pure-icon-btn bottom-nav-item" data-target="Export" title="التصدير" aria-label="التصدير">
+        <i data-lucide="download" style="width:24px; height:24px;"></i>
+      </button>
+    </nav>
+
+    </main>
+  </div>
+
+  <!-- Hidden Printable Container -->
+  <div id="printContainer" class="print-container" style="display:none;"></div>
+
+  <!-- Toast Notification System -->
+  <div id="certToast" class="cert-toast"></div>
+
+  <!-- Quick Inline Element Text Editor Modal (Pure Icons) -->
+  <div id="textEditModal" class="text-edit-modal" style="display:none;">
+    <div class="text-edit-card">
+      <div class="text-edit-header">
+        <span class="text-edit-title">تعديل النص</span>
+        <button type="button" class="pure-icon-btn" id="closeTextEditModalBtn" title="إغلاق" aria-label="إغلاق">
+          <i data-lucide="x" style="width:18px; height:18px;"></i>
+        </button>
+      </div>
+      <textarea id="quickEditTextInput" class="form-textarea" rows="3" placeholder="اكتب أو عدل النص هنا مباشرة..."></textarea>
+      
+      <div class="modal-mentions-bar">
+        <div class="modal-mentions-chips" id="modalMentionsChips">
+          <button type="button" class="mini-mention-pill" data-insert="{{اسم_الطالب}}" title="اسم الطالب">اسم الطالب</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{العلامة_النهائية}}" title="العلامة النهائية">العلامة النهائية</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{التقدير}}" title="التقدير">التقدير</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{اسم_الحلقة}}" title="اسم الحلقة">اسم الحلقة</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{اسم_المعلم}}" title="اسم المعلم">اسم المعلم</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{التاريخ_الهجري}}" title="التاريخ الهجري">التاريخ الهجري</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{التاريخ_الميلادي}}" title="التاريخ الميلادي">التاريخ الميلادي</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{العام_الدراسي}}" title="العام الدراسي">العام الدراسي</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{علامة_الفصل_الأول}}" title="علامة الفصل الأول">الفصل الأول</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{علامة_الفصل_الثاني}}" title="علامة الفصل الثاني">الفصل الثاني</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{علامة_الشهر}}" title="علامة الشهر">علامة الشهر</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{أوجه_السرد}}" title="أوجه السرد">أوجه السرد</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{نسبة_الحضور}}" title="نسبة المواظبة">نسبة المواظبة</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{رقم_الطالب}}" title="رقم الطالب">رقم الطالب</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{اسم_المدير}}" title="اسم المدير">اسم المدير</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{اسم_المدرسة}}" title="اسم المدرسة">اسم المدرسة</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{درجة_الحفظ}}" title="درجة الحفظ">درجة الحفظ</button>
+          <button type="button" class="mini-mention-pill" data-insert="{{نص_التكريم}}" title="نص التكريم">نص التكريم</button>
+        </div>
+      </div>
+
+      <div class="text-edit-actions">
+        <button type="button" class="btn-modal-save-icon" id="saveQuickEditTextBtn" title="حفظ التعديلات" aria-label="حفظ">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Export Progress Modal -->
+  <div id="batchExportModal" class="batch-export-modal" style="display:none;">
+    <div class="batch-export-card">
+      <div class="batch-export-header">
+        <strong id="batchExportTitle">جاري تجهيز الشهادات...</strong>
+        <span id="batchExportProgressText" class="batch-progress-count">0 / 0</span>
+      </div>
+      <div class="batch-progress-track">
+        <div id="batchExportProgressFill" class="batch-progress-fill" style="width:0%;"></div>
+      </div>
+      <small id="batchExportStudentName" class="batch-student-sub">يرجى الانتظار وعدم إغلاق الصفحة</small>
+      <div class="batch-export-footer">
+        <button type="button" id="cancelBatchExportBtn" class="panel-sub-btn danger">
+          <i data-lucide="x-circle" style="width:16px; height:16px;"></i>
+          <span>إلغاء العملية</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="mobile-db.js?v=2.0"></script>
+  <script src="mobile_bottom_nav.js?v=2.0"></script>
+  <script src="firebase-client.js?v=3.0"></script>
+  <!-- Certificates Studio Core JS -->
+  <script src="certificates.js?v=2.0"></script>
+</body>
+</html>

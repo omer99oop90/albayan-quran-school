@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="">
+  <title>المزيد من الخيارات - مدرسة البيان</title>
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dark_theme.css?v=2.2">
+  <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+
+  <style>
+    :root {
+      --more-bg: var(--bg, #f8fafc);
+      --more-card-bg: var(--card-bg, #ffffff);
+      --more-text: var(--text, #0f172a);
+      --more-muted: var(--muted, #64748b);
+      --more-border: var(--line, #e2e8f0);
+    }
+
+    body {
+      background: var(--more-bg);
+      color: var(--more-text);
+      font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    .more-page-container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 20px 90px 20px;
+    }
+
+    .more-header {
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--more-border);
+    }
+
+    .more-brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(37, 99, 235, 0.08);
+      color: #2563eb;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      border: 1px solid rgba(37, 99, 235, 0.15);
+    }
+
+    .more-title {
+      font-size: 26px;
+      font-weight: 900;
+      margin: 0 0 6px 0;
+      color: var(--more-text);
+      letter-spacing: -0.5px;
+    }
+
+    .more-subtitle {
+      font-size: 14px;
+      color: var(--more-muted);
+      margin: 0;
+    }
+
+    /* Options Grid */
+    .more-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .more-card-link {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 20px;
+      background: var(--more-card-bg);
+      border: 1px solid var(--more-border);
+      border-radius: 16px;
+      text-decoration: none;
+      color: var(--more-text);
+      box-shadow: none !important;
+      transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .more-card-link:hover {
+      background: var(--input-bg, #f1f5f9);
+      border-color: #0f172a;
+      transform: none;
+    }
+
+    .dark-theme .more-card-link:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: #94a3b8;
+    }
+
+    .more-card-link:active {
+      transform: scale(0.99);
+    }
+
+    .more-card-icon-wrap {
+      width: 50px;
+      height: 50px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .icon-award {
+      background: rgba(217, 119, 6, 0.1);
+      color: #d97706;
+      border: 1px solid rgba(217, 119, 6, 0.2);
+    }
+
+    .icon-users {
+      background: rgba(37, 99, 235, 0.1);
+      color: #2563eb;
+      border: 1px solid rgba(37, 99, 235, 0.2);
+    }
+
+    .icon-settings {
+      background: rgba(147, 51, 234, 0.1);
+      color: #9333ea;
+      border: 1px solid rgba(147, 51, 234, 0.2);
+    }
+
+    .icon-exam {
+      background: rgba(13, 148, 136, 0.1);
+      color: #0d9488;
+      border: 1px solid rgba(13, 148, 136, 0.2);
+    }
+
+    .more-card-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .more-card-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin: 0 0 4px 0;
+      color: var(--more-text);
+    }
+
+    .more-card-desc {
+      font-size: 12.5px;
+      color: var(--more-muted);
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    .more-card-arrow {
+      color: var(--more-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: color 0.18s ease;
+    }
+
+    .more-card-link:hover .more-card-arrow {
+      color: var(--more-text);
+    }
+
+    @media (max-width: 768px) {
+      .more-page-container {
+        padding: 16px 14px 84px 14px;
+      }
+      .more-title {
+        font-size: 22px;
+      }
+      .more-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .more-card-link {
+        padding: 14px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Desktop Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon" style="display:inline-flex; align-items:center; justify-content:center;">
+          <img src="logo.png" alt="شعار مدرسة البيان" style="width:48px; height:48px; object-fit:contain; filter: brightness(0) invert(1);">
+        </span>
+        <div>
+          <h2>مدرسة البيان</h2>
+          <small>لتعليم القرآن الكريم</small>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="circles.html" class="menu-item"><svg style="width:18px; height:18px; vertical-align:middle; fill:currentColor;" viewBox="0 0 100 100"><circle cx="50" cy="22" r="14"/><path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/><path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> الحلقات القرآنية</a>
+        <a href="admin.html" class="menu-item"><i data-lucide="file-text" style="width:18px; height:18px;"></i> إدارة الاختبارات</a>
+        <a href="analytics.html" class="menu-item"><i data-lucide="bar-chart-3" style="width:18px; height:18px;"></i> الإحصائيات المتقدمة</a>
+        <a href="student_cv.html" class="menu-item" id="studentCvMenuLink"><i data-lucide="contact" style="width:18px; height:18px;"></i> السيرة الذاتية للطالب</a>
+        <a href="certificates.html" class="menu-item" id="certificatesMenuLink"><i data-lucide="award" style="width:18px; height:18px;"></i> استوديو الشهادات</a>
+        <a href="users.html" class="menu-item" id="usersMenuLink"><i data-lucide="user-cog" style="width:18px; height:18px;"></i> إدارة المستخدمين</a>
+        <a href="settings.html" class="menu-item"><i data-lucide="settings" style="width:18px; height:18px;"></i> إعدادات الحساب</a>
+        <a href="circles.html" class="menu-item"><i data-lucide="graduation-cap" style="width:18px; height:18px;"></i> الحلقات القرآنية</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info-box">
+          <strong id="loggedUsername">الكادر التعليمي</strong>
+          <small id="loggedRoleBadge">مدرسة البيان</small>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="more-page-container">
+        <!-- Header: No close button, no shadows -->
+        <header class="more-header">
+          <div class="more-brand-badge">
+            <i data-lucide="layers" style="width:15px; height:15px;"></i>
+            <span>اللوحات والإعدادات الإضافية</span>
+          </div>
+          <h1 class="more-title">المزيد من الخيارات</h1>
+          <p class="more-subtitle">الوصول السريع إلى استوديو الشهادات، إدارة الكادر والطلاب، والإعدادات المتقدمة للنظام.</p>
+        </header>
+
+        <!-- Options Grid -->
+        <div class="more-grid">
+          <!-- 1. استوديو الشهادات -->
+          <a href="certificates.html" class="more-card-link" id="linkCertificates">
+            <div class="more-card-icon-wrap icon-award">
+              <i data-lucide="award" style="width:24px; height:24px;"></i>
+            </div>
+            <div class="more-card-content">
+              <h2 class="more-card-title">استوديو الشهادات</h2>
+              <p class="more-card-desc">تصميم وإصدار شهادات التقدير والتفوق للطلاب بأحدث القوالب والخطوط.</p>
+            </div>
+            <div class="more-card-arrow">
+              <i data-lucide="chevron-left" style="width:20px; height:20px;"></i>
+            </div>
+          </a>
+
+          <!-- 2. إدارة المستخدمين والطلاب -->
+          <a href="users.html" class="more-card-link" id="linkUsers">
+            <div class="more-card-icon-wrap icon-users">
+              <i data-lucide="user-cog" style="width:24px; height:24px;"></i>
+            </div>
+            <div class="more-card-content">
+              <h2 class="more-card-title">إدارة المستخدمين وحسابات الطلاب</h2>
+              <p class="more-card-desc">إدارة كادر النظام، المعلمين، المشرفين، وحسابات ورموز الطلاب القرآنية.</p>
+            </div>
+            <div class="more-card-arrow">
+              <i data-lucide="chevron-left" style="width:20px; height:20px;"></i>
+            </div>
+          </a>
+
+          <!-- 3. سجل العمليات والتعديلات -->
+          <a href="logs.html" class="more-card-link" id="linkLogs">
+            <div class="more-card-icon-wrap icon-users" style="background:rgba(37, 99, 235, 0.1); color:#2563eb;">
+              <i data-lucide="activity" style="width:24px; height:24px;"></i>
+            </div>
+            <div class="more-card-content">
+              <h2 class="more-card-title">سجل العمليات والتعديلات</h2>
+              <p class="more-card-desc">استعراض إحصائيات وحالات التعديل والمزامنة والنشاط بدقة وبدون رسائل منبثقة.</p>
+            </div>
+            <div class="more-card-arrow">
+              <i data-lucide="chevron-left" style="width:20px; height:20px;"></i>
+            </div>
+          </a>
+
+          <!-- 3.5. الربط بالسيرفر المحلي (LAN Server) -->
+          <a href="settings.html?open=lan-server" class="more-card-link" id="linkLanServer" style="border-color: rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), transparent);">
+            <div class="more-card-icon-wrap" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.25);">
+              <i data-lucide="wifi" style="width:24px; height:24px;"></i>
+            </div>
+            <div class="more-card-content">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <h2 class="more-card-title" style="margin:0;">الربط بالسيرفر المحلي (LAN)</h2>
+                <span id="moreLanBadge" style="font-size:11px; padding:2px 8px; border-radius:999px; background:#10b981; color:#fff; font-weight:800;">اختياري</span>
+              </div>
+              <p class="more-card-desc">ربط التطبيق بجهاز الكمبيوتر في المدرسة لمزامنة الدرجات، أو المتابعة بوضع الجوال بدون خادم.</p>
+            </div>
+            <div class="more-card-arrow" style="color: #10b981;">
+              <i data-lucide="chevron-left" style="width:20px; height:20px;"></i>
+            </div>
+          </a>
+
+          <!-- 4. إعدادات الحساب -->
+          <a href="settings.html" class="more-card-link" id="linkSettings">
+            <div class="more-card-icon-wrap icon-settings">
+              <i data-lucide="settings" style="width:24px; height:24px;"></i>
+            </div>
+            <div class="more-card-content">
+              <h2 class="more-card-title">إعدادات الحساب والمظهر</h2>
+              <p class="more-card-desc">تخصيص الملف الشخصي، المظهر الليلي، وكلمة المرور وخيارات النظام.</p>
+            </div>
+            <div class="more-card-arrow">
+              <i data-lucide="chevron-left" style="width:20px; height:20px;"></i>
+            </div>
+          </a>
+
+          <!-- 5. صفحة الحلقات القرآنية -->
+          <a href="circles.html" class="more-card-link" id="linkExamPortal">
+            <div class="more-card-icon-wrap icon-exam">
+              <i data-lucide="graduation-cap" style="width:24px; height:24px;"></i>
+            </div>
+            <div class="more-card-content">
+              <h2 class="more-card-title">الحلقات القرآنية</h2>
+              <p class="more-card-desc">لوحة المتابعة الشاملة للطلاب، تسجيل الدرجات، والمواظبة اليومية.</p>
+            </div>
+            <div class="more-card-arrow">
+              <i data-lucide="chevron-left" style="width:20px; height:20px;"></i>
+            </div>
+          </a>
+
+          <!-- 6. تسجيل الخروج -->
+          <div class="more-card-link" id="linkLogout" onclick="handleLogout()" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.03); cursor:pointer;">
+            <div class="more-card-icon-wrap" style="background: rgba(239, 68, 68, 0.1); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.2);">
+              <i data-lucide="log-out" style="width:24px; height:24px;"></i>
+            </div>
+            <div class="more-card-content">
+              <h2 class="more-card-title" style="color: #dc2626;">تسجيل الخروج</h2>
+              <p class="more-card-desc">الخروج من الحساب الحالي والعودة إلى شاشة تسجيل الدخول.</p>
+            </div>
+            <div class="more-card-arrow" style="color: #dc2626;">
+              <i data-lucide="chevron-left" style="width:20px; height:20px;"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <script src="mobile_bottom_nav.js?v=2.0"></script>
+  <script src="firebase-client.js?v=3.0"></script>
+  <script>
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>

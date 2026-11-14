@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="">
+  <title>السيرة الذاتية وبطاقة الطالب - مدرسة البيان لتعليم القرآن</title>
+
+  <!-- Base styles -->
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css?v=2.1">
+  <link rel="stylesheet" href="dark_theme.css?v=1.0">
+  
+  <!-- Base Layout Styles (Desktop vs Mobile) -->
+  <link rel="stylesheet" media="screen and (min-width: 769px)" href="circles_desktop.css?v=5.0">
+  <link rel="stylesheet" media="screen and (max-width: 768px)" href="circles.css?v=5.0">
+
+  <!-- Mobile Bottom Navigation Styles -->
+  <link rel="stylesheet" href="mobile_bottom_nav.css?v=1.0">
+  
+  <!-- Page Specific Styles -->
+  <link rel="stylesheet" href="student_cv.css?v=6.5">
+
+  <!-- Google Fonts: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+</head>
+<body>
+  <div class="bg-shape bg-one"></div>
+  <div class="bg-shape bg-two"></div>
+
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon" style="display:inline-flex; align-items:center; justify-content:center;"><img src="logo.png" alt="شعار مدرسة البيان" style="width:48px; height:48px; object-fit:contain; filter: brightness(0) invert(1);"></span>
+        <div>
+          <h2>مدرسة البيان</h2>
+          <small>لتعليم القرآن الكريم</small>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="circles.html" class="menu-item"><svg style="width:18px; height:18px; vertical-align:middle; fill:currentColor;" viewBox="0 0 100 100"><circle cx="50" cy="22" r="14"/><path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/><path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> الحلقات القرآنية</a>
+        <a href="admin.html" class="menu-item"><i data-lucide="file-text" style="width:18px; height:18px;"></i> إدارة الاختبارات</a>
+        <a href="analytics.html" class="menu-item"><i data-lucide="bar-chart-3" style="width:18px; height:18px;"></i> الإحصائيات المتقدمة</a>
+        <a href="student_cv.html" class="menu-item active" id="studentCvMenuLink"><i data-lucide="contact" style="width:18px; height:18px;"></i> السيرة الذاتية للطالب</a>
+        <a href="certificates.html" class="menu-item" id="certificatesMenuLink"><i data-lucide="award" style="width:18px; height:18px;"></i> استوديو الشهادات</a>
+        <a href="users.html" class="menu-item" id="usersMenuLink"><i data-lucide="user-cog" style="width:18px; height:18px;"></i> إدارة المستخدمين</a>
+        <a href="settings.html" class="menu-item"><i data-lucide="settings" style="width:18px; height:18px;"></i> إعدادات الحساب</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info-box">
+          <strong id="loggedUsername">مشرف النظام</strong>
+          <small>صلاحيات إدارية كاملة</small>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <div id="alertBox" class="alert-box ok" style="display:none;"></div>
+
+      <!-- Mobile Top Navigation Header -->
+      <div class="mobile-top-bar" id="cvMobileTopBar">
+        <span class="mobile-brand-title">
+          <i data-lucide="contact" style="width:18px; height:18px; color:#38bdf8;"></i>
+          بطاقة الطالب
+        </span>
+      </div>
+
+      <!-- Top Control & Search Bar -->
+      <section class="cv-control-bar-minimal">
+        <div class="cv-search-group-minimal">
+          <div class="cv-search-input-wrap">
+            <i data-lucide="search" class="cv-search-icon"></i>
+            <input type="text" id="searchStudentCv" class="cv-search-input" placeholder="ابحث باسم الطالب أو اضغط للاختيار من القائمة..." autocomplete="off" oninput="onSearchInput(this.value)" onfocus="onSearchFocus()" onblur="onSearchBlur()">
+            <button type="button" class="cv-search-toggle-btn" id="btnToggleStudentList" onclick="toggleStudentListDropdown(event)" onpointerdown="event.stopPropagation(); toggleStudentListDropdown(event);" title="عرض قائمة الطلاب" aria-label="عرض قائمة الطلاب" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); background:transparent; border:none; box-shadow:none; color:var(--cv-muted, #64748b); cursor:pointer; padding:6px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; outline:none; -webkit-tap-highlight-color:transparent; z-index:2;">
+              <i data-lucide="chevron-down" style="width:18px; height:18px;"></i>
+            </button>
+            <div id="cvSearchDropdown" class="cv-search-dropdown" style="display:none;"></div>
+          </div>
+        </div>
+
+        <div class="cv-icons-actions">
+          <button type="button" id="topSaveCvBtn" class="btn-icon-pure save-icon-btn" onclick="saveActiveCv()" title="حفظ التعديلات (Ctrl+S)">
+            <i data-lucide="save" style="width:19px; height:19px;"></i>
+            <span id="topUnsavedDot" class="unsaved-dot-pure" style="display:none;"></span>
+            <span class="btn-action-label">حفظ</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Monthly Evaluation Filter & Selector Bar -->
+      <section class="cv-month-bar" id="cvMonthBar">
+        <div class="cv-month-info">
+          <div class="cv-month-icon-wrap">
+            <i data-lucide="calendar" style="width:20px; height:20px; color:#2563eb;"></i>
+          </div>
+          <div class="cv-month-text-wrap">
+            <span class="cv-month-badge-label">محدد السجل الشهري للطالب:</span>
+            <strong id="cvActiveMonthLabel" class="cv-active-month-title">صفر 1448 هـ</strong>
+          </div>
+        </div>
+
+        <div class="cv-month-controls">
+          <div class="date-filter-box" id="periodFilterBox" onclick="openCvDatePicker(event)" style="cursor:pointer; display:inline-flex; gap:8px; align-items:center; background:var(--card, #ffffff); padding:6px 14px; border:1px solid var(--cv-border, #cbd5e1); border-radius:12px; box-shadow:none !important; transition:all 0.2s ease;">
+            <span id="periodIconContainer" style="display:inline-flex; align-items:center; justify-content:center; color:var(--primary, #2563eb); flex-shrink:0; background:transparent !important; border:none !important;">
+              <svg id="periodIconSvg" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </span>
+            <input type="hidden" id="filterMonth" value="صفر">
+            <div id="filterMonthTrigger" class="hijri-primary" style="font-weight:800; font-size:14px; user-select:none; min-width:45px; text-align:center;">
+              صفر
+            </div>
+            <span class="date-sep" id="dateFilterSep" style="color:var(--cv-muted, #94a3b8); font-weight:bold;">|</span>
+            <input type="hidden" id="filterYear" value="1448">
+            <div id="filterYearTrigger" class="hijri-primary" style="font-weight:800; font-size:14px; user-select:none; min-width:50px; text-align:center;">
+              1448 هـ
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Student Card Display & Inline Editor -->
+      <div class="student-card-wrapper" id="studentCardContainer">
+        <div class="student-card" id="studentCardMain">
+          
+          <!-- Header -->
+          <header class="header">
+            <div class="header-content-group">
+              <div class="header-icon">
+                <svg viewBox="0 0 24 24">
+                  <rect x="5" y="3" width="14" height="18" rx="2"/>
+                  <circle cx="12" cy="9" r="2.5"/>
+                  <path d="M8.5 16c.8-2 2.2-3 3.5-3s2.7 1 3.5 3"/>
+                </svg>
+              </div>
+
+              <div class="header-content">
+                <div class="header-title-row">
+                  <h1>بطاقة الطالب</h1>
+                  <span class="card-month-pill" id="cvCardMonthPill" title="الشهر المسجل للبطاقة">
+                    <i data-lucide="calendar" style="width:13px; height:13px;"></i>
+                    <span id="cvCardMonthText">أغسطس 2026</span>
+                  </span>
+                </div>
+                <p id="cvStudentCardSub">سجل معلومات الطالب ونتائج التقييم الشامل</p>
+              </div>
+            </div>
+
+            <div class="card-edit-badge" title="يمكنك النقر على أي خانة لتعديلها مباشرة">
+              <i data-lucide="edit-3" style="width:13px; height:13px;"></i>
+              <span>قابلة للتعديل المباشر</span>
+            </div>
+          </header>
+
+          <main class="content">
+            
+            <!-- 1. معلومات الطالب الأساسية -->
+            <section class="section">
+              <div class="section-title">
+                <span>معلومات الطالب</span>
+                <small class="section-hint">انقر للتعديل</small>
+              </div>
+              <div class="section-body">
+                <div class="info-grid">
+                  
+                  <div class="info-item">
+                    <span class="label">الاسم:</span>
+                    <div class="value-wrap">
+                      <input type="text" id="cvInfoName" class="cv-inline-input" placeholder="اسم الطالب الثلاثي..." oninput="markCvChanged()">
+                    </div>
+                  </div>
+
+                  <div class="info-item">
+                    <span class="label">تاريخ الميلاد:</span>
+                    <div class="value-wrap">
+                      <input type="text" id="cvInfoBirth" class="cv-inline-input" placeholder="غير متوفر" oninput="markCvChanged()">
+                    </div>
+                  </div>
+
+                  <div class="info-item">
+                    <span class="label">الجوال:</span>
+                    <div class="value-wrap value-icon">
+                      <input type="text" id="cvInfoPhone" class="cv-inline-input" placeholder="غير متوفر" oninput="markCvChanged()">
+                      <svg class="small-icon" viewBox="0 0 24 24">
+                        <rect x="7" y="2.5" width="10" height="19" rx="2"/>
+                        <path d="M10 18h4"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div class="info-item">
+                    <span class="label">رقم ولي الأمر:</span>
+                    <div class="value-wrap">
+                      <input type="text" id="cvInfoGuardianPhone" class="cv-inline-input" placeholder="غير متوفر" oninput="markCvChanged()">
+                    </div>
+                  </div>
+
+                  <div class="info-item full">
+                    <span class="label">الدراسة:</span>
+                    <div class="value-wrap value-icon">
+                      <input type="text" id="cvInfoStudyLevel" class="cv-inline-input" placeholder="غير متوفر" oninput="markCvChanged()">
+                      <svg class="small-icon" viewBox="0 0 24 24">
+                        <path d="M3 7l9-4 9 4-9 4-9-4z"/>
+                        <path d="M6 9v5c2.5 2 9.5 2 12 0V9"/>
+                        <path d="M21 8v6"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </section>
+
+            <!-- 2. معلومات الحلقة والمعلم -->
+            <section class="section">
+              <div class="section-title">
+                <span>معلومات الحلقة</span>
+                <small class="section-hint">انقر للتعديل</small>
+              </div>
+              <div class="section-body">
+                <div class="loop-grid">
+                  
+                  <div class="loop-item">
+                    <span class="label">الحلقة:</span>
+                    <div class="value-wrap value-icon">
+                      <input type="text" id="cvCircleName" class="cv-inline-input" placeholder="غير متوفر" oninput="markCvChanged()">
+                      <svg class="small-icon" viewBox="0 0 24 24">
+                        <circle cx="9" cy="8" r="3"/>
+                        <circle cx="17" cy="9" r="2.5"/>
+                        <path d="M3.5 20c.7-4 2.5-6 5.5-6s4.8 2 5.5 6"/>
+                        <path d="M14 15c2.5-.2 4.5 1.4 5 5"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div class="loop-item">
+                    <span class="label">مستوى الحلقة:</span>
+                    <div class="value-wrap value-icon">
+                      <input type="text" id="cvMemorizationLevel" class="cv-inline-input" placeholder="غير متوفر" oninput="markCvChanged()">
+                      <svg class="small-icon" viewBox="0 0 24 24">
+                        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/>
+                        <path d="M4 5.5v15"/>
+                        <path d="M8 7h8"/>
+                        <path d="M8 11h8"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div class="loop-item">
+                    <span class="label">المعلم:</span>
+                    <div class="value-wrap value-icon">
+                      <input type="text" id="cvTeacherName" class="cv-inline-input" placeholder="غير متوفر" oninput="onTeacherNameInput()">
+                      <svg class="small-icon" viewBox="0 0 24 24">
+                        <circle cx="12" cy="8" r="3"/>
+                        <path d="M5 21c.7-4.5 2.8-7 7-7s6.3 2.5 7 7"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </section>
+
+            <!-- 3. المادة الفصلية / القرآن والاختبار -->
+            <section class="section">
+              <div class="section-title">
+                <span>المادة الفصلية / القرآن</span>
+                <small class="section-hint">انقر لتعديل المقرر أو تاريخ ونتيجة الاختبار</small>
+              </div>
+              <div class="section-body">
+                <div class="exam-box">
+                  <div class="exam-grid">
+                    
+                    <div class="exam-item exam-item-material">
+                      <span class="exam-label">المادة المدروسة</span>
+                      <div class="custom-subject-dropdown" id="customSubjectDropdown">
+                        <div class="custom-subject-trigger" onclick="toggleSubjectDropdownMenu(event)" id="customSubjectTrigger">
+                          <span id="customSubjectSelectedText">التفسير</span>
+                          <i data-lucide="chevron-down" class="custom-subject-chevron"></i>
+                        </div>
+                        <div class="custom-subject-menu" id="customSubjectMenu" style="display:none;">
+                          <div class="custom-subject-list" id="customSubjectList"></div>
+                          <div class="custom-subject-add-container" onclick="event.stopPropagation()">
+                            <button type="button" class="btn-subject-show-add" id="btnShowAddSubject" onclick="toggleInlineAddSubjectInput(true)">
+                              <i data-lucide="plus" style="width:14px; height:14px;"></i>
+                              <span>إضافة مادة جديدة</span>
+                            </button>
+                            <div class="custom-subject-add-row" id="customSubjectAddRow" style="display:none;">
+                              <input type="text" id="inputNewSubjectName" placeholder="اسم المادة..." onkeydown="if(event.key==='Enter'){event.preventDefault();addNewSubjectInline();}">
+                              <button type="button" class="btn-subject-item-add" onclick="addNewSubjectInline()" title="تأكيد الإضافة">
+                                <i data-lucide="check" style="width:14px; height:14px;"></i>
+                              </button>
+                              <button type="button" class="btn-subject-item-cancel" onclick="toggleInlineAddSubjectInput(false)" title="إلغاء">
+                                <i data-lucide="x" style="width:13px; height:13px;"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <input type="hidden" id="cvStudiedMaterial" value="">
+                    </div>
+
+                    <div class="exam-item">
+                      <span class="exam-label">وصف المادة</span>
+                      <div class="exam-value value-icon">
+                        <input type="text" id="cvStudiedMaterialDesc" class="cv-inline-input" placeholder="مثال: سورة النبأ إلى الناس، أحكام التلاوة..." oninput="onMaterialDescInput()">
+                        <svg class="small-icon" viewBox="0 0 24 24">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                          <line x1="16" y1="13" x2="8" y2="13"/>
+                          <line x1="16" y1="17" x2="8" y2="17"/>
+                          <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div class="exam-item">
+                      <span class="exam-label">نتيجة الامتحان</span>
+                      <div class="result">
+                        <div class="cv-score-input-wrap">
+                          <span class="pct-sign">%</span>
+                          <input type="number" id="cvExamScore" class="cv-inline-input cv-score-input" min="0" max="100" step="1" value="92" oninput="onExamScoreInput()" title="عدل الدرجة لتتحدث الدائرة تلقائياً">
+                        </div>
+                        <span class="progress-ring" id="cvProgressRing"></span>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 4. نقاط التقييم التفاعلية -->
+            <section class="section">
+              <div class="section-title">
+                <span>نقاط ومحاور التقييم</span>
+                <small class="section-hint">انقر على أي نقطة لتعديلها، أو اضغط إضافة نقطة جديدة</small>
+              </div>
+              <div class="evaluation">
+                
+                <!-- 1. نقاط القوة -->
+                <div class="eval-row strength">
+                  <div class="eval-cat-header">
+                    <div class="eval-cat-title-wrap">
+                      <div class="eval-icon">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M4 18l5-5 3 3 7-8"/>
+                          <path d="M16 8h3v3"/>
+                        </svg>
+                      </div>
+                      <h4 class="eval-cat-title">نقاط القوة</h4>
+                    </div>
+                    <div class="eval-cat-meta">
+                      <span class="eval-count-badge">
+                        <span id="cvStrengthScore" class="cv-score-num-display">3</span>
+                        <span>نقاط</span>
+                      </span>
+                      <button type="button" class="btn-add-point-icon" onclick="addBlankEvalItem('strength')" title="إضافة نقطة قوة">
+                        <i data-lucide="plus" style="width:16px; height:16px;"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="eval-details-container">
+                    <div class="eval-items-list" id="cvStrengthItems"></div>
+                  </div>
+                </div>
+
+                <!-- 2. نقاط الضعف -->
+                <div class="eval-row weakness">
+                  <div class="eval-cat-header">
+                    <div class="eval-cat-title-wrap">
+                      <div class="eval-icon">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M4 7l5 5 3-3 7 8"/>
+                          <path d="M16 17h3v-3"/>
+                        </svg>
+                      </div>
+                      <h4 class="eval-cat-title">نقاط الضعف</h4>
+                    </div>
+                    <div class="eval-cat-meta">
+                      <span class="eval-count-badge">
+                        <span id="cvWeaknessScore" class="cv-score-num-display">2</span>
+                        <span>نقاط</span>
+                      </span>
+                      <button type="button" class="btn-add-point-icon" onclick="addBlankEvalItem('weakness')" title="إضافة نقطة ضعف">
+                        <i data-lucide="plus" style="width:16px; height:16px;"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="eval-details-container">
+                    <div class="eval-items-list" id="cvWeaknessItems"></div>
+                  </div>
+                </div>
+
+                <!-- 3. محاور التطوير -->
+                <div class="eval-row development">
+                  <div class="eval-cat-header">
+                    <div class="eval-cat-title-wrap">
+                      <div class="eval-icon">
+                        <svg viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="8"/>
+                          <circle cx="12" cy="12" r="3"/>
+                          <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                        </svg>
+                      </div>
+                      <h4 class="eval-cat-title">محاور التطوير</h4>
+                    </div>
+                    <div class="eval-cat-meta">
+                      <span class="eval-count-badge">
+                        <span id="cvDevelopmentScore" class="cv-score-num-display">2</span>
+                        <span>نقاط</span>
+                      </span>
+                      <button type="button" class="btn-add-point-icon" onclick="addBlankEvalItem('development')" title="إضافة محور تطوير">
+                        <i data-lucide="plus" style="width:16px; height:16px;"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="eval-details-container">
+                    <div class="eval-items-list" id="cvDevelopmentItems"></div>
+                  </div>
+                </div>
+
+                <!-- 4. الاحتياجات -->
+                <div class="eval-row needs">
+                  <div class="eval-cat-header">
+                    <div class="eval-cat-title-wrap">
+                      <div class="eval-icon">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>
+                        </svg>
+                      </div>
+                      <h4 class="eval-cat-title">الاحتياجات</h4>
+                    </div>
+                    <div class="eval-cat-meta">
+                      <span class="eval-count-badge">
+                        <span id="cvNeedsScore" class="cv-score-num-display">1</span>
+                        <span>نقاط</span>
+                      </span>
+                      <button type="button" class="btn-add-point-icon" onclick="addBlankEvalItem('needs')" title="إضافة احتياج">
+                        <i data-lucide="plus" style="width:16px; height:16px;"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="eval-details-container">
+                    <div class="eval-items-list" id="cvNeedsItems"></div>
+                  </div>
+                </div>
+
+                <!-- 5. الإنجازات والشهادات -->
+                <div class="eval-row achievement">
+                  <div class="eval-cat-header">
+                    <div class="eval-cat-title-wrap">
+                      <div class="eval-icon">
+                        <svg viewBox="0 0 24 24">
+                          <circle cx="12" cy="8" r="6"/>
+                          <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+                        </svg>
+                      </div>
+                      <h4 class="eval-cat-title">الإنجازات والشهادات</h4>
+                    </div>
+                    <div class="eval-cat-meta">
+                      <span class="eval-count-badge">
+                        <span id="cvAchievementScore" class="cv-score-num-display">2</span>
+                        <span>إنجاز</span>
+                      </span>
+                      <button type="button" class="btn-add-point-icon" onclick="addBlankEvalItem('achievement')" title="إضافة إنجاز جديد">
+                        <i data-lucide="plus" style="width:16px; height:16px;"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="eval-details-container">
+                    <div class="eval-items-list" id="cvAchievementItems"></div>
+                  </div>
+                </div>
+
+              </div>
+            </section>
+
+            <!-- 5. ملاحظات المعلم والتوقيع -->
+            <section class="section">
+              <div class="section-body">
+                <div class="teacher-note">
+                  
+                  <div class="note-content">
+                    <div class="note-icon">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+                        <path d="M8 7h8M8 11h8M8 15h5"/>
+                      </svg>
+                    </div>
+                    <div class="note-text" style="flex:1;">
+                      <strong>ملاحظات وتوجيهات المعلم:</strong>
+                      <textarea id="cvTeacherNotes" class="cv-inline-textarea" rows="2" placeholder="أدخل ملاحظات حول مستوى الطالب والتزامه وتوجيهات الحفظ والمراجعة..." oninput="autoGrowTextarea(this); markCvChanged()"></textarea>
+                    </div>
+                  </div>
+
+                  <div class="divider"></div>
+
+                  <div class="signature">
+                    <div class="signature-mark">
+                      ـــــــــ
+                    </div>
+                    <div class="signature-info">
+                      <strong>توقيع المعلم المعتمد:</strong>
+                      <input type="text" id="cvSignatureTeacher" class="cv-inline-input cv-signature-input" placeholder="اسم المعلم للتوقيع..." oninput="markCvChanged()">
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </section>
+
+          </main>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyCardState" class="empty-state-box" style="display:none; text-align:center; padding:60px 20px; background:var(--card-bg, #fff); border-radius:18px; border:1px solid var(--line, #e2e8f0);">
+        <i data-lucide="contact" style="width:48px; height:48px; color:var(--muted); margin-bottom:12px;"></i>
+        <h3 style="color:var(--text); margin-bottom:6px;">لا توجد بطاقة طالب معروضة</h3>
+        <p style="color:var(--muted); font-size:14px; max-width:400px; margin:0 auto 16px;">لم يتم العثور على بطاقات سيرة ذاتية مطابقة لمعايير البحث، أو لم يتم اختيار طالب بعد.</p>
+      </div>
+
+      <!-- Floating Save Bar -->
+      <div id="floatingSaveBar" class="cv-floating-save-bar">
+        <div class="cv-floating-save-text">
+          <span class="pulse-indicator"></span>
+          <span>لديك تعديلات غير محفوظة على البطاقة</span>
+        </div>
+        <div class="cv-floating-save-actions">
+          <button type="button" class="btn-secondary btn-sm" onclick="discardCvChanges()">تراجع</button>
+          <button type="button" class="btn-primary btn-sm" onclick="saveActiveCv()"><i data-lucide="save" style="width:15px; height:15px;"></i> حفظ التعديلات (Ctrl+S)</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- FLOATING ATTACHMENT VIEWER MODAL -->
+  <div id="cvAttachmentViewerModal" class="cv-viewer-overlay" onclick="if(event.target===this) closeFloatingFileViewer()">
+    <div class="cv-viewer-card">
+      <div class="cv-viewer-header">
+        <div class="cv-viewer-title-box">
+          <div class="cv-viewer-badge-icon">
+            <i data-lucide="award" style="width:20px; height:20px;"></i>
+          </div>
+          <div>
+            <h3 class="cv-viewer-title" id="cvViewerTitle">معاينة وثيقة الإنجاز</h3>
+            <p class="cv-viewer-filename" id="cvViewerFilename">شهادة_إتمام_الجزء.pdf</p>
+          </div>
+        </div>
+        <div class="cv-viewer-actions">
+          <a id="cvViewerOpenTabBtn" href="#" target="_blank" class="cv-viewer-btn open-tab" title="فتح في نافذة مستقلة">
+            <i data-lucide="external-link" style="width:15px; height:15px;"></i>
+            <span>فتح في نافذة جديدة</span>
+          </a>
+          <a id="cvViewerDownloadBtn" href="#" download class="cv-viewer-btn download" title="تحميل الملف">
+            <i data-lucide="download" style="width:15px; height:15px;"></i>
+          </a>
+          <button type="button" class="cv-viewer-close-btn" onclick="closeFloatingFileViewer()" title="إغلاق">
+            <i data-lucide="x" style="width:22px; height:22px;"></i>
+          </button>
+        </div>
+      </div>
+      <div class="cv-viewer-body" id="cvViewerBody"></div>
+    </div>
+  </div>
+
+  <input type="file" id="achievementFileInput" style="display:none;" accept=".pdf,image/png,image/jpeg,image/webp,image/gif,.doc,.docx" onchange="handleAchievementFileUpload(event)">
+  <div id="cellPopover" class="popover-dropdown" style="display:none;"></div>
+
+  <script src="albayan_dialog.js?v=2.0"></script>
+  <script src="mobile-db.js?v=3.0"></script>
+  <script src="hijri_date.js?v=3.0"></script>
+  <script src="firebase-client.js?v=3.0"></script>
+  <script src="mobile_bottom_nav.js?v=2.0"></script>
+  <script src="student_cv.js?v=7.0"></script>
+</body>
+</html>

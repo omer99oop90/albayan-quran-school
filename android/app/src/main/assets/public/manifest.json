@@ -1,0 +1,26 @@
+{
+  "name": "مدرسة البيان لتعليم وتدريس القرآن الكريم",
+  "short_name": "البيان",
+  "description": "منظومة إدارة ومتابعة الحلقات القرآنية والطلاب ونتائج الاختبارات والشهادات التكريمية",
+  "start_url": "/circles",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "/static/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

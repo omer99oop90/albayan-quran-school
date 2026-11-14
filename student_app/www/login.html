@@ -7,6 +7,7 @@
   <meta name="csrf-token" content="">
   <title>تسجيل الدخول - نظام مدرسة البيان لتعليم القرآن</title>
   <script src="theme-init.js"></script>
+  <script src="student_common.js?v=1.0"></script>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dark_theme.css?v=1.0">
   <!-- Lucide Icons -->
@@ -428,14 +429,6 @@
           <span>الرئيسية (التحويل التلقائي)</span>
         </a>
       </div>
-
-      <div style="padding: 10px 14px; background: rgba(37, 99, 235, 0.06); border: 1.5px dashed rgba(37, 99, 235, 0.25); border-radius: 14px; text-align: center;">
-        <a href="downloads/AlbayanStudent.apk" download="AlbayanStudent.apk" style="color: #2563eb; font-weight: 800; font-size: 13px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
-          <i data-lucide="smartphone" style="width: 17px; height: 17px;"></i>
-          <span>حمّل تطبيق بيان الطالب للجوال (APK)</span>
-          <i data-lucide="download" style="width: 14px; height: 14px;"></i>
-        </a>
-      </div>
     </div>
   </div>
 
@@ -525,20 +518,6 @@
     let currentAuthUser = null;
     const FB_BASE = "https://bayan-56e77-default-rtdb.asia-southeast1.firebasedatabase.app";
 
-    function normalizeArabicName(name) {
-      if (!name) return "";
-      let s = String(name).trim();
-      s = s.replace(/[\u064B-\u065F\u0670\u0640]/g, ""); // Harakat
-      s = s.replace(/[أإآٱ]/g, "ا");
-      s = s.replace(/[ةه]/g, "ه");
-      s = s.replace(/[ىي]/g, "ي");
-      s = s.replace(/[ؤ]/g, "و");
-      s = s.replace(/[ئ]/g, "ي");
-      s = s.replace(/\bعبد\s+/g, "عبد");
-      s = s.replace(/\bال\s+/g, "ال");
-      return s.split(/\s+/).join(" ").toLowerCase();
-    }
-
     function switchLoginTab(tab) {
       const staffBtn = document.getElementById("tabStaffBtn");
       const studentBtn = document.getElementById("tabStudentBtn");
@@ -614,8 +593,8 @@
       const isDefaultKeyword = (normUser === "admin" || normUser === "مشرف" || normUser === "مدير" || username.toLowerCase() === "admin");
 
       if (matchedStaff) {
-        const expectedCode = String(matchedStaff.code || "123456").trim();
-        if (code !== expectedCode && code !== "123456") {
+        const expectedCode = String(matchedStaff.code || "").trim();
+        if (!expectedCode || code !== expectedCode) {
           alertBox.textContent = "رمز المرور غير صحيح. يرجى التأكد وإعادة المحاولة.";
           alertBox.style.display = "block";
           btn.disabled = false;
@@ -648,17 +627,6 @@
           username,
           "admin",
           "مشرف النظام العام",
-          "staff_token_" + Date.now()
-        );
-        return;
-      }
-
-      // If user typed a custom username with 123456
-      if (code === "123456") {
-        saveSessionAndRedirect(
-          username,
-          "supervisor",
-          username,
           "staff_token_" + Date.now()
         );
         return;
@@ -831,14 +799,9 @@
       const authData = currentAuthUser || {};
       const expectedCode = authData.code ? String(authData.code).trim() : null;
       const customCode = localStorage.getItem("albayan_custom_code_" + verifiedUsername);
+      const activeExpectedCode = customCode || expectedCode;
 
-      if (expectedCode && code !== expectedCode) {
-        alertEl.textContent = "الرمز الرقمي غير صحيح.";
-        alertEl.style.display = "block";
-        btn.disabled = false;
-        return;
-      }
-      if (customCode && code !== customCode) {
+      if (activeExpectedCode && code !== activeExpectedCode) {
         alertEl.textContent = "الرمز الرقمي غير صحيح.";
         alertEl.style.display = "block";
         btn.disabled = false;
@@ -873,12 +836,8 @@
         }
       } catch(e) {}
 
-      // Absolute role separation:
-      if (isStaff) {
-        window.location.href = 'circles.html';
-      } else {
-        window.location.href = 'mymark.html';
-      }
+      // Student app contains mymark.html (circles.html belongs to the Admin app)
+      window.location.href = 'mymark.html';
     }
 
     document.addEventListener("DOMContentLoaded", () => {

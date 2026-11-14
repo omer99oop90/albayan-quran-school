@@ -127,31 +127,33 @@ async function submitExam(isAutoSubmit = false, forceSubmit = false) {
 
   let data = null;
 
-  // 1. Try server submission if server is reachable
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
-    const res = await fetch("/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ student, answers }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
+  // 1. Try server submission if server is reachable (skip in Capacitor serverless mode)
+  if (!window.IS_CAPACITOR_APP) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch("/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student, answers }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
 
-    const contentType = res.headers.get("content-type") || "";
-    if (res.ok && contentType.includes("application/json")) {
-      const serverData = await res.json();
-      if (serverData && serverData.success) {
-        data = serverData;
-      } else if (serverData && serverData.message && (serverData.message.includes("مسجل مسبقاً") || serverData.message.includes("الجلسة"))) {
-        if (btn) btn.disabled = false;
-        showDuplicateSessionModal(student, serverData.message);
-        return;
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        const serverData = await res.json();
+        if (serverData && serverData.success) {
+          data = serverData;
+        } else if (serverData && serverData.message && (serverData.message.includes("مسجل مسبقاً") || serverData.message.includes("الجلسة"))) {
+          if (btn) btn.disabled = false;
+          showDuplicateSessionModal(student, serverData.message);
+          return;
+        }
       }
+    } catch (e) {
+      // Standalone or offline fallback
     }
-  } catch (e) {
-    // Standalone or offline fallback
   }
 
   // 2. Standalone & Offline Local Evaluation Engine
@@ -752,19 +754,21 @@ function closeDuplicateSessionModal() {
 async function fetchExamQuestionsWithFallback() {
   let questionsData = null;
 
-  // Tier 1: Local server endpoint if reachable
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 800);
-    const res = await fetch("/questions", { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        questionsData = normalizeQuestionsPayload(data);
+  // Tier 1: Local server endpoint if reachable (skip in Capacitor serverless mode)
+  if (!window.IS_CAPACITOR_APP) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 800);
+      const res = await fetch("/questions", { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          questionsData = normalizeQuestionsPayload(data);
+        }
       }
-    }
-  } catch (e) {}
+    } catch (e) {}
+  }
 
   // Tier 2: Dedicated Firebase RTDB /active_exam.json (Ultra-fast & exact active exam for mobile)
   if (!questionsData || questionsData.length === 0) {

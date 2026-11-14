@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (localName) {
           studentInput.value = localName;
           if (typeof onNameInput === "function") onNameInput(true);
-        } else {
+        } else if (!window.IS_CAPACITOR_APP) {
           // فحص الجلسة السحابية مع مهلة سريعة (800ms)
           const ctrl = new AbortController();
           const tid = setTimeout(() => ctrl.abort(), 800);
@@ -104,15 +104,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 3. قراءة إعدادات الاختبار النشط إن وجدت (مع دعم السحابة المباشر للجوال)
     try {
       let settings = null;
-      try {
-        const sCtrl = new AbortController();
-        const sTid = setTimeout(() => sCtrl.abort(), 800);
-        const settingsRes = await fetch("/api/settings", { signal: sCtrl.signal });
-        clearTimeout(sTid);
-        if (settingsRes.ok) {
-          settings = await settingsRes.json();
-        }
-      } catch (e) {}
+      if (!window.IS_CAPACITOR_APP) {
+        try {
+          const sCtrl = new AbortController();
+          const sTid = setTimeout(() => sCtrl.abort(), 800);
+          const settingsRes = await fetch("/api/settings", { signal: sCtrl.signal });
+          clearTimeout(sTid);
+          if (settingsRes.ok) {
+            settings = await settingsRes.json();
+          }
+        } catch (e) {}
+      }
 
       // Fallback for mobile app from Firebase RTDB settings.json
       if (!settings) {

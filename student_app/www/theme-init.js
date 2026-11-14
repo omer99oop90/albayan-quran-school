@@ -222,8 +222,8 @@
 
     window.IS_CAPACITOR_APP = isCapacitor;
 
-    // Fetch CSRF token dynamically if missing
-    if (typeof document !== 'undefined') {
+    // Fetch CSRF token dynamically if missing (only on web server, not offline Capacitor)
+    if (typeof document !== 'undefined' && !isCapacitor) {
       try {
         var metaCsrf = document.querySelector('meta[name="csrf-token"]');
         var curToken = metaCsrf ? metaCsrf.getAttribute('content') : '';
@@ -448,14 +448,16 @@
       sessionStorage.clear();
     } catch(e) {}
 
-    try {
-      await fetch('/api/logout', { method: 'POST' });
-    } catch(e) {}
-
     var isCap = window.IS_CAPACITOR_APP || 
                 window.location.protocol === 'file:' || 
                 window.location.origin.includes('capacitor://') || 
                 (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80'));
+
+    if (!isCap) {
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+      } catch(e) {}
+    }
 
     window.location.href = isCap ? 'login.html?logout=1' : '/login?logout=1';
   };

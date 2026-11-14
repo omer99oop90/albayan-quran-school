@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="">
+  <title>إدارة الاختبارات - مدرسة البيان لتعليم القرآن</title>
+  <!-- Base styles -->
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="dark_theme.css?v=7.0">
+  
+  <!-- Base Layout Styles (Desktop vs Mobile) -->
+  <link rel="stylesheet" media="screen and (min-width: 769px)" href="circles_desktop.css?v=5.0">
+  <link rel="stylesheet" media="screen and (max-width: 768px)" href="circles.css?v=5.0">
+  
+  <!-- Page Specific Styles (Desktop vs Mobile) -->
+  <link rel="stylesheet" media="screen and (min-width: 769px)" href="admin_desktop.css?v=5.0">
+  <link rel="stylesheet" media="screen and (max-width: 768px)" href="admin.css?v=5.0">
+  
+  <!-- Mobile Bottom Navigation Styles -->
+  <link rel="stylesheet" href="mobile_bottom_nav.css?v=1.0">
+  <!-- Google Fonts: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+</head>
+
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon" style="display:inline-flex; align-items:center; justify-content:center;"><img src="logo.png" alt="شعار مدرسة البيان" style="width:48px; height:48px; object-fit:contain; filter: brightness(0) invert(1);"></span>
+        <div>
+          <h2>مدرسة البيان</h2>
+          <small>لتعليم القرآن الكريم</small>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="circles.html" class="menu-item"><svg style="width:18px; height:18px; vertical-align:middle; fill:currentColor;" viewBox="0 0 100 100"><circle cx="50" cy="22" r="14"/><path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/><path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> الحلقات القرآنية</a>
+        <a href="admin.html" class="menu-item active"><i data-lucide="file-text" style="width:18px; height:18px;"></i> إدارة الاختبارات</a>
+        <a href="analytics.html" class="menu-item"><i data-lucide="bar-chart-3" style="width:18px; height:18px;"></i> الإحصائيات المتقدمة</a>
+        <a href="student_cv.html" class="menu-item" id="studentCvMenuLink"><i data-lucide="contact" style="width:18px; height:18px;"></i> السيرة الذاتية للطالب</a>
+        <a href="certificates.html" class="menu-item" id="certificatesMenuLink"><i data-lucide="award" style="width:18px; height:18px;"></i> استوديو الشهادات</a>
+        <a href="users.html" class="menu-item" id="usersMenuLink"><i data-lucide="user-cog" style="width:18px; height:18px;"></i> إدارة المستخدمين</a>
+        <a href="settings.html" class="menu-item"><i data-lucide="settings" style="width:18px; height:18px;"></i> إعدادات الحساب</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info-box">
+          <strong id="loggedUsername">كادر المشرفين</strong>
+          <small>إدارة الأسئلة والاختبارات</small>
+        </div>
+        <button type="button" class="btn-danger-outline" onclick="logout()">تسجيل الخروج <i data-lucide="log-out" style="width:16px; height:16px;"></i></button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="content-header">
+        <div>
+          <span style="font-size:12px; font-weight:800; color:var(--admin-primary); background:#eff6ff; padding:4px 12px; border-radius:99px; border:1px solid #bfdbfe; display:inline-flex; align-items:center; gap:4px;">
+            <i data-lucide="sparkles" style="width:14px; height:14px;"></i> لوحة الإدارة الفائقة</span>
+          <h1 style="margin-top:6px;">مركز إدارة وتفعيل الاختبارات وبنك الأسئلة</h1>
+          <p>لوحة تحكم تنفيذية لإنشاء الاختبارات وتفعيل المباشر منها وحقن الأسئلة البرمجية.</p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <button type="button" class="btn-primary" onclick="openCreateExamModal()"><i data-lucide="plus" style="width:18px; height:18px;"></i> إنشاء اختبار جديد</button>
+        </div>
+      </header>
+
+      <div id="alertMsg" class="alert-box" style="display:none;"></div>
+
+      <!-- Section 1: Executive KPI Metrics Bar -->
+      <section class="kpi-grid" aria-label="إحصائيات الاختبارات">
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">إجمالي الاختبارات</span>
+            <strong class="kpi-value" id="kpiTotalExams">0</strong>
+          </div>
+        </div>
+
+        <div class="kpi-card kpi-green">
+          <div class="kpi-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">الاختبار النشط للطلاب</span>
+            <strong class="kpi-value kpi-title-val" id="kpiActiveExamTitle">جاري التحقق...</strong>
+          </div>
+        </div>
+
+        <div class="kpi-card kpi-amber">
+          <div class="kpi-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">مدة الإنجاز المسموحة</span>
+            <strong class="kpi-value" id="kpiActiveExamDuration">0 دقيقة</strong>
+          </div>
+        </div>
+
+        <div class="kpi-card kpi-purple">
+          <div class="kpi-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">أسئلة الاختبار النشط</span>
+            <strong class="kpi-value" id="kpiQuestionsCount">0 أسئلة</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Main Exams Dashboard Grid -->
+      <section class="admin-card" aria-label="قائمة الاختبارات">
+        <div class="card-head" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2><i data-lucide="folder-kanban" style="width:22px; height:22px; vertical-align:-3px;"></i> بنك وقائمة الاختبارات المعتمدة</h2>
+            <p>يمكنك التبديل بين الاختبارات بالنقر على "تفعيل كاختبار نشط" ليصبح هو المباشر للطلاب آلياً.</p>
+          </div>
+        </div>
+
+        <div id="examsGrid" class="exams-grid">
+          <div class="loading-box">جارٍ تحميل قائمة الاختبارات...</div>
+        </div>
+      </section>
+
+      <!-- Section 3: Detailed Exam Editor & Questions Injector Panel -->
+      <section id="examEditorSection" class="editor-container" style="display:none; position:relative;" aria-labelledby="editingExamHeaderTitle">
+        <button type="button" class="close-editor-x" onclick="closeExamEditor()" title="إغلاق التعديل" aria-label="إغلاق التعديل">
+          <i data-lucide="x" style="width:20px; height:20px;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></i>
+        </button>
+
+        <div class="card-head" style="margin-bottom:20px; padding-left:40px;">
+          <h2 id="editingExamHeaderTitle" style="color:var(--admin-primary); font-size:20px; margin:0 0 4px;">
+            <i data-lucide="edit-3" style="width:22px; height:22px; vertical-align:-3px;"></i> تعديل الاختبار وحقن الأسئلة
+          </h2>
+          <p style="margin:0; font-size:13px; color:var(--admin-text-muted);">إدارة إعدادات الاختبار وحقن بنك الأسئلة بسهولة.</p>
+        </div>
+
+        <form class="settings-grid" style="margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--admin-border); grid-template-columns: 1fr 1fr;" onsubmit="saveExamSettings(event)">
+          <input type="hidden" id="editingExamId">
+          <div class="field">
+            <label for="examTitle">عنوان الاختبار <span class="required">*</span></label>
+            <input type="text" id="examTitle" placeholder="مثال: اختبار مادة القرآن الكريم" required>
+          </div>
+          <div class="field">
+            <label for="durationMinutes">مدة الاختبار (بالدقائق) <span class="required">*</span></label>
+            <input type="number" id="durationMinutes" min="1" max="180" placeholder="20" required>
+          </div>
+          <div style="grid-column: 1 / -1; margin-top: 10px; display:flex; justify-content: flex-end;">
+            <button type="submit" class="btn-primary">حفظ إعدادات الاختبار <i data-lucide="save" style="width:16px; height:16px; margin-right:6px;"></i></button>
+          </div>
+        </form>
+
+        <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="margin:0 0 4px; font-size:16px;"><i data-lucide="download-cloud" style="width:18px; height:18px; vertical-align:-3px;"></i> إدارة وحقن الأسئلة</h3>
+            <p style="color:var(--admin-text-muted); font-size:13px; margin:0;">اختر منشئ الأسئلة البصري أو رفع ملف JSON المباشر.</p>
+          </div>
+          <button type="button" class="btn-primary" style="background:#2563eb; padding:8px 16px; font-size:13.5px;" onclick="openVisualQuestionModal()">
+            <i data-lucide="plus-circle" style="width:16px; height:16px;"></i> إضافة سؤال جديد بصرياً
+          </button>
+        </div>
+
+        <div class="qtype-tabs">
+          <button type="button" class="qtype-tab active" onclick="switchQTab('choice')"><i data-lucide="check-square" style="width:16px; height:16px;"></i> اختيار من متعدد</button>
+          <button type="button" class="qtype-tab" onclick="switchQTab('true_false')"><i data-lucide="scale" style="width:16px; height:16px;"></i> صح وخطأ</button>
+          <button type="button" class="qtype-tab" onclick="switchQTab('matching')"><i data-lucide="link-2" style="width:16px; height:16px;"></i> توصيل الكلمات</button>
+        </div>
+
+        <!-- Tab 1: Choice -->
+        <div id="box-choice" class="qtype-box" style="display: grid; gap:14px;">
+          <div class="drop-zone" onclick="document.getElementById('file-choice').click()">
+            <span class="icon" style="display:flex; justify-content:center; margin-bottom:4px;"><i data-lucide="folder-up" style="width:32px; height:32px;"></i></span>
+            <strong>انقر لرفع ملف JSON لأسئلة الاختيارات</strong>
+            <input type="file" id="file-choice" accept=".json" style="display:none;" onchange="handleFileSelect(event, 'choice')">
+          </div>
+          <div class="field">
+            <label for="code-choice">أو قم بلصق كود JSON المباشر:</label>
+            <textarea id="code-choice" class="code-editor-textarea" placeholder='[{"type":"choice","question":"سؤال...","options":["خيار1","خيار2"],"answer":0}]'></textarea>
+          </div>
+          <div class="tab-actions" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <button type="button" class="btn-primary" style="flex:1; height:42px; font-weight:700;" onclick="injectByType('choice')">
+              <i data-lucide="check" style="width:18px; height:18px;"></i> حفظ الأسئلة
+            </button>
+            <button type="button" class="btn-mini-clear" onclick="clearByType('choice')" title="مسح أسئلة هذا النوع" aria-label="مسح أسئلة هذا النوع">
+              <i data-lucide="trash-2" style="width:16px; height:16px;"></i> مسح هذا النوع
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 2: True/False -->
+        <div id="box-true_false" class="qtype-box" style="display: none; gap:14px;">
+          <div class="drop-zone" onclick="document.getElementById('file-true_false').click()">
+            <span class="icon" style="display:flex; justify-content:center; margin-bottom:4px;"><i data-lucide="folder-up" style="width:32px; height:32px;"></i></span>
+            <strong>انقر لرفع ملف JSON لأسئلة صح وخطأ</strong>
+            <input type="file" id="file-true_false" accept=".json" style="display:none;" onchange="handleFileSelect(event, 'true_false')">
+          </div>
+          <div class="field">
+            <label for="code-true_false">أو قم بلصق كود JSON المباشر:</label>
+            <textarea id="code-true_false" class="code-editor-textarea" placeholder='[{"type":"true_false","question":"سؤال...","answer":true}]'></textarea>
+          </div>
+          <div class="tab-actions" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <button type="button" class="btn-primary" style="flex:1; height:42px; font-weight:700;" onclick="injectByType('true_false')">
+              <i data-lucide="check" style="width:18px; height:18px;"></i> حفظ الأسئلة
+            </button>
+            <button type="button" class="btn-mini-clear" onclick="clearByType('true_false')" title="مسح أسئلة هذا النوع" aria-label="مسح أسئلة هذا النوع">
+              <i data-lucide="trash-2" style="width:16px; height:16px;"></i> مسح هذا النوع
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 3: Matching -->
+        <div id="box-matching" class="qtype-box" style="display: none; gap:14px;">
+          <div class="drop-zone" onclick="document.getElementById('file-matching').click()">
+            <span class="icon" style="display:flex; justify-content:center; margin-bottom:4px;"><i data-lucide="folder-up" style="width:32px; height:32px;"></i></span>
+            <strong>انقر لرفع ملف JSON لأسئلة التوصيل</strong>
+            <input type="file" id="file-matching" accept=".json" style="display:none;" onchange="handleFileSelect(event, 'matching')">
+          </div>
+          <div class="field">
+            <label for="code-matching">أو قم بلصق كود JSON المباشر:</label>
+            <textarea id="code-matching" class="code-editor-textarea" placeholder='[{"type":"matching","question":"وصل...","left":["كلمة1"],"right":["معنى1"],"pairs":{"0":0}}]'></textarea>
+          </div>
+          <div class="tab-actions" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <button type="button" class="btn-primary" style="flex:1; height:42px; font-weight:700;" onclick="injectByType('matching')">
+              <i data-lucide="check" style="width:18px; height:18px;"></i> حفظ الأسئلة
+            </button>
+            <button type="button" class="btn-mini-clear" onclick="clearByType('matching')" title="مسح أسئلة هذا النوع" aria-label="مسح أسئلة هذا النوع">
+              <i data-lucide="trash-2" style="width:16px; height:16px;"></i> مسح هذا النوع
+            </button>
+          </div>
+        </div>
+
+        <!-- Subsection C: Collapsible Questions Preview -->
+        <div class="preview-collapsible-wrapper" style="margin-top:28px; border-top:1px solid var(--admin-border); padding-top:20px;">
+          <button type="button" class="btn-toggle-preview" onclick="toggleQuestionsPreview()" aria-expanded="false" aria-controls="questionsPreviewContainer">
+            <span style="display:inline-flex; align-items:center; gap:8px;">
+              <i data-lucide="eye" style="width:18px; height:18px;"></i> معاينة وإدارة الأسئلة المنفردة
+              <span id="previewCountBadge" class="count-badge">0 أسئلة</span>
+            </span>
+            <i id="previewToggleIcon" data-lucide="chevron-down" style="width:18px; height:18px; transition:transform 0.2s ease;"></i>
+          </button>
+          
+          <div id="questionsPreviewContainer" style="display:none; margin-top:16px;">
+            <div id="questionsPreview" class="preview-cards-grid" style="display:grid; gap:12px;">
+              <div style="text-align:center; color:var(--admin-text-muted); padding:20px;">انقر على المعاينة لعرض الأسئلة.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal: Visual Question Builder -->
+  <div id="singleQuestionModal" class="modal-overlay" style="display:none;" onclick="closeModal('singleQuestionModal')">
+    <div class="modal-card" style="max-width:640px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="questionModalTitle">إضافة سؤال جديد بصرياً</h3>
+        <button type="button" class="close-modal-btn" onclick="closeModal('singleQuestionModal')" aria-label="إغلاق النافذة"><i data-lucide="x" style="width:18px; height:18px;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></i></button>
+      </div>
+      <form class="modal-body" onsubmit="saveSingleQuestion(event)">
+        <input type="hidden" id="vqEditIndex" value="-1">
+        <div class="field">
+          <label for="vqType">نوع السؤال</label>
+          <select id="vqType" onchange="onVqTypeChange()" style="padding:10px; border-radius:10px; border:1px solid var(--admin-border); font-weight:700;">
+            <option value="choice">اختيار من متعدد</option>
+            <option value="true_false">صح وخطأ</option>
+            <option value="matching">توصيل الكلمات بين العمودين</option>
+          </select>
+        </div>
+        <div class="field" style="margin-top:10px;">
+          <label for="vqQuestionText">نص السؤال / العنوان <span style="color:var(--admin-danger)">*</span></label>
+          <textarea id="vqQuestionText" rows="2" placeholder="أدخل عنوان أو نص السؤال هنا (مثال: صل الكلمات في العمود الأول بما يناسبها)..." required style="padding:10px; border-radius:10px; border:1px solid var(--admin-border); font-size:14px; font-weight:600; width:100%; box-sizing:border-box;"></textarea>
+        </div>
+
+        <div id="vqInstructionsArea" class="field" style="margin-top:10px; display:none;">
+          <label for="vqInstructions">تعليمات التوجيه للطالب:</label>
+          <input type="text" id="vqInstructions" placeholder="اضغط على الكلمة في العمود الأول ثم اضغط على ما يناسبها في العمود الثاني للتوصيل بينهما." style="padding:9px 12px; border-radius:8px; border:1px solid var(--admin-border); width:100%; box-sizing:border-box; font-size:13.5px;">
+        </div>
+
+        <div id="vqChoiceArea" style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
+          <label style="font-weight:700; font-size:13px;">الخيارات والتحديد للإجابة الصحيحة:</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="radio" name="vqCorrectChoice" value="0" checked>
+            <input type="text" id="vqOpt0" placeholder="الخيار الأول (صحيح)" required style="flex:1; padding:8px 12px; border-radius:8px; border:1px solid var(--admin-border);">
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="radio" name="vqCorrectChoice" value="1">
+            <input type="text" id="vqOpt1" placeholder="الخيار الثاني" required style="flex:1; padding:8px 12px; border-radius:8px; border:1px solid var(--admin-border);">
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="radio" name="vqCorrectChoice" value="2">
+            <input type="text" id="vqOpt2" placeholder="الخيار الثالث (اختياري)" style="flex:1; padding:8px 12px; border-radius:8px; border:1px solid var(--admin-border);">
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="radio" name="vqCorrectChoice" value="3">
+            <input type="text" id="vqOpt3" placeholder="الخيار الرابع (اختياري)" style="flex:1; padding:8px 12px; border-radius:8px; border:1px solid var(--admin-border);">
+          </div>
+        </div>
+
+        <div id="vqTrueFalseArea" style="margin-top:12px; display:none; flex-direction:column; gap:8px;">
+          <label style="font-weight:700; font-size:13px;">الإجابة الصحيحة:</label>
+          <div style="display:flex; gap:16px;">
+            <label style="display:flex; align-items:center; gap:6px; font-weight:700; cursor:pointer;">
+              <input type="radio" name="vqTfAnswer" value="true" checked> 🟢 صح (True)
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-weight:700; cursor:pointer;">
+              <input type="radio" name="vqTfAnswer" value="false"> 🔴 خطأ (False)
+            </label>
+          </div>
+        </div>
+
+        <div id="vqMatchingArea" style="margin-top:14px; display:none; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-weight:800; font-size:13.5px; color:#0f172a;">أزواج التوصيل (كل سطر يمثل زوجاً صحيحاً متطابقاً):</label>
+            <button type="button" class="btn-primary" style="padding:4px 12px; font-size:12px; background:#4f46e5;" onclick="addVqMatchingPair()">
+              <i data-lucide="plus" style="width:14px; height:14px;"></i> إضافة زوج جديد
+            </button>
+          </div>
+          <div id="vqMatchingPairsList" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; padding:4px 2px;"></div>
+        </div>
+
+        <div style="margin-top:20px; display:flex; gap:10px;">
+          <button type="button" id="btnVqPreview" class="btn-primary" style="flex:1; background:#0891b2;" onclick="previewCurrentVqQuestion()">
+            <i data-lucide="eye" style="width:16px; height:16px;"></i> معاينة تجريبية
+          </button>
+          <button type="submit" class="btn-primary" style="flex:2;">
+            <i data-lucide="check" style="width:16px; height:16px;"></i> حفظ السؤال
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Create New Exam -->
+  <div id="createExamModal" class="modal-overlay" style="display:none;" onclick="closeModal('createExamModal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>إنشاء اختبار جديد</h3>
+        <button type="button" class="close-modal-btn" onclick="closeModal('createExamModal')" aria-label="إغلاق النافذة"><i data-lucide="x" style="width:18px; height:18px;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></i></button>
+      </div>
+      <form class="modal-body" onsubmit="saveNewExam(event)">
+        <div class="field">
+          <label for="newExamTitle">اسم/عنوان الاختبار الجديد <span style="color:var(--admin-danger)">*</span></label>
+          <input type="text" id="newExamTitle" placeholder="مثال: اختبار الفترات القرآنية لشهر رمضان" required>
+        </div>
+        <div class="field">
+          <label for="newExamDuration">مدة الاختبار بالدقائق <span style="color:var(--admin-danger)">*</span></label>
+          <input type="number" id="newExamDuration" min="1" max="180" value="20" required>
+        </div>
+        <div style="margin-top:10px;">
+          <button type="submit" class="btn-primary" style="width:100%;">حفظ وإنشاء الاختبار <i data-lucide="arrow-left" style="width:16px; height:16px;"></i></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="albayan_dialog.js?v=2.0"></script>
+  <script src="mobile-db.js?v=9.5"></script>
+  <script src="hijri_date.js?v=9.5"></script>
+  <script src="matching_engine.js?v=9.5"></script>
+  <script src="mobile_bottom_nav.js?v=9.5"></script>
+  <script src="admin.js?v=9.5"></script>
+  <script src="firebase-client.js?v=3.0"></script>
+  <script>if(window.safeCreateIcons) safeCreateIcons();</script>
+</body>
+</html>

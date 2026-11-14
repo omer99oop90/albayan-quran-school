@@ -1,18 +1,67 @@
 {
   "rules": {
-    ".read": true,
-    ".write": true,
     "students": {
+      ".read": true,
+      ".write": true,
       ".indexOn": ["circle_id", "name"]
     },
     "student_records": {
+      ".read": true,
+      ".write": true,
       ".indexOn": ["student_id", "circle_id", "month", "year", "date"]
     },
+    "student_cvs": {
+      ".read": true,
+      ".write": true
+    },
+    "student_cv_monthly_records": {
+      ".read": true,
+      ".write": true
+    },
     "circles": {
+      ".read": true,
+      ".write": true,
       ".indexOn": ["id", "name"]
     },
     "exams": {
+      ".read": true,
+      ".write": true,
       ".indexOn": ["student_id", "date", "created_at"]
+    },
+    "active_exam": {
+      ".read": true,
+      ".write": true
+    },
+    "questions": {
+      ".read": true,
+      ".write": true
+    },
+    "results": {
+      ".read": true,
+      ".write": true,
+      "$resultId": {
+        ".validate": "newData.hasChildren()"
+      }
+    },
+    "users": {
+      ".read": true,
+      ".write": true
+    },
+    "settings": {
+      ".read": true,
+      ".write": true
+    },
+    "sync_meta": {
+      ".read": true,
+      ".write": true
+    },
+    "sync_changelog": {
+      ".read": true,
+      ".write": true
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
     }
   }
 }

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="csrf-token" content="">
+  <title>السجل القرآني - مدرسة البيان لتعليم القرآن</title>
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dark_theme.css?v=1.0">
+  <link rel="stylesheet" href="mymark.css?v=4.0">
+  
+  <!-- Hijri Date Engine -->
+  <script src="hijri_date.js"></script>
+  <!-- Lucide Icons -->
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+</head>
+
+<body class="mymark-body">
+  <div class="portal-glow-1"></div>
+  <div class="portal-glow-2"></div>
+
+  <!-- Loading State Indicator -->
+  <div id="portalLoading" style="position:fixed; inset:0; background:rgba(15,23,42,0.45); backdrop-filter:blur(6px); z-index:99999; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#fff;">
+    <div style="width:44px; height:44px; border:3.5px solid rgba(255,255,255,0.2); border-top-color:#2563eb; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+    <span style="font-size:15px; font-weight:700;">جاري تحميل سجل المتابعة القرآني...</span>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+  </div>
+
+  <!-- Main Content Area -->
+  <main class="portal-content" id="portalMainContent" style="padding-top:20px; padding-bottom:80px;">
+    
+    <!-- Hero Student Profile Card (بطاقة الطالب) -->
+    <section class="student-hero-card">
+      <div class="hero-pattern"></div>
+      
+      <div class="hero-main">
+        <div class="student-avatar" id="studentAvatarInitials">ط</div>
+        <div class="hero-text">
+          <h2>أهلاً بك، <span id="heroStudentName">الطالب</span></h2>
+          <div class="hero-quran-quote">« خَيْرُكُمْ مَنْ تَعَلَّمَ القُرْآنَ وَعَلَّمَهُ »</div>
+        </div>
+      </div>
+
+      <div class="hero-badges-row">
+        <span class="hero-badge">
+          <i data-lucide="book-marked" style="width:13px; height:13px;"></i>
+          <span id="heroCircleName">حلقة قرآنية</span>
+        </span>
+        <span class="hero-badge">
+          <i data-lucide="user-check" style="width:13px; height:13px;"></i>
+          <span id="heroTeacherName">المحفظ</span>
+        </span>
+        <div class="hero-rank-pill" id="heroRankPill">
+          <i data-lucide="award" style="width:13px; height:13px;"></i>
+          <span>المستوى المتقدم</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- KPI Metrics Grid For Student Records -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon-wrap emerald">
+          <i data-lucide="calendar-check-2" style="width:22px; height:22px;"></i>
+        </div>
+        <div class="stat-data">
+          <div class="stat-label">الأشهر المرصودة</div>
+          <div class="stat-value" id="statTotalRecords">0</div>
+          <div class="stat-sub">سجلات موثقة</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrap blue">
+          <i data-lucide="bookmark-check" style="width:22px; height:22px;"></i>
+        </div>
+        <div class="stat-data">
+          <div class="stat-label">علامة الحفظ</div>
+          <div class="stat-value" id="statAvgMemoMark">—</div>
+          <div class="stat-sub">من 40 درجة</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrap amber">
+          <i data-lucide="book-open-check" style="width:22px; height:22px;"></i>
+        </div>
+        <div class="stat-data">
+          <div class="stat-label">علامة المراجعة</div>
+          <div class="stat-value" id="statAvgRevMark">—</div>
+          <div class="stat-sub">من 30 درجة</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrap cyan">
+          <i data-lucide="layers" style="width:22px; height:22px;"></i>
+        </div>
+        <div class="stat-data">
+          <div class="stat-label">المواد المصاحبة</div>
+          <div class="stat-value" id="statAccompanyingCount">—</div>
+          <div class="stat-sub">العلوم والأنشطة</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrap gold">
+          <i data-lucide="award" style="width:22px; height:22px;"></i>
+        </div>
+        <div class="stat-data">
+          <div class="stat-label">العلامة النهائية</div>
+          <div class="stat-value" id="statFinalExamGrade">—</div>
+          <div class="stat-sub">التقييم العام</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrap purple">
+          <i data-lucide="user-x" style="width:22px; height:22px;"></i>
+        </div>
+        <div class="stat-data">
+          <div class="stat-label">أيام الغياب</div>
+          <div class="stat-value" id="statTotalAbsence">0 يوم</div>
+          <div class="stat-sub" id="statAbsenceStatus">انضباط ممتاز</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filter & Search Bar with Clean Swipeable Chips -->
+    <div class="exam-filter-bar">
+      <div class="filter-search-box">
+        <input type="text" placeholder="ابحث باسم الشهر الهجري، السنة، أو السورة..." oninput="handleSearchRecords(event)">
+        <i data-lucide="search" class="search-icon" style="width:16px; height:16px;"></i>
+      </div>
+
+      <div class="filter-chips" id="filterChipsContainer">
+        <button type="button" class="filter-chip active" onclick="setRecordFilter('all', this)">
+          <i data-lucide="layers" style="width:13px; height:13px; vertical-align:-2px; margin-left:3px;"></i>
+          <span>جميع الفترات</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Quran Records Feed Container -->
+    <div id="quranRecordsContainer">
+      <!-- Rendered dynamically via about_me.js -->
+    </div>
+
+  </main>
+
+  <script src="albayan_dialog.js?v=1.0"></script>
+  <script src="hijri_date.js?v=3.5"></script>
+  <script src="about_me.js?v=4.6"></script>
+  <script src="student_nav.js?v=1.0"></script>
+</body>
+</html>

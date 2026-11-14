@@ -74,12 +74,15 @@ function updateThemeCardsUI(theme) {
   }
 }
 
-// 3. Handle Passcode Change
+// 2. Handle Passcode Change
 async function handleSettingsChangeCode(e) {
   e.preventDefault();
-  const oldCode = document.getElementById("settingsOldCode").value.trim();
-  const newCode = document.getElementById("settingsNewCode").value.trim();
-  const confirmCode = document.getElementById("settingsConfirmCode").value.trim();
+  const oldCodeEl = document.getElementById("settingsOldCode");
+  const newCodeEl = document.getElementById("settingsNewCode");
+  const confirmCodeEl = document.getElementById("settingsConfirmCode");
+  const oldCode = oldCodeEl.value.trim();
+  const newCode = newCodeEl.value.trim();
+  const confirmCode = confirmCodeEl.value.trim();
   const alertEl = document.getElementById("settingsAlertBanner");
   const btn = document.getElementById("settingsSaveCodeBtn");
 
@@ -99,10 +102,20 @@ async function handleSettingsChangeCode(e) {
     return;
   }
 
+  const onCodeUpdateSuccess = () => {
+    showAlert(alertEl, "✓ تم تحديث رمز المرور بنجاح! احتفظ به للدخول في المرات القادمة.", "success");
+    oldCodeEl.value = "";
+    newCodeEl.value = "";
+    confirmCodeEl.value = "";
+  };
+
   btn.disabled = true;
   btn.innerHTML = `<div style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;"></div><span>جاري حفظ الرمز...</span>`;
 
   try {
+    if (window.IS_CAPACITOR_APP) {
+      throw new Error("Capacitor serverless mode");
+    }
     const res = await fetch("/api/student/change-code", {
       method: "POST",
       headers: {
@@ -114,10 +127,7 @@ async function handleSettingsChangeCode(e) {
     const data = await res.json();
 
     if (res.ok && data.success) {
-      showAlert(alertEl, "✓ تم تحديث رمز المرور بنجاح! احتفظ به للدخول في المرات القادمة.", "success");
-      document.getElementById("settingsOldCode").value = "";
-      document.getElementById("settingsNewCode").value = "";
-      document.getElementById("settingsConfirmCode").value = "";
+      onCodeUpdateSuccess();
     } else {
       showAlert(alertEl, data.message || "فشل في تحديث الرمز. تحقق من صحة الرمز الحالي.", "error");
     }
@@ -127,10 +137,7 @@ async function handleSettingsChangeCode(e) {
       const u = JSON.parse(localStorage.getItem('albayan_logged_user') || '{}');
       const sKey = u.username || u.student_name || "default";
       localStorage.setItem("albayan_custom_code_" + sKey, newCode);
-      showAlert(alertEl, "✓ تم تحديث رمز المرور بنجاح! احتفظ به للدخول في المرات القادمة.", "success");
-      document.getElementById("settingsOldCode").value = "";
-      document.getElementById("settingsNewCode").value = "";
-      document.getElementById("settingsConfirmCode").value = "";
+      onCodeUpdateSuccess();
     } catch(e) {
       showAlert(alertEl, "تعذر حفظ الرمز، يرجى المحاولة لاحقاً.", "error");
     }
@@ -146,30 +153,4 @@ function showAlert(el, msg, type) {
   el.className = `alert-banner ${type}`;
   el.style.display = "flex";
   el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-}
-
-// 4. Student Logout
-async function studentLogout() {
-  let ok = false;
-  if (window.AlbayanDialog && window.AlbayanDialog.confirm) {
-    ok = await AlbayanDialog.confirm("هل أنت متأكد من رغبتك في تسجيل الخروج من حسابك؟", "تسجيل الخروج", {
-      confirmText: "تسجيل الخروج",
-      cancelText: "إلغاء",
-      isDestructive: true,
-      type: "danger"
-    });
-  } else {
-    ok = confirm("هل أنت متأكد من رغبتك في تسجيل الخروج؟");
-  }
-  if (!ok) return;
-
-  try {
-    localStorage.removeItem('albayan_logged_user');
-    localStorage.removeItem('albayan_saved_token');
-    await fetch("/logout", { credentials: "same-origin" });
-  } catch (e) {
-    console.error("Logout error:", e);
-  } finally {
-    window.location.href = "login.html";
-  }
 }

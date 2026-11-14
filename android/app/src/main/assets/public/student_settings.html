@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="csrf-token" content="">
+  <title>الإعدادات - مدرسة البيان لتعليم القرآن</title>
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dark_theme.css?v=1.0">
+  <link rel="stylesheet" href="mymark.css?v=3.0">
+  
+  <!-- Hijri Date Engine -->
+  <script src="hijri_date.js"></script>
+  <!-- Lucide Icons -->
+  <script src="lucide.min.js"></script>
+  <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
+
+  <style>
+    /* Settings Page Specific Mobile Styles */
+    .settings-section {
+      background: var(--portal-card-bg);
+      border: 1px solid var(--portal-card-border);
+      border-radius: var(--radius-xl);
+      padding: 20px 18px;
+      margin-bottom: 16px;
+      box-shadow: var(--portal-shadow);
+      transition: all 0.2s ease;
+    }
+
+    .settings-section-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--portal-card-border);
+    }
+
+    .settings-icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .settings-icon-box.blue { background: var(--student-primary-light); color: var(--student-primary); }
+    .settings-icon-box.purple { background: var(--student-purple-light); color: var(--student-purple); }
+    .settings-icon-box.amber { background: var(--student-gold-light); color: var(--student-gold); }
+
+    .settings-section-head h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--portal-text);
+    }
+    .settings-section-head p {
+      margin: 2px 0 0 0;
+      font-size: 12px;
+      color: var(--portal-text-muted);
+    }
+
+    /* Theme Option Radio Cards */
+    .theme-switcher-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .theme-card-option {
+      border: 2px solid var(--portal-card-border);
+      border-radius: 14px;
+      padding: 14px 12px;
+      background: var(--portal-bg);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+      position: relative;
+    }
+
+    .theme-card-option:active {
+      transform: scale(0.97);
+    }
+
+    .theme-card-option.active {
+      border-color: var(--student-primary);
+      background: var(--student-primary-light);
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.18);
+    }
+
+    .theme-card-option .theme-icon-wrap {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--portal-card-bg);
+      border: 1px solid var(--portal-card-border);
+      color: var(--portal-text);
+      transition: all 0.2s ease;
+    }
+
+    .theme-card-option.active .theme-icon-wrap {
+      background: var(--student-primary);
+      color: #fff;
+      border-color: var(--student-primary);
+    }
+
+    .theme-card-option .theme-title {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: var(--portal-text);
+    }
+
+    .theme-card-option .theme-desc {
+      font-size: 11px;
+      color: var(--portal-text-muted);
+    }
+
+    .theme-check-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--student-primary);
+      color: #fff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+
+    .theme-card-option.active .theme-check-badge {
+      display: flex;
+    }
+
+    /* Form Fields */
+    .form-group-field {
+      margin-bottom: 14px;
+    }
+
+    .form-group-field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--portal-text-muted);
+      margin-bottom: 6px;
+    }
+
+    .form-input-wrap {
+      position: relative;
+    }
+
+    .form-input-wrap input {
+      width: 100%;
+      height: 46px;
+      padding: 0 42px 0 14px;
+      border-radius: 12px;
+      border: 1.5px solid var(--portal-card-border);
+      background: var(--portal-bg);
+      color: var(--portal-text);
+      font-size: 14.5px;
+      font-weight: 700;
+      box-sizing: border-box;
+      outline: none;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .form-input-wrap input:focus {
+      border-color: var(--student-primary);
+      background: var(--portal-card-bg);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .form-input-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--portal-text-muted);
+      pointer-events: none;
+    }
+
+    .submit-settings-btn {
+      width: 100%;
+      height: 48px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--student-primary) 0%, var(--student-primary-hover) 100%);
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-top: 6px;
+      text-decoration: none;
+    }
+
+    .submit-settings-btn:active {
+      transform: scale(0.98);
+    }
+
+    .submit-settings-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .alert-banner {
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .alert-banner.success {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      color: #15803d;
+    }
+    .alert-banner.error {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #b91c1c;
+    }
+  </style>
+</head>
+
+<body class="mymark-body">
+  <div class="portal-glow-1"></div>
+  <div class="portal-glow-2"></div>
+
+  <!-- Loading State Indicator -->
+  <div id="portalLoading" style="position:fixed; inset:0; background:rgba(15,23,42,0.45); backdrop-filter:blur(6px); z-index:99999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#fff;">
+    <div style="width:44px; height:44px; border:3.5px solid rgba(255,255,255,0.2); border-top-color:#2563eb; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+    <span style="font-size:15px; font-weight:700;">جاري تحميل الإعدادات...</span>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+  </div>
+
+  <!-- Main Content Area -->
+  <main class="portal-content" id="portalMainContent" style="padding-top:24px; padding-bottom:80px;">
+    
+    <!-- Section 1: Appearance & Theme Settings -->
+    <section class="settings-section">
+      <div class="settings-section-head">
+        <div class="settings-icon-box blue">
+          <i data-lucide="palette" style="width:18px; height:18px;"></i>
+        </div>
+        <div>
+          <h3>مظهر التطبيق</h3>
+          <p>اختر بين المظهر النهاري والمظهر الليلي المريح للعينين</p>
+        </div>
+      </div>
+
+      <div class="theme-switcher-grid">
+        <div class="theme-card-option" id="themeOptLight" onclick="selectAppTheme('light')">
+          <span class="theme-check-badge">
+            <i data-lucide="check" style="width:11px; height:11px;"></i>
+          </span>
+          <div class="theme-icon-wrap">
+            <i data-lucide="sun" style="width:20px; height:20px;"></i>
+          </div>
+          <span class="theme-title">الوضع النهاري</span>
+          <span class="theme-desc">إضاءة واضحة ومشرقة</span>
+        </div>
+
+        <div class="theme-card-option" id="themeOptDark" onclick="selectAppTheme('dark')">
+          <span class="theme-check-badge">
+            <i data-lucide="check" style="width:11px; height:11px;"></i>
+          </span>
+          <div class="theme-icon-wrap">
+            <i data-lucide="moon" style="width:20px; height:20px;"></i>
+          </div>
+          <span class="theme-title">الوضع الليلي</span>
+          <span class="theme-desc">تباين داكن ومريح</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Account Security & Passcode Change -->
+    <section class="settings-section">
+      <div class="settings-section-head">
+        <div class="settings-icon-box amber">
+          <i data-lucide="shield-check" style="width:18px; height:18px;"></i>
+        </div>
+        <div>
+          <h3>تغيير رمز المرور السري</h3>
+          <p>قم بتعيين رمز مرور خاص بك لحماية نتائجك وسجلك</p>
+        </div>
+      </div>
+
+      <div id="settingsAlertBanner" class="alert-banner"></div>
+
+      <form onsubmit="handleSettingsChangeCode(event)">
+        <div class="form-group-field">
+          <label for="settingsOldCode">الرمز السري الحالي</label>
+          <div class="form-input-wrap">
+            <input type="password" id="settingsOldCode" placeholder="أدخل رمزك الحالي..." autocomplete="current-password">
+            <i data-lucide="lock" class="form-input-icon" style="width:16px; height:16px;"></i>
+          </div>
+        </div>
+
+        <div class="form-group-field">
+          <label for="settingsNewCode">الرمز السري الجديد (3 خانات فأكثر)</label>
+          <div class="form-input-wrap">
+            <input type="password" id="settingsNewCode" placeholder="أدخل الرمز الجديد..." required minlength="3" autocomplete="new-password">
+            <i data-lucide="key-round" class="form-input-icon" style="width:16px; height:16px;"></i>
+          </div>
+        </div>
+
+        <div class="form-group-field">
+          <label for="settingsConfirmCode">تأكيد الرمز السري الجديد</label>
+          <div class="form-input-wrap">
+            <input type="password" id="settingsConfirmCode" placeholder="أعد كتابة الرمز الجديد..." required minlength="3" autocomplete="new-password">
+            <i data-lucide="check-check" class="form-input-icon" style="width:16px; height:16px;"></i>
+          </div>
+        </div>
+
+        <button type="submit" id="settingsSaveCodeBtn" class="submit-settings-btn">
+          <i data-lucide="save" style="width:17px; height:17px;"></i>
+          <span>حفظ رمز المرور الجديد</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- Section 3: Logout Action -->
+    <section class="settings-section" style="border-color: rgba(239, 68, 68, 0.3);">
+      <div class="settings-section-head" style="border-bottom-color: rgba(239, 68, 68, 0.15);">
+        <div class="settings-icon-box" style="background: rgba(239, 68, 68, 0.12); color: #dc2626;">
+          <i data-lucide="log-out" style="width:18px; height:18px;"></i>
+        </div>
+        <div>
+          <h3 style="color: #dc2626;">تسجيل الخروج</h3>
+          <p>إنهاء الجلسة الحالية وإغلاق حساب الطالب</p>
+        </div>
+      </div>
+
+      <button type="button" onclick="studentLogout()" style="width: 100%; height: 48px; border-radius: 14px; background: #fef2f2; color: #dc2626; border: 1.5px solid #fecaca; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease; font-family: inherit;">
+        <i data-lucide="log-out" style="width:18px; height:18px;"></i>
+        <span>تسجيل الخروج من الحساب</span>
+      </button>
+    </section>
+
+  </main>
+
+  <script src="albayan_dialog.js?v=1.0"></script>
+  <script src="student_settings.js?v=1.2"></script>
+  <script src="student_nav.js?v=1.0"></script>
+</body>
+</html>
