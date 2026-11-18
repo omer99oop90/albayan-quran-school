@@ -351,25 +351,6 @@
       });
     }
 
-    const zoomFitBtn = document.getElementById('zoomFitBtn');
-    if (zoomFitBtn) {
-      zoomFitBtn.addEventListener('click', () => {
-        state.scale = 1;
-        state.panX = 0;
-        state.panY = 0;
-        applyCanvasTransform();
-      });
-    }
-
-    const trayCloseBtn = document.getElementById('pxTrayCloseBtn');
-    if (trayCloseBtn) {
-      trayCloseBtn.addEventListener('click', () => {
-        state.activeTool = null;
-        renderTray();
-        renderBottomToolbar();
-      });
-    }
-
     // Android Back Button integration for Studio modals, Layers drawer, Tray, and Selection
     const prevBackHandler = typeof window.albayanHandleBack === 'function' ? window.albayanHandleBack : null;
     window.albayanHandleBack = function (fromPopState) {
@@ -505,8 +486,29 @@
   }
 
   // =========================================================
-  // PIXELLAB CONTEXT-AWARE BOTTOM TOOLBAR & TRAY
+  // PIXELLAB CONTEXT-AWARE BOTTOM TOOLBAR & TRAY (PURE SVG ICON-ONLY)
   // =========================================================
+  const TOOL_SVGS = {
+    templates: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>',
+    add: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>',
+    students: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    presets: '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M12 7v6"/><path d="M9 10h6"/></svg>',
+    edit: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    font: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>',
+    size: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>',
+    color: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>',
+    position: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>',
+    format: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"/><line x1="17" y1="12" x2="7" y2="12"/><line x1="19" y1="18" x2="5" y2="18"/></svg>',
+    effects: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>',
+    duplicate: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+    delete: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+    replace_image: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
+    rotate: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>',
+    opacity: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/><path d="M12 8l5 5"/><path d="M12 13l4 4"/></svg>',
+    layer: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+    hide: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>'
+  };
+
   function renderBottomToolbar() {
     if (!bottomBarEl) return;
     const key = state.activeElementKey;
@@ -518,39 +520,38 @@
     let tools = [];
     if (kind === 'none') {
       tools = [
-        { id: 'templates', label: 'القوالب والزخارف', icon: 'palette' },
-        { id: 'add', label: 'إضافة نص/عنصر', icon: 'plus-circle' },
-        { id: 'students', label: 'الطلاب والدرجات', icon: 'users' },
-        { id: 'presets', label: 'حفظ القالب', icon: 'bookmark-plus' }
+        { id: 'templates', label: 'القوالب', icon: 'templates' },
+        { id: 'add', label: 'إضافة نص أو عنصر', icon: 'add' },
+        { id: 'students', label: 'الطلاب والدرجات', icon: 'students' },
+        { id: 'presets', label: 'حفظ القالب', icon: 'presets' }
       ];
     } else if (kind === 'text') {
       tools = [
-        { id: 'edit', label: 'تعديل النص', icon: 'edit-3' },
-        { id: 'font', label: 'الخط', icon: 'type' },
-        { id: 'size', label: 'الحجم', icon: 'sliders-horizontal' },
-        { id: 'color', label: 'اللون', icon: 'palette' },
-        { id: 'position', label: 'الموقع', icon: 'move' },
-        { id: 'format', label: 'التنسيق', icon: 'align-center' },
-        { id: 'effects', label: 'المؤثرات', icon: 'sparkles' },
-        { id: 'duplicate', label: 'تكرار', icon: 'copy' },
-        { id: 'delete', label: 'حذف', icon: 'trash-2', danger: true }
+        { id: 'edit', label: 'تعديل النص', icon: 'edit' },
+        { id: 'font', label: 'الخط', icon: 'font' },
+        { id: 'size', label: 'الحجم', icon: 'size' },
+        { id: 'color', label: 'اللون', icon: 'color' },
+        { id: 'position', label: 'الموقع والمحاذاة', icon: 'position' },
+        { id: 'format', label: 'التنسيق', icon: 'format' },
+        { id: 'effects', label: 'المؤثرات', icon: 'effects' },
+        { id: 'duplicate', label: 'تكرار', icon: 'duplicate' },
+        { id: 'delete', label: 'حذف', icon: 'delete', danger: true }
       ];
     } else if (kind === 'image') {
       tools = [
-        { id: 'replace_image', label: 'تغيير الصورة', icon: 'image' },
-        { id: 'size', label: 'الحجم', icon: 'maximize-2' },
-        { id: 'rotate', label: 'التدوير', icon: 'rotate-cw' },
-        { id: 'position', label: 'الموقع', icon: 'move' },
-        { id: 'opacity', label: 'الشفافية', icon: 'contrast' },
-        { id: 'layer', label: 'الطبقة', icon: 'layers' },
-        { id: 'delete', label: 'حذف', icon: 'trash-2', danger: true }
+        { id: 'replace_image', label: 'تغيير الصورة', icon: 'replace_image' },
+        { id: 'size', label: 'الحجم', icon: 'size' },
+        { id: 'rotate', label: 'التدوير', icon: 'rotate' },
+        { id: 'position', label: 'الموقع', icon: 'position' },
+        { id: 'opacity', label: 'الشفافية', icon: 'opacity' },
+        { id: 'layer', label: 'الطبقة', icon: 'layer' },
+        { id: 'delete', label: 'حذف', icon: 'delete', danger: true }
       ];
     } else {
-      // border
       tools = [
-        { id: 'opacity', label: 'الشفافية', icon: 'contrast' },
-        { id: 'layer', label: 'الطبقة', icon: 'layers' },
-        { id: 'delete', label: 'إخفاء', icon: 'eye-off', danger: true }
+        { id: 'opacity', label: 'الشفافية', icon: 'opacity' },
+        { id: 'layer', label: 'الطبقة', icon: 'layer' },
+        { id: 'delete', label: 'إخفاء', icon: 'hide', danger: true }
       ];
     }
 
@@ -560,14 +561,13 @@
       btn.type = 'button';
       btn.className = 'px-tool-btn' + (state.activeTool === tool.id ? ' active' : '') + (tool.danger ? ' danger' : '');
       btn.setAttribute('data-tool', tool.id);
-      btn.innerHTML = `<i data-lucide="${tool.icon}" style="width:20px; height:20px;"></i><span>${tool.label}</span>`;
+      btn.setAttribute('aria-label', tool.label);
+      btn.setAttribute('aria-pressed', String(state.activeTool === tool.id));
+      btn.title = tool.label;
+      btn.innerHTML = TOOL_SVGS[tool.icon] || '';
       btn.addEventListener('click', () => handleBottomToolClick(tool.id));
       bottomBarEl.appendChild(btn);
     });
-
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons({ nameAttr: 'data-lucide' });
-    }
   }
 
   function handleBottomToolClick(toolId) {
@@ -642,12 +642,22 @@
     }
   }
 
+  function makeIconBtn(svgMarkup, label, className = 'px-tray-icon-btn') {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = className;
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+    btn.innerHTML = svgMarkup;
+    return btn;
+  }
+
   function buildTemplatesTray(container) {
     const templates = [
-      { id: 'academic', name: 'عاجي أكاديمي', bg: 'linear-gradient(135deg,#fafaf9,#e7e5e4)' },
-      { id: 'gold', name: 'ذهبي ملكي', bg: 'linear-gradient(135deg,#0f172a,#1e293b)' },
-      { id: 'emerald', name: 'زمردي قرآني', bg: 'linear-gradient(135deg,#022c22,#064e3b)' },
-      { id: 'navy', name: 'كحلي إمبراطوري', bg: 'linear-gradient(135deg,#091e3a,#1e3a8a)' },
+      { id: 'academic', name: 'العاجي الأكاديمي', bg: 'linear-gradient(135deg,#fafaf9,#e7e5e4)' },
+      { id: 'gold', name: 'الذهبي الملكي', bg: 'linear-gradient(135deg,#0f172a,#1e293b)' },
+      { id: 'emerald', name: 'الزمردي القرآني', bg: 'linear-gradient(135deg,#022c22,#064e3b)' },
+      { id: 'navy', name: 'الكحلي الإمبراطوري', bg: 'linear-gradient(135deg,#091e3a,#1e3a8a)' },
       { id: 'blank', name: 'صفحة فارغة', bg: '#ffffff' }
     ];
 
@@ -655,7 +665,9 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'px-tpl-chip' + (state.currentTemplate === tpl.id ? ' active' : '');
-      btn.innerHTML = `<span class="px-tpl-swatch" style="background:${tpl.bg};"></span><span>${tpl.name}</span>`;
+      btn.setAttribute('aria-label', tpl.name);
+      btn.title = tpl.name;
+      btn.innerHTML = `<span class="px-tpl-swatch" style="background:${tpl.bg};"></span>`;
       btn.addEventListener('click', () => {
         applyTemplatePreset(tpl.id);
         renderTray();
@@ -666,11 +678,11 @@
       container.appendChild(btn);
     });
 
-    // Custom Background Upload & Remove
-    const bgBtn = document.createElement('button');
-    bgBtn.type = 'button';
-    bgBtn.className = 'px-tray-chip' + (state.currentTemplate === 'custom' ? ' active' : '');
-    bgBtn.innerHTML = '<i data-lucide="image-plus" style="width:15px;height:15px;"></i><span>خلفية مخصصة</span>';
+    const bgBtn = makeIconBtn(
+      '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><line x1="16" y1="5" x2="22" y2="5"/><line x1="19" y1="2" x2="19" y2="8"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
+      'رفع خلفية مخصصة',
+      'px-tray-icon-btn' + (state.currentTemplate === 'custom' ? ' active' : '')
+    );
     bgBtn.addEventListener('click', () => {
       const inp = document.getElementById('customBgInput');
       if (inp) inp.click();
@@ -678,10 +690,11 @@
     container.appendChild(bgBtn);
 
     if (state.customBgImage) {
-      const rmBgBtn = document.createElement('button');
-      rmBgBtn.type = 'button';
-      rmBgBtn.className = 'px-tray-chip danger';
-      rmBgBtn.innerHTML = '<i data-lucide="trash-2" style="width:14px;height:14px;"></i><span>إلغاء الخلفية</span>';
+      const rmBgBtn = makeIconBtn(
+        TOOL_SVGS.delete,
+        'إزالة الخلفية المخصصة',
+        'px-tray-icon-btn danger'
+      );
       rmBgBtn.addEventListener('click', () => {
         applyTemplatePreset('academic');
         renderTray();
@@ -690,71 +703,20 @@
       });
       container.appendChild(rmBgBtn);
     }
-
-    const div = document.createElement('div');
-    div.className = 'px-tray-divider';
-    container.appendChild(div);
-
-    // Quick Decoration Toggles
-    const decos = [
-      { prop: 'showOrnamentalBorder', elemKey: 'ornamental_border', label: 'الإطار' },
-      { prop: 'showSchoolLogo', elemKey: 'school_logo', label: 'الشعار' },
-      { prop: 'showQuranEmblem', elemKey: 'quran_emblem', label: 'المصحف' },
-      { prop: 'showOfficialStamp', elemKey: 'school_stamp', label: 'الختم' }
-    ];
-
-    decos.forEach((d) => {
-      const active = Boolean(state[d.prop]);
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'px-tray-chip' + (active ? ' active' : '');
-      chip.textContent = (active ? '✓ ' : '') + d.label;
-      chip.addEventListener('click', () => {
-        const nextVal = !state[d.prop];
-        state[d.prop] = nextVal;
-        if (state.elements[d.elemKey]) {
-          state.elements[d.elemKey].visible = nextVal;
-        }
-        buildDragOverlayHandles();
-        renderLayersDrawer();
-        renderTray();
-        renderCertificate();
-        pushHistoryState('تعديل الزخارف');
-      });
-      container.appendChild(chip);
-    });
-
-    // Grade Source Quick Switcher
-    const gradeSrcSelect = document.createElement('select');
-    gradeSrcSelect.className = 'form-select-sm';
-    gradeSrcSelect.style.width = 'auto';
-    gradeSrcSelect.style.flexShrink = '0';
-    gradeSrcSelect.innerHTML = `
-      <option value="all_weighted">المعدل العام</option>
-      <option value="exams">الاختبارات فقط</option>
-      <option value="sard">السرد والحفظ</option>
-    `;
-    gradeSrcSelect.value = state.gradeSource || 'all_weighted';
-    gradeSrcSelect.addEventListener('change', (e) => {
-      state.gradeSource = e.target.value;
-      renderCertificate();
-      pushHistoryState('تغيير مصدر الدرجات');
-    });
-    container.appendChild(gradeSrcSelect);
   }
 
   function buildAddElementTray(container) {
-    const addTxtBtn = document.createElement('button');
-    addTxtBtn.type = 'button';
-    addTxtBtn.className = 'px-tray-chip active';
-    addTxtBtn.innerHTML = '<i data-lucide="type" style="width:15px;height:15px;"></i><span>+ نص جديد</span>';
+    const addTxtBtn = makeIconBtn(
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h12v3"/><path d="M10 4v16"/><path d="M7 20h6"/><path d="M18 14v6"/><path d="M15 17h6"/></svg>',
+      'إضافة نص جديد'
+    );
     addTxtBtn.addEventListener('click', () => addCustomText('نص جديد', { openEditor: true }));
     container.appendChild(addTxtBtn);
 
-    const addImgBtn = document.createElement('button');
-    addImgBtn.type = 'button';
-    addImgBtn.className = 'px-tray-chip';
-    addImgBtn.innerHTML = '<i data-lucide="image-plus" style="width:15px;height:15px;"></i><span>+ صورة / ملصق</span>';
+    const addImgBtn = makeIconBtn(
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><line x1="16" y1="5" x2="22" y2="5"/><line x1="19" y1="2" x2="19" y2="8"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
+      'إضافة صورة أو ملصق'
+    );
     addImgBtn.addEventListener('click', () => {
       const inp = document.getElementById('customStickerInput');
       if (inp) inp.click();
@@ -766,19 +728,15 @@
     container.appendChild(div);
 
     const quickVars = [
-      { label: '+ اسم الطالب', tag: '{{اسم_الطالب}}' },
-      { label: '+ التقدير', tag: '{{التقدير}}' },
-      { label: '+ المعدل', tag: '{{المعدل}}' },
-      { label: '+ الحلقة', tag: '{{اسم_الحلقة}}' },
-      { label: '+ المعلم', tag: '{{اسم_المعلم}}' },
-      { label: '+ التاريخ الهجري', tag: '{{التاريخ_الهجري}}' }
+      { label: 'إدراج اسم الطالب', tag: '{{اسم_الطالب}}', svg: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
+      { label: 'إدراج التقدير', tag: '{{التقدير}}', svg: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>' },
+      { label: 'إدراج المعدل', tag: '{{المعدل}}', svg: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>' },
+      { label: 'إدراج اسم الحلقة', tag: '{{اسم_الحلقة}}', svg: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>' },
+      { label: 'إدراج التاريخ الهجري', tag: '{{التاريخ_الهجري}}', svg: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' }
     ];
     quickVars.forEach((v) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'px-tray-chip';
-      btn.textContent = v.label;
-      btn.addEventListener('click', () => addCustomText(v.tag, { openEditor: false, toast: `تمت إضافة ${v.label}` }));
+      const btn = makeIconBtn(v.svg, v.label);
+      btn.addEventListener('click', () => addCustomText(v.tag, { openEditor: false, toast: `تم ${v.label}` }));
       container.appendChild(btn);
     });
   }
@@ -790,16 +748,17 @@
     nameInput.placeholder = 'اسم القالب...';
     nameInput.value = 'تصميم البيان ' + (getSavedPresets().length + 1);
 
-    const saveBtn = document.createElement('button');
-    saveBtn.type = 'button';
-    saveBtn.className = 'px-tray-chip active';
-    saveBtn.innerHTML = '<i data-lucide="bookmark-plus" style="width:15px;height:15px;"></i><span>حفظ</span>';
+    const saveBtn = makeIconBtn(
+      '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+      'حفظ التصميم الحالي كقالب'
+    );
     saveBtn.addEventListener('click', () => saveNamedPreset(nameInput.value));
 
-    const resetBtn = document.createElement('button');
-    resetBtn.type = 'button';
-    resetBtn.className = 'px-tray-chip danger';
-    resetBtn.innerHTML = '<i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i><span>افتراضي</span>';
+    const resetBtn = makeIconBtn(
+      '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
+      'استعادة التصميم الافتراضي',
+      'px-tray-icon-btn danger'
+    );
     resetBtn.addEventListener('click', resetStudioDesign);
 
     container.appendChild(nameInput);
@@ -814,8 +773,7 @@
 
       presets.forEach((preset) => {
         const chip = document.createElement('div');
-        chip.className = 'px-tray-chip';
-        chip.style.gap = '6px';
+        chip.className = 'px-preset-chip';
 
         const applySpan = document.createElement('span');
         applySpan.textContent = preset.name;
@@ -828,6 +786,7 @@
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
         delBtn.textContent = '×';
+        delBtn.setAttribute('aria-label', 'حذف القالب');
         delBtn.style.cssText = 'border:none;background:transparent;color:#dc2626;font-weight:800;font-size:15px;cursor:pointer;padding:0 2px;';
         delBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -848,14 +807,16 @@
     const activeFont = elem.fontFamily || state.fontFamily || 'Amiri';
     const allFonts = [
       ...STUDIO_FONTS,
-      ...state.customFonts.map((cf) => ({ value: cf.name, label: cf.label || 'خط مخصص', sub: 'مرفوع' }))
+      ...state.customFonts.map((cf) => ({ value: cf.name, label: cf.label || 'خط مخصص', sub: '' }))
     ];
 
     allFonts.forEach((f) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'px-font-chip' + (activeFont === f.value ? ' active' : '');
-      btn.innerHTML = `<strong style="font-family:'${f.value}', serif;">${f.label}</strong><small>${f.sub}</small>`;
+      btn.setAttribute('aria-label', f.label);
+      btn.title = `${f.label} (${f.sub || 'مخصص'})`;
+      btn.innerHTML = `<strong style="font-family:'${f.value}', serif;">${f.label}</strong>`;
       btn.addEventListener('click', () => {
         elem.fontFamily = f.value;
         state.fontFamily = f.value;
@@ -866,10 +827,10 @@
       container.appendChild(btn);
     });
 
-    const uploadBtn = document.createElement('button');
-    uploadBtn.type = 'button';
-    uploadBtn.className = 'px-tray-chip';
-    uploadBtn.innerHTML = '<i data-lucide="upload" style="width:14px;height:14px;"></i><span>رفع خط (.ttf)</span>';
+    const uploadBtn = makeIconBtn(
+      '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+      'رفع ملف خط (.ttf / .otf)'
+    );
     uploadBtn.addEventListener('click', () => {
       const inp = document.getElementById('customFontInput');
       if (inp) inp.click();
@@ -1020,22 +981,18 @@
 
     const coordsBadge = document.createElement('span');
     coordsBadge.className = 'px-val-badge';
-    coordsBadge.style.minWidth = '72px';
+    coordsBadge.style.minWidth = '68px';
     coordsBadge.textContent = `${elem.x}%, ${elem.y}%`;
 
     const arrows = [
-      { icon: 'arrow-up', dx: 0, dy: -0.4, title: 'أعلى' },
-      { icon: 'arrow-down', dx: 0, dy: 0.4, title: 'أسفل' },
-      { icon: 'arrow-right', dx: 0.4, dy: 0, title: 'يمين' },
-      { icon: 'arrow-left', dx: -0.4, dy: 0, title: 'يسار' }
+      { svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>', dx: 0, dy: -0.4, title: 'تحريك للأعلى' },
+      { svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>', dx: 0, dy: 0.4, title: 'تحريك للأسفل' },
+      { svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>', dx: 0.4, dy: 0, title: 'تحريك لليمين' },
+      { svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>', dx: -0.4, dy: 0, title: 'تحريك لليسار' }
     ];
 
     arrows.forEach((a) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'px-dpad-btn';
-      btn.title = a.title;
-      btn.innerHTML = `<i data-lucide="${a.icon}" style="width:16px;height:16px;"></i>`;
+      const btn = makeIconBtn(a.svg, a.title, 'px-dpad-btn');
       bindHoldNudge(btn, a.dx, a.dy, key, elem, coordsBadge);
       dpad.appendChild(btn);
     });
@@ -1046,10 +1003,10 @@
     div.className = 'px-tray-divider';
     container.appendChild(div);
 
-    const centerH = document.createElement('button');
-    centerH.type = 'button';
-    centerH.className = 'px-tray-chip';
-    centerH.innerHTML = '<i data-lucide="align-center-horizontal" style="width:14px;height:14px;"></i><span>توسيط أفقي</span>';
+    const centerH = makeIconBtn(
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="14" height="6" x="5" y="9" rx="1"/></svg>',
+      'توسيط أفقي'
+    );
     centerH.addEventListener('click', () => {
       elem.x = 50;
       coordsBadge.textContent = `${elem.x}%, ${elem.y}%`;
@@ -1059,10 +1016,10 @@
       pushHistoryState('توسيط أفقي');
     });
 
-    const centerV = document.createElement('button');
-    centerV.type = 'button';
-    centerV.className = 'px-tray-chip';
-    centerV.innerHTML = '<i data-lucide="align-center-vertical" style="width:14px;height:14px;"></i><span>توسيط رأسي</span>';
+    const centerV = makeIconBtn(
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><rect width="6" height="14" x="9" y="5" rx="1"/></svg>',
+      'توسيط رأسي'
+    );
     centerV.addEventListener('click', () => {
       elem.y = 50;
       coordsBadge.textContent = `${elem.x}%, ${elem.y}%`;
@@ -1079,21 +1036,12 @@
 
   function buildFormatTray(container, key, elem) {
     const aligns = [
-      { id: 'right', icon: 'align-right', title: 'يمين' },
-      { id: 'center', icon: 'align-center', title: 'وسط' },
-      { id: 'left', icon: 'align-left', title: 'يسار' }
+      { id: 'right', title: 'محاذاة لليمين', svg: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="12" x2="9" y2="12"/><line x1="21" y1="18" x2="7" y2="18"/></svg>' },
+      { id: 'center', title: 'توسيط النص', svg: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="21" y1="6" x2="3" y2="6"/><line x1="17" y1="12" x2="7" y2="12"/><line x1="19" y1="18" x2="5" y2="18"/></svg>' },
+      { id: 'left', title: 'محاذاة لليسار', svg: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="21" y1="6" x2="3" y2="6"/><line x1="15" y1="12" x2="3" y2="12"/><line x1="17" y1="18" x2="3" y2="18"/></svg>' }
     ];
     aligns.forEach((al) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'px-dpad-btn' + ((elem.align || 'center') === al.id ? ' active' : '');
-      if ((elem.align || 'center') === al.id) {
-        btn.style.borderColor = 'var(--cert-primary)';
-        btn.style.color = 'var(--cert-primary)';
-        btn.style.background = 'var(--cert-primary-light)';
-      }
-      btn.title = al.title;
-      btn.innerHTML = `<i data-lucide="${al.icon}" style="width:16px;height:16px;"></i>`;
+      const btn = makeIconBtn(al.svg, al.title, 'px-tray-icon-btn' + ((elem.align || 'center') === al.id ? ' active' : ''));
       btn.addEventListener('click', () => {
         elem.align = al.id;
         renderTray();
@@ -1103,10 +1051,12 @@
       container.appendChild(btn);
     });
 
-    const boldBtn = document.createElement('button');
-    boldBtn.type = 'button';
-    boldBtn.className = 'px-tray-chip' + (elem.isBold !== false && (elem.isBold || key === 'cert_title' || key === 'student_name') ? ' active' : '');
-    boldBtn.innerHTML = '<i data-lucide="bold" style="width:14px;height:14px;"></i><span>عريض</span>';
+    const isBoldActive = elem.isBold !== false && (elem.isBold || key === 'cert_title' || key === 'student_name');
+    const boldBtn = makeIconBtn(
+      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>',
+      'خط عريض (Bold)',
+      'px-tray-icon-btn' + (isBoldActive ? ' active' : '')
+    );
     boldBtn.addEventListener('click', () => {
       elem.isBold = !elem.isBold;
       renderTray();
@@ -1119,9 +1069,10 @@
     div.className = 'px-tray-divider';
     container.appendChild(div);
 
-    const lhLabel = document.createElement('span');
-    lhLabel.style.cssText = 'font-size:0.72rem;font-weight:700;white-space:nowrap;';
-    lhLabel.textContent = 'تباعد الأسطر:';
+    const lhIcon = document.createElement('span');
+    lhIcon.title = 'تباعد الأسطر';
+    lhIcon.style.cssText = 'display:inline-flex;align-items:center;color:var(--cert-text-muted);flex-shrink:0;';
+    lhIcon.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3-3 3 3"/><path d="M6 5v14"/><path d="M3 16l3 3 3-3"/><line x1="13" y1="6" x2="21" y2="6"/><line x1="13" y1="12" x2="21" y2="12"/><line x1="13" y1="18" x2="21" y2="18"/></svg>';
 
     const defaultLh = key === 'body_text' ? 1.65 : 1.3;
     const lhVal = Number(elem.lineHeight || defaultLh);
@@ -1134,6 +1085,7 @@
     lhSlider.max = '2.4';
     lhSlider.step = '0.05';
     lhSlider.value = lhVal;
+    lhSlider.setAttribute('aria-label', 'تباعد الأسطر');
 
     const lhBadge = document.createElement('span');
     lhBadge.className = 'px-val-badge';
@@ -1151,17 +1103,18 @@
       pushHistoryState('تعديل تباعد الأسطر');
     });
 
-    container.appendChild(lhLabel);
+    container.appendChild(lhIcon);
     container.appendChild(lhSlider);
     container.appendChild(lhBadge);
   }
 
   function buildEffectsTray(container, key, elem) {
-    // 1. Stroke Toggle & Width + Color
-    const strokeBtn = document.createElement('button');
-    strokeBtn.type = 'button';
-    strokeBtn.className = 'px-tray-chip' + (elem.strokeEnabled ? ' active' : '');
-    strokeBtn.textContent = elem.strokeEnabled ? '✓ حد خارجي' : 'حد خارجي';
+    // 1. Stroke Toggle & Width + Color (Icon-Only)
+    const strokeBtn = makeIconBtn(
+      '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3" stroke-dasharray="3 2"/><path d="M9 9h6v6H9z"/></svg>',
+      'حد خارجي للنص (Stroke)',
+      'px-tray-icon-btn' + (elem.strokeEnabled ? ' active' : '')
+    );
     strokeBtn.addEventListener('click', () => {
       elem.strokeEnabled = !elem.strokeEnabled;
       if (elem.strokeEnabled && !elem.strokeWidth) elem.strokeWidth = 4;
@@ -1180,6 +1133,7 @@
       swSlider.max = '16';
       swSlider.step = '1';
       swSlider.value = elem.strokeWidth || 4;
+      swSlider.setAttribute('aria-label', 'سمك الحد الخارجي');
       swSlider.addEventListener('input', (e) => {
         elem.strokeWidth = Number(e.target.value);
         scheduleCanvasDraw();
@@ -1209,11 +1163,12 @@
     div1.className = 'px-tray-divider';
     container.appendChild(div1);
 
-    // 2. Shadow Toggle & Blur
-    const shadowBtn = document.createElement('button');
-    shadowBtn.type = 'button';
-    shadowBtn.className = 'px-tray-chip' + (elem.shadowEnabled ? ' active' : '');
-    shadowBtn.textContent = elem.shadowEnabled ? '✓ ظل النص' : 'ظل النص';
+    // 2. Shadow Toggle & Blur (Icon-Only)
+    const shadowBtn = makeIconBtn(
+      '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M14.5 14.5a6 6 0 0 1-8.5 0" opacity="0.45"/><circle cx="13" cy="13" r="6" stroke-dasharray="2 2"/></svg>',
+      'ظل النص داخل الشهادة (Shadow)',
+      'px-tray-icon-btn' + (elem.shadowEnabled ? ' active' : '')
+    );
     shadowBtn.addEventListener('click', () => {
       elem.shadowEnabled = !elem.shadowEnabled;
       if (elem.shadowEnabled && !elem.shadowBlur) elem.shadowBlur = 12;
@@ -1232,6 +1187,7 @@
       shSlider.max = '32';
       shSlider.step = '2';
       shSlider.value = elem.shadowBlur || 12;
+      shSlider.setAttribute('aria-label', 'نعومة الظل');
       shSlider.addEventListener('input', (e) => {
         elem.shadowBlur = Number(e.target.value);
         scheduleCanvasDraw();
@@ -1251,11 +1207,11 @@
   function buildRotateTray(container, elem) {
     const rot = Math.round(elem.rotation || 0);
 
-    const left15 = document.createElement('button');
-    left15.type = 'button';
-    left15.className = 'px-step-btn';
-    left15.textContent = '↺';
-    left15.title = '-15°';
+    const left15 = makeIconBtn(
+      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
+      'تدوير -15°',
+      'px-step-btn'
+    );
     left15.addEventListener('click', () => {
       rotateActiveElementTo((elem.rotation || 0) - 15, true);
       renderTray();
@@ -1268,12 +1224,13 @@
     slider.max = '180';
     slider.step = '1';
     slider.value = rot;
+    slider.setAttribute('aria-label', 'زاوية التدوير');
 
-    const right15 = document.createElement('button');
-    right15.type = 'button';
-    right15.className = 'px-step-btn';
-    right15.textContent = '↻';
-    right15.title = '+15°';
+    const right15 = makeIconBtn(
+      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>',
+      'تدوير +15°',
+      'px-step-btn'
+    );
     right15.addEventListener('click', () => {
       rotateActiveElementTo((elem.rotation || 0) + 15, true);
       renderTray();
@@ -1282,9 +1239,9 @@
     const resetBtn = document.createElement('button');
     resetBtn.type = 'button';
     resetBtn.className = 'px-val-badge';
-    resetBtn.style.cssText = 'border:1px solid var(--cert-border);background:var(--cert-surface-alt);border-radius:6px;padding:4px 6px;cursor:pointer;';
+    resetBtn.style.cssText = 'border:none;background:transparent;padding:4px 6px;cursor:pointer;';
     resetBtn.textContent = `${rot}°`;
-    resetBtn.title = 'إعادة إلى 0°';
+    resetBtn.title = 'إعادة التدوير إلى 0°';
     resetBtn.addEventListener('click', () => {
       rotateActiveElementTo(0, true);
       renderTray();
@@ -1305,9 +1262,10 @@
 
   function buildOpacityTray(container, key, elem, compact = false) {
     const opPct = Math.round((elem.opacity !== undefined ? elem.opacity : 1) * 100);
-    const label = document.createElement('span');
-    label.style.cssText = 'font-size:0.72rem;font-weight:700;white-space:nowrap;';
-    label.textContent = 'الشفافية:';
+    const iconEl = document.createElement('span');
+    iconEl.title = 'الشفافية';
+    iconEl.style.cssText = 'display:inline-flex;align-items:center;color:var(--cert-text-muted);flex-shrink:0;';
+    iconEl.innerHTML = TOOL_SVGS.opacity;
 
     const slider = document.createElement('input');
     slider.type = 'range';
@@ -1317,6 +1275,7 @@
     slider.max = '100';
     slider.step = '5';
     slider.value = opPct;
+    slider.setAttribute('aria-label', 'الشفافية');
 
     const badge = document.createElement('span');
     badge.className = 'px-val-badge';
@@ -1330,28 +1289,28 @@
     });
     slider.addEventListener('change', () => pushHistoryState('تعديل الشفافية'));
 
-    container.appendChild(label);
+    container.appendChild(iconEl);
     container.appendChild(slider);
     container.appendChild(badge);
   }
 
   function buildLayerTray(container) {
-    const upBtn = document.createElement('button');
-    upBtn.type = 'button';
-    upBtn.className = 'px-tray-chip';
-    upBtn.innerHTML = '<i data-lucide="arrow-up" style="width:15px;height:15px;"></i><span>تقديم للأمام</span>';
+    const upBtn = makeIconBtn(
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>',
+      'تقديم الطبقة للأمام'
+    );
     upBtn.addEventListener('click', () => moveActiveElementLayer(1));
 
-    const downBtn = document.createElement('button');
-    downBtn.type = 'button';
-    downBtn.className = 'px-tray-chip';
-    downBtn.innerHTML = '<i data-lucide="arrow-down" style="width:15px;height:15px;"></i><span>تأخير للخلف</span>';
+    const downBtn = makeIconBtn(
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+      'تأخير الطبقة للخلف'
+    );
     downBtn.addEventListener('click', () => moveActiveElementLayer(-1));
 
-    const openDrawerBtn = document.createElement('button');
-    openDrawerBtn.type = 'button';
-    openDrawerBtn.className = 'px-tray-chip active';
-    openDrawerBtn.innerHTML = '<i data-lucide="layers" style="width:15px;height:15px;"></i><span>لوحة الطبقات</span>';
+    const openDrawerBtn = makeIconBtn(
+      TOOL_SVGS.layer,
+      'فتح لوحة الطبقات'
+    );
     openDrawerBtn.addEventListener('click', () => toggleLayersDrawer(true));
 
     container.appendChild(upBtn);
@@ -2925,7 +2884,13 @@
     const student = state.students[state.currentStudentIndex] || {};
 
     if (currentStudentNameEl) {
-      currentStudentNameEl.textContent = total > 0 ? (student.name || 'طالب البيان') : 'لا توجد نتائج';
+      if (total > 0) {
+        const fullName = String(student.name || 'طالب البيان').trim();
+        const firstName = fullName.split(/\s+/)[0] || fullName;
+        currentStudentNameEl.textContent = firstName;
+      } else {
+        currentStudentNameEl.textContent = 'لا توجد نتائج';
+      }
     }
     if (studentCounterEl) {
       studentCounterEl.textContent = `(${current}/${total})`;
@@ -2936,8 +2901,11 @@
     const countBadge = document.getElementById('studentsCountBadge');
     if (countBadge) countBadge.textContent = `${total} طلاب محددين`;
 
+    const batchTotalBadge = document.getElementById('batchTotalBadge');
+    if (batchTotalBadge) batchTotalBadge.textContent = `${total} طالب`;
+
     const batchHint = document.getElementById('batchCountHint');
-    if (batchHint) batchHint.textContent = `تنزيل شهادات ${total} طالب`;
+    if (batchHint) batchHint.textContent = `توليد وتصدير شهادات ${total} طالب تلقائياً`;
   }
 
   function renderStudentsPillPreview() {
@@ -4179,11 +4147,6 @@
   function applyCanvasTransform() {
     if (!canvasFrame) return;
     canvasFrame.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.scale})`;
-    const zoomBadge = document.getElementById('zoomLevelBadge');
-    const zoomFitBtn = document.getElementById('zoomFitBtn');
-    const isModified = Math.abs(state.scale - 1) > 0.02 || Math.abs(state.panX) > 2 || Math.abs(state.panY) > 2;
-    if (zoomBadge) zoomBadge.textContent = `${Math.round(state.scale * 100)}%`;
-    if (zoomFitBtn) zoomFitBtn.style.display = isModified ? 'inline-flex' : 'none';
   }
 
   function setupPanAndGestures() {
@@ -4253,7 +4216,15 @@
         panPointerId = null;
         viewport.style.cursor = '';
         if (wasTap) {
-          if (state.activeElementKey) setSelectedElement(null);
+          if (state.activeTool) {
+            state.activeTool = null;
+          }
+          if (state.activeElementKey) {
+            setSelectedElement(null);
+          } else {
+            renderBottomToolbar();
+            renderTray();
+          }
           if (state.layersDrawerOpen) toggleLayersDrawer(false);
         }
       }
@@ -4425,6 +4396,8 @@
   // EXPORT & NATIVE ANDROID SHARE BRIDGE
   // =========================================================
   function setupExportHandlers() {
+    const btnAutoBatchExportAll = document.getElementById('btnAutoBatchExportAll');
+    const batchFmtBtns = document.querySelectorAll('#batchFormatSwitch .px-batch-fmt-btn');
     const btnDownloadSinglePng = document.getElementById('btnDownloadSinglePng');
     const btnDownloadSinglePdf = document.getElementById('btnDownloadSinglePdf');
     const btnDownloadBatchZip = document.getElementById('btnDownloadBatchZip');
@@ -4433,6 +4406,22 @@
     const btnPrintDirect = document.getElementById('btnPrintDirect');
     const cancelBatchBtn = document.getElementById('cancelBatchExportBtn');
     const exportFormatSelect = document.getElementById('exportFormatSelect');
+
+    state.batchFormat = 'pdf';
+    batchFmtBtns.forEach((b) => {
+      b.addEventListener('click', () => {
+        batchFmtBtns.forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        state.batchFormat = b.getAttribute('data-batch-fmt') || 'pdf';
+      });
+    });
+
+    if (btnAutoBatchExportAll) {
+      btnAutoBatchExportAll.addEventListener('click', () => {
+        if (state.batchFormat === 'zip') downloadBatchZip();
+        else downloadBatchPdf();
+      });
+    }
 
     if (exportFormatSelect) {
       exportFormatSelect.value = state.exportFormat || 'png_uhd';
@@ -4639,9 +4628,10 @@
     state.isBatchCancelled = false;
     const total = state.students.length;
     const zip = new JSZip();
+    const usedNames = new Map();
     const initialIndex = state.currentStudentIndex;
     const formatKey = state.exportFormat === 'png_std' ? 'png_std' : 'jpg_hd';
-    updateBatchModal(true, 'جاري تجهيز حزمة الشهادات (ZIP)...', 0, total, '');
+    updateBatchModal(true, `جاري تصدير 0 من ${total}...`, 0, total, '');
 
     try {
       let packedCount = 0;
@@ -4650,16 +4640,22 @@
         const st = state.students[i];
         state.currentStudentIndex = i;
         drawCertificateCanvas();
-        updateBatchModal(true, 'جاري تجهيز حزمة الشهادات (ZIP)...', i + 1, total, st.name);
+        updateBatchModal(true, `جاري تصدير ${i + 1} من ${total}...`, i + 1, total, st.name);
 
         const { blob, cfg } = await renderExportCanvasBlob(canvas, formatKey);
-        zip.file(`${i + 1}_${getCleanFileName(st.name, cfg.ext)}`, blob);
+        const baseName = getCleanFileName(st.name, cfg.ext);
+        const count = (usedNames.get(baseName) || 0) + 1;
+        usedNames.set(baseName, count);
+        const uniqueName = count === 1 ? baseName : baseName.replace(new RegExp(`\\.${cfg.ext}$`), `_${count}.${cfg.ext}`);
+        zip.file(uniqueName, blob);
         packedCount += 1;
         await new Promise((r) => setTimeout(r, 15));
       }
 
       state.currentStudentIndex = initialIndex;
       renderCertificate();
+      updateStudentPager();
+      syncStudentGradeSelectorUI();
 
       updateBatchModal(true, 'جاري ضغط وحفظ ملف ZIP...', total, total, `${packedCount} شهادة`);
       const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 5 } });
@@ -4668,12 +4664,14 @@
       const zipName = `شهادات_مدرسة_البيان_${new Date().toISOString().slice(0, 10)}.zip`;
       const saved = await saveBlobOnDevice(content, zipName, { target: 'downloads', mimeType: 'application/zip' });
       updateBatchModal(false);
-      showVerifiedExportCard(`تم حفظ حزمة ZIP (${packedCount} شهادة)`, `${saved.path} (${formatExportSize(saved.bytes)})`);
-      showToast(`تم حفظ ملف ZIP (${packedCount} شهادة) في التنزيلات`);
+      showVerifiedExportCard(`تم تصدير جميع الطلاب (${packedCount} شهادة ZIP)`, `${saved.path} (${formatExportSize(saved.bytes)})`);
+      showToast(`تم حفظ حزمة ZIP (${packedCount} شهادة) في التنزيلات`);
     } catch (err) {
       updateBatchModal(false);
       state.currentStudentIndex = initialIndex;
       renderCertificate();
+      updateStudentPager();
+      syncStudentGradeSelectorUI();
       if (err && err.message === 'BATCH_CANCELLED') {
         showToast('تم إلغاء التصدير الجماعي');
       } else {
@@ -4701,7 +4699,7 @@
     const initialIndex = state.currentStudentIndex;
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-    updateBatchModal(true, 'جاري إنشاء ملف PDF مجمع...', 0, total, '');
+    updateBatchModal(true, `جاري تصدير 0 من ${total}...`, 0, total, '');
 
     try {
       for (let i = 0; i < total; i++) {
@@ -4709,7 +4707,7 @@
         const st = state.students[i];
         state.currentStudentIndex = i;
         drawCertificateCanvas();
-        updateBatchModal(true, 'جاري إنشاء ملف PDF مجمع...', i + 1, total, st.name);
+        updateBatchModal(true, `جاري تصدير ${i + 1} من ${total}...`, i + 1, total, st.name);
         if (i > 0) doc.addPage('a4', 'landscape');
         const imgData = canvas.toDataURL('image/jpeg', 0.90);
         doc.addImage(imgData, 'JPEG', 0, 0, 841.89, 595.28);
@@ -4718,17 +4716,21 @@
 
       state.currentStudentIndex = initialIndex;
       renderCertificate();
+      updateStudentPager();
+      syncStudentGradeSelectorUI();
 
       const pdfBlob = doc.output('blob');
       const pdfName = `شهادات_البيان_مجمعة_${new Date().toISOString().slice(0, 10)}.pdf`;
       const saved = await saveBlobOnDevice(pdfBlob, pdfName, { target: 'downloads', mimeType: 'application/pdf' });
       updateBatchModal(false);
-      showVerifiedExportCard(`تم حفظ PDF المجمع (${total} شهادة)`, `${saved.path} (${formatExportSize(saved.bytes)})`);
+      showVerifiedExportCard(`تم تصدير جميع الطلاب (${total} شهادة PDF)`, `${saved.path} (${formatExportSize(saved.bytes)})`);
       showToast(`تم حفظ ملف PDF لـ ${total} طالب في التنزيلات`);
     } catch (err) {
       updateBatchModal(false);
       state.currentStudentIndex = initialIndex;
       renderCertificate();
+      updateStudentPager();
+      syncStudentGradeSelectorUI();
       if (err && err.message === 'BATCH_CANCELLED') {
         showToast('تم إلغاء إنشاء ملف PDF');
       } else {

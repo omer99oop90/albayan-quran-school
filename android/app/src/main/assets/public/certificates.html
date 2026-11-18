@@ -12,8 +12,8 @@
   <link rel="stylesheet" href="dark_theme.css?v=1.0">
   <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
 
-  <!-- Certificates Studio CSS (PixelLab Mobile Architecture) -->
-  <link rel="stylesheet" href="certificates.css?v=3.0">
+  <!-- Certificates Studio CSS (Clean PixelLab Neutral UI) -->
+  <link rel="stylesheet" href="certificates.css?v=4.0">
 
   <!-- Arabic Calligraphy & Modern Typography from Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,8 +60,8 @@
           <strong id="loggedUsername">الكادر التعليمي</strong>
           <small id="loggedRole">استوديو الشهادات الذكي</small>
         </div>
-        <button type="button" class="pure-icon-btn sidebar-logout-btn" onclick="logout()" title="تسجيل الخروج" aria-label="تسجيل الخروج">
-          <i data-lucide="log-out" style="width:22px; height:22px; color:#ef4444;"></i>
+        <button type="button" class="px-icon-only-btn sidebar-logout-btn" onclick="logout()" title="تسجيل الخروج" aria-label="تسجيل الخروج">
+          <i data-lucide="log-out" style="width:20px; height:20px; color:#dc2626;"></i>
         </button>
       </div>
     </aside>
@@ -69,46 +69,33 @@
     <!-- Main PixelLab-Style Studio Shell -->
     <main class="main-content cert-main-content">
 
-      <!-- 1. Unified Top Bar -->
+      <!-- 1. Unified Top Bar: Right (Back + Layers) | Center (First Name + Counter) | Left (Export) -->
       <header class="px-top-bar" id="pxTopBar">
-        <!-- Right (RTL Start): Back, Undo, Redo, Layers Drawer, Snap Grid -->
         <div class="px-top-right">
-          <a href="more.html" class="px-top-icon-btn" id="backToMoreBtn" aria-label="رجوع" title="الرجوع لصفحة المزيد">
-            <i data-lucide="arrow-right" style="width:18px; height:18px;"></i>
+          <a href="more.html" class="px-icon-only-btn" id="backToMoreBtn" aria-label="رجوع" title="الرجوع لصفحة المزيد">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
           </a>
-          <button type="button" class="px-top-icon-btn" id="undoBtn" title="تراجع (Ctrl+Z)" disabled aria-label="تراجع">
-            <i data-lucide="undo-2" style="width:18px; height:18px;"></i>
-          </button>
-          <button type="button" class="px-top-icon-btn" id="redoBtn" title="إعادة (Ctrl+Y)" disabled aria-label="إعادة">
-            <i data-lucide="redo-2" style="width:18px; height:18px;"></i>
-          </button>
-          <button type="button" class="px-top-icon-btn" id="layersDrawerBtn" title="لوحة الطبقات" aria-label="لوحة الطبقات" aria-expanded="false">
-            <i data-lucide="layers" style="width:18px; height:18px;"></i>
-          </button>
-          <button type="button" class="px-top-icon-btn active" id="snapGridToggleBtn" title="تفعيل الشبكة والمحاذاة المغناطيسية" aria-label="الشبكة والمحاذاة المغناطيسية" aria-pressed="true">
-            <i data-lucide="grid-3x3" style="width:18px; height:18px;"></i>
+          <button type="button" class="px-icon-only-btn" id="layersDrawerBtn" title="لوحة الطبقات" aria-label="لوحة الطبقات" aria-expanded="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
           </button>
         </div>
 
-        <!-- Center: Full-Name Student Quick Switcher (opens Filter Modal on click) -->
         <div class="px-top-center">
           <button type="button" class="px-nav-arrow-btn" id="prevStudentBtn" title="الطالب السابق" disabled aria-label="الطالب السابق">
-            <i data-lucide="chevron-right" style="width:18px; height:18px;"></i>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
           </button>
           <button type="button" class="px-student-pill" id="studentPill" title="انقر لاختيار وفلترة الطلاب والحلقات">
-            <span class="px-student-name" id="currentStudentName">جاري التحميل...</span>
+            <span class="px-student-name" id="currentStudentName">...</span>
             <span class="px-student-counter" id="studentCounter">(0/0)</span>
           </button>
           <button type="button" class="px-nav-arrow-btn" id="nextStudentBtn" title="الطالب التالي" disabled aria-label="الطالب التالي">
-            <i data-lucide="chevron-left" style="width:18px; height:18px;"></i>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           </button>
         </div>
 
-        <!-- Left (RTL End): Export & Share Button -->
         <div class="px-top-left">
-          <button type="button" class="px-export-top-btn" id="openExportModalBtn" title="التصدير والمشاركة" aria-label="التصدير والمشاركة">
-            <i data-lucide="share" style="width:16px; height:16px;"></i>
-            <span class="px-export-btn-label">التصدير</span>
+          <button type="button" class="px-icon-only-btn" id="openExportModalBtn" title="التصدير والمشاركة" aria-label="التصدير والمشاركة">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
         </div>
       </header>
@@ -119,9 +106,23 @@
       <input type="file" id="replaceImageInput" accept="image/*" class="hidden-file-input" style="display:none;">
       <input type="file" id="customFontInput" accept=".ttf,.otf,.woff,.woff2" class="hidden-file-input" style="display:none;">
 
-      <!-- 2. Central Interactive Canvas Stage (Always >= 70% Screen Visibility) -->
+      <!-- 2. Central Interactive Canvas Stage -->
       <div class="px-stage-wrap" id="studioWorkspace">
         <div class="cert-stage-container" id="certStageContainer">
+
+          <!-- Floating Capsule Bar Above Canvas (Undo, Redo, Snap Grid) -->
+          <div class="px-canvas-capsule" id="pxCanvasCapsule" role="toolbar" aria-label="أدوات المساحة">
+            <button type="button" class="px-capsule-icon-btn" id="undoBtn" title="تراجع" disabled aria-label="تراجع">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+            </button>
+            <button type="button" class="px-capsule-icon-btn" id="redoBtn" title="إعادة" disabled aria-label="إعادة">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></svg>
+            </button>
+            <button type="button" class="px-capsule-icon-btn active" id="snapGridToggleBtn" title="الشبكة والمحاذاة المغناطيسية" aria-label="الشبكة والمحاذاة المغناطيسية" aria-pressed="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+            </button>
+          </div>
+
           <div class="cert-canvas-frame" id="certCanvasFrame">
             <canvas id="certCanvas" width="3508" height="2480"></canvas>
 
@@ -135,24 +136,17 @@
             <!-- Interactive Drag, Resize & Rotate Overlay -->
             <div class="cert-drag-overlay" id="certDragOverlay"></div>
           </div>
-
-          <!-- Compact Zoom Status Pill (Click to Reset Fit) -->
-          <button type="button" class="px-zoom-reset-pill" id="zoomFitBtn" title="انقر لإعادة ضبط التكبير (100%)" style="display:none;">
-            <i data-lucide="maximize-2" style="width:12px; height:12px;"></i>
-            <span id="zoomLevelBadge">100%</span>
-          </button>
         </div>
 
         <!-- 3. Slide-Over Layers Drawer (40% Screen Width, Non-Blocking) -->
         <aside class="px-layers-drawer" id="layersDrawer" aria-label="لوحة الطبقات">
           <div class="px-layers-header">
             <div class="px-layers-title-wrap">
-              <i data-lucide="layers" style="width:15px; height:15px; color:var(--cert-primary);"></i>
               <strong>الطبقات</strong>
               <span class="px-layers-count" id="layersCountBadge">0</span>
             </div>
-            <button type="button" class="pure-icon-btn" id="closeLayersDrawerBtn" title="إغلاق لوحة الطبقات" aria-label="إغلاق">
-              <i data-lucide="x" style="width:16px; height:16px;"></i>
+            <button type="button" class="px-icon-only-btn" id="closeLayersDrawerBtn" title="إغلاق لوحة الطبقات" aria-label="إغلاق">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
           </div>
           <div class="px-layers-subhint">اسحب ≡ للترتيب • قفل لمنع اللمس</div>
@@ -160,15 +154,12 @@
         </aside>
       </div>
 
-      <!-- 4. Contextual Slider / Control Tray (~56px, Docked Above Bottom Bar, Non-Blocking) -->
+      <!-- 4. Contextual Slider / Control Tray (~56px, No trailing close square) -->
       <section class="px-contextual-tray" id="pxContextualTray" aria-label="شريط الخصائص السريع" style="display:none;">
         <div class="px-tray-inner" id="pxTrayInner"></div>
-        <button type="button" class="px-tray-close-btn" id="pxTrayCloseBtn" title="إخفاء الشريط" aria-label="إخفاء الشريط">
-          <i data-lucide="chevron-down" style="width:16px; height:16px;"></i>
-        </button>
       </section>
 
-      <!-- 5. Context-Aware Docked Bottom Toolbar (~64px) -->
+      <!-- 5. Context-Aware Docked Bottom Toolbar (~64px, Pure Geometric Icon-Only) -->
       <nav class="px-bottom-bar" id="pxBottomBar" aria-label="أدوات الاستوديو"></nav>
 
     </main>
@@ -179,8 +170,8 @@
     <div class="px-modal-card px-modal-card-lg">
       <div class="px-modal-header">
         <h3 id="studentsModalTitle">الطلاب والحلقات والدرجات</h3>
-        <button type="button" class="pure-icon-btn" id="closeStudentsModalBtn" aria-label="إغلاق">
-          <i data-lucide="x" style="width:18px; height:18px;"></i>
+        <button type="button" class="px-icon-only-btn" id="closeStudentsModalBtn" aria-label="إغلاق" title="إغلاق">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
 
@@ -188,17 +179,17 @@
         <div class="panel-section">
           <label class="section-label">فئة التصدير المطلوبة:</label>
           <div class="pure-icons-bar mode-icons-bar" id="filterModeIcons">
-            <button type="button" class="pure-icon-btn mode-icon-btn active" data-mode="all" title="جميع الطلاب" aria-label="جميع الطلاب">
-              <i data-lucide="users" style="width:22px; height:22px;"></i>
+            <button type="button" class="px-icon-only-btn mode-icon-btn active" data-mode="all" title="جميع الطلاب" aria-label="جميع الطلاب">
+              <i data-lucide="users" style="width:21px; height:21px;"></i>
             </button>
-            <button type="button" class="pure-icon-btn mode-icon-btn" data-mode="circle" title="حلقة محددة" aria-label="حلقة محددة">
-              <i data-lucide="book-open" style="width:22px; height:22px;"></i>
+            <button type="button" class="px-icon-only-btn mode-icon-btn" data-mode="circle" title="حلقة محددة" aria-label="حلقة محددة">
+              <i data-lucide="book-open" style="width:21px; height:21px;"></i>
             </button>
-            <button type="button" class="pure-icon-btn mode-icon-btn" data-mode="single" title="طالب واحد فقط" aria-label="طالب واحد فقط">
-              <i data-lucide="user-check" style="width:22px; height:22px;"></i>
+            <button type="button" class="px-icon-only-btn mode-icon-btn" data-mode="single" title="طالب واحد فقط" aria-label="طالب واحد فقط">
+              <i data-lucide="user-check" style="width:21px; height:21px;"></i>
             </button>
-            <button type="button" class="pure-icon-btn mode-icon-btn highlight-achievers" data-mode="top_achievers" title="المتفوقين والمميزين" aria-label="المتفوقين والمميزين">
-              <i data-lucide="sparkles" style="width:22px; height:22px;"></i>
+            <button type="button" class="px-icon-only-btn mode-icon-btn highlight-achievers" data-mode="top_achievers" title="المتفوقين والمميزين" aria-label="المتفوقين والمميزين">
+              <i data-lucide="sparkles" style="width:21px; height:21px;"></i>
             </button>
           </div>
           <span class="mode-selected-label" id="modeSelectedLabel">جميع الطلاب</span>
@@ -241,29 +232,29 @@
             <label class="criteria-card active">
               <input type="radio" name="achieverCriteria" value="top_sard" checked>
               <div class="criteria-body">
-                <strong>📖 الأكثر حفظاً وسرداً</strong>
+                <strong>الأكثر حفظاً وسرداً</strong>
                 <small>أعلى عدد أوجه وسور منجزة</small>
               </div>
             </label>
             <label class="criteria-card">
               <input type="radio" name="achieverCriteria" value="top_exams">
               <div class="criteria-body">
-                <strong>🏆 الأوائل في الاختبارات</strong>
-                <small>الحاصلون على 85% فأعلى أو الدرجات التامة</small>
+                <strong>الأوائل في الاختبارات</strong>
+                <small>الحاصلون على 85% فأعلى</small>
               </div>
             </label>
             <label class="criteria-card">
               <input type="radio" name="achieverCriteria" value="top_memo">
               <div class="criteria-body">
-                <strong>🌟 تقييم ممتاز في الحفظ</strong>
-                <small>أصحاب التقييمات الشهرية المتميزة</small>
+                <strong>تقييم ممتاز في الحفظ</strong>
+                <small>التقييمات الشهرية المتميزة</small>
               </div>
             </label>
             <label class="criteria-card">
               <input type="radio" name="achieverCriteria" value="top_attendance">
               <div class="criteria-body">
-                <strong>⏱️ المواظبة وعدم الغياب</strong>
-                <small>الطلاب الأكثر التزاماً بالحضور الكامل</small>
+                <strong>المواظبة وعدم الغياب</strong>
+                <small>الالتزام بالحضور الكامل</small>
               </div>
             </label>
           </div>
@@ -304,8 +295,8 @@
         <div class="panel-section">
           <div class="students-summary-bar">
             <span class="students-count-badge" id="studentsCountBadge">0 طلاب محددين</span>
-            <button type="button" class="pure-icon-btn" id="refreshStudentsBtn" title="تحديث القائمة" aria-label="تحديث القائمة">
-              <i data-lucide="refresh-cw" style="width:18px; height:18px; color:var(--cert-primary);"></i>
+            <button type="button" class="px-icon-only-btn" id="refreshStudentsBtn" title="تحديث القائمة" aria-label="تحديث القائمة">
+              <i data-lucide="refresh-cw" style="width:18px; height:18px;"></i>
             </button>
           </div>
           <div class="student-search-wrap">
@@ -318,74 +309,99 @@
     </div>
   </div>
 
-  <!-- Explicit Modal 2: Export & Share Sheet -->
+  <!-- Explicit Modal 2: Export & Share Sheet (Batch Export All Students Primary) -->
   <div id="exportShareModal" class="px-modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
     <div class="px-modal-card">
       <div class="px-modal-header">
-        <h3 id="exportModalTitle">التصدير والمشاركة</h3>
-        <button type="button" class="pure-icon-btn" id="closeExportModalBtn" aria-label="إغلاق">
-          <i data-lucide="x" style="width:18px; height:18px;"></i>
+        <h3 id="exportModalTitle">تصدير الشهادات</h3>
+        <button type="button" class="px-icon-only-btn" id="closeExportModalBtn" aria-label="إغلاق" title="إغلاق">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
 
       <div class="px-modal-body">
-        <div class="export-options-row">
-          <label class="form-label-sm" for="exportFormatSelect">صيغة ودقة الصورة عند التنزيل:</label>
-          <select id="exportFormatSelect" class="form-select-sm">
-            <option value="png_uhd" selected>PNG فائق الدقة (3508×2480 — 300 DPI)</option>
-            <option value="jpg_hd">JPG عالية الجودة (3508×2480 — حجم أخف)</option>
-            <option value="png_std">PNG قياسي (1754×1240 — سريع)</option>
-          </select>
+        <!-- PRIMARY: Automatic Batch Export All Students -->
+        <div class="px-batch-hero-card">
+          <div class="px-batch-hero-head">
+            <div>
+              <strong>التصدير التلقائي لجميع الطلاب</strong>
+              <small id="batchCountHint">توليد وتصدير شهادات جميع الطلاب آلياً</small>
+            </div>
+            <span class="px-batch-mode-badge" id="batchTotalBadge">0 طالب</span>
+          </div>
+
+          <div class="px-batch-format-switch" id="batchFormatSwitch" role="radiogroup" aria-label="صيغة التصدير التلقائي">
+            <button type="button" class="px-batch-fmt-btn active" data-batch-fmt="pdf">PDF مجمع للطباعة</button>
+            <button type="button" class="px-batch-fmt-btn" data-batch-fmt="zip">حزمة صور ZIP</button>
+          </div>
+
+          <button type="button" class="px-primary-batch-btn" id="btnAutoBatchExportAll">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span id="btnAutoBatchLabel">تصدير جميع الطلاب تلقائياً</span>
+          </button>
+
+          <div class="px-batch-quick-row">
+            <button type="button" class="px-export-tile" id="btnDownloadBatchPdf">
+              <i data-lucide="files" style="width:19px; height:19px;"></i>
+              <div>
+                <strong>PDF مجمع</strong>
+                <small>ملف واحد متعدد الصفحات</small>
+              </div>
+            </button>
+            <button type="button" class="px-export-tile" id="btnDownloadBatchZip">
+              <i data-lucide="archive" style="width:19px; height:19px;"></i>
+              <div>
+                <strong>حزمة ZIP</strong>
+                <small>شهادات بأسماء الطلاب</small>
+              </div>
+            </button>
+          </div>
         </div>
 
-        <div class="px-export-grid">
-          <button type="button" class="px-export-tile tile-gold" id="btnDownloadSinglePng">
-            <i data-lucide="image" style="width:22px; height:22px;"></i>
-            <div>
-              <strong>صورة PNG</strong>
-              <small>حفظ في المعرض (300 DPI)</small>
-            </div>
-          </button>
+        <!-- SECONDARY: Single Current Student Export -->
+        <div class="px-secondary-export-block">
+          <div class="px-secondary-export-header">
+            <span>خيار ثانوي: الطالب الحالي فقط</span>
+            <select id="exportFormatSelect" class="form-select-sm" style="width:auto;">
+              <option value="png_uhd" selected>PNG (3508×2480)</option>
+              <option value="jpg_hd">JPG (3508×2480)</option>
+              <option value="png_std">PNG (1754×1240)</option>
+            </select>
+          </div>
 
-          <button type="button" class="px-export-tile tile-green" id="btnShareMobile">
-            <i data-lucide="share-2" style="width:22px; height:22px;"></i>
-            <div>
-              <strong>مشاركة فورية</strong>
-              <small>واتساب وتطبيقات الهاتف</small>
-            </div>
-          </button>
+          <div class="px-export-grid">
+            <button type="button" class="px-export-tile" id="btnDownloadSinglePng">
+              <i data-lucide="image" style="width:19px; height:19px;"></i>
+              <div>
+                <strong>صورة للمعرض</strong>
+                <small>حفظ الشهادة الحالية</small>
+              </div>
+            </button>
 
-          <button type="button" class="px-export-tile tile-red" id="btnDownloadSinglePdf">
-            <i data-lucide="file-down" style="width:22px; height:22px;"></i>
-            <div>
-              <strong>PDF فردي</strong>
-              <small>مقاس A4 أفقي للطباعة</small>
-            </div>
-          </button>
+            <button type="button" class="px-export-tile" id="btnDownloadSinglePdf">
+              <i data-lucide="file-down" style="width:19px; height:19px;"></i>
+              <div>
+                <strong>PDF فردي</strong>
+                <small>A4 أفقي للطالب الحالي</small>
+              </div>
+            </button>
 
-          <button type="button" class="px-export-tile tile-purple" id="btnDownloadBatchPdf">
-            <i data-lucide="files" style="width:22px; height:22px;"></i>
-            <div>
-              <strong>PDF مجمع للطباعة</strong>
-              <small>دمج كل الطلاب في ملف واحد</small>
-            </div>
-          </button>
+            <button type="button" class="px-export-tile" id="btnShareMobile">
+              <i data-lucide="share-2" style="width:19px; height:19px;"></i>
+              <div>
+                <strong>مشاركة فورية</strong>
+                <small>واتساب وتطبيقات الهاتف</small>
+              </div>
+            </button>
 
-          <button type="button" class="px-export-tile tile-amber" id="btnDownloadBatchZip">
-            <i data-lucide="archive" style="width:22px; height:22px;"></i>
-            <div>
-              <strong>حزمة ZIP</strong>
-              <small id="batchCountHint">تنزيل شهادات كل الطلاب</small>
-            </div>
-          </button>
-
-          <button type="button" class="px-export-tile tile-blue" id="btnPrintDirect">
-            <i data-lucide="printer" style="width:22px; height:22px;"></i>
-            <div>
-              <strong>طباعة مباشرة</strong>
-              <small>إرسال الشهادة للطابعة</small>
-            </div>
-          </button>
+            <button type="button" class="px-export-tile" id="btnPrintDirect">
+              <i data-lucide="printer" style="width:19px; height:19px;"></i>
+              <div>
+                <strong>طباعة مباشرة</strong>
+                <small>إرسال للطابعة</small>
+              </div>
+            </button>
+          </div>
         </div>
 
         <!-- Verified Export Result Card -->
@@ -402,8 +418,8 @@
     <div class="text-edit-card">
       <div class="text-edit-header">
         <span class="text-edit-title">تعديل النص والمتغيرات الذكية</span>
-        <button type="button" class="pure-icon-btn" id="closeTextEditModalBtn" title="إغلاق" aria-label="إغلاق">
-          <i data-lucide="x" style="width:18px; height:18px;"></i>
+        <button type="button" class="px-icon-only-btn" id="closeTextEditModalBtn" title="إغلاق" aria-label="إغلاق">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
       <textarea id="quickEditTextInput" class="form-textarea" rows="3" placeholder="اكتب أو عدل النص هنا مباشرة..."></textarea>
@@ -435,7 +451,7 @@
       <div class="text-edit-actions">
         <button type="button" class="btn-modal-cancel" id="cancelQuickEditTextBtn">إلغاء</button>
         <button type="button" class="px-modal-save-btn" id="saveQuickEditTextBtn" title="حفظ التعديلات">
-          <i data-lucide="check" style="width:16px; height:16px;"></i>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <span>تطبيق النص</span>
         </button>
       </div>
@@ -446,7 +462,7 @@
   <div id="batchExportModal" class="batch-export-modal" style="display:none;">
     <div class="batch-export-card">
       <div class="batch-export-header">
-        <strong id="batchExportTitle">جاري تجهيز الشهادات...</strong>
+        <strong id="batchExportTitle">جاري تصدير 0 من 0...</strong>
         <span id="batchExportProgressText" class="batch-progress-count">0 / 0</span>
       </div>
       <div class="batch-progress-track">
@@ -472,6 +488,6 @@
   <script src="mobile_bottom_nav.js?v=2.0"></script>
   <script src="firebase-client.js?v=3.0"></script>
   <!-- Certificates Studio Core JS -->
-  <script src="certificates.js?v=3.0"></script>
+  <script src="certificates.js?v=4.0"></script>
 </body>
 </html>
