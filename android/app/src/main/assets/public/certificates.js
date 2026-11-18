@@ -2522,7 +2522,20 @@
     });
 
     const timeframeSelect = document.getElementById('timeframeSelect');
+    const syncTimeframeFromCycle = () => {
+      if (!window.AlbayanCycleEngine) return;
+      const cfg = window.AlbayanCycleEngine.getConfig();
+      const meta = window.AlbayanCycleEngine.PERIOD_META[cfg.periodType];
+      const mapped = (meta && meta.timeframe) ? meta.timeframe : 'month';
+      state.timeframe = mapped;
+      if (timeframeSelect && Array.from(timeframeSelect.options).some((o) => o.value === mapped)) {
+        timeframeSelect.value = mapped;
+      }
+    };
+    syncTimeframeFromCycle();
     if (timeframeSelect) timeframeSelect.addEventListener('change', (e) => { state.timeframe = e.target.value; fetchStudentsList(); });
+    window.addEventListener('albayan:cycle-updated', () => { syncTimeframeFromCycle(); fetchStudentsList(); });
+    window.addEventListener('albayan:cycle-archived', () => { syncTimeframeFromCycle(); fetchStudentsList(); });
 
     const monthSelect = document.getElementById('monthSelect');
     const yearSelect = document.getElementById('yearSelect');
@@ -2585,7 +2598,7 @@
     const cid = normCircleIdStr(student.circle_id);
     if (!sid) return { stuRecords: [], stuResults: [], linkedGrades: [], examAvg: null, sardTotal: 0, attRate: null, memoVal: '' };
 
-    const stuRecords = (allRecords || []).filter((r) => {
+    let stuRecords = (allRecords || []).filter((r) => {
       if (!r || r.deleted) return false;
       const rSid = normStudentIdStr(r.student_id);
       if (!rSid || rSid !== sid) return false;
@@ -2596,6 +2609,13 @@
       }
       return true;
     });
+
+    if (window.AlbayanCycleEngine && (state.timeframe === 'active_cycle' || state.timeframe === 'week')) {
+      const cycleFiltered = window.AlbayanCycleEngine.filterRecordsByActiveCycle(stuRecords);
+      if (cycleFiltered.length > 0 || state.timeframe === 'active_cycle') {
+        stuRecords = cycleFiltered;
+      }
+    }
 
     const stuResults = (allResults || []).filter((res) => {
       if (!res || res.deleted) return false;
@@ -2661,6 +2681,36 @@
         rating
       });
     });
+
+    if (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.getArchives === 'function') {
+      const archives = window.AlbayanCycleEngine.getArchives() || [];
+      archives.slice(0, 8).forEach((arc, aIdx) => {
+        const snap = Array.isArray(arc.studentSnapshots)
+          ? arc.studentSnapshots.find((s) => normStudentIdStr(s.student_id) === sid)
+          : null;
+        if (!snap) return;
+        const aExam = (snap.exam_percent !== null && snap.exam_percent !== undefined && !Number.isNaN(Number(snap.exam_percent)))
+          ? Math.round(Number(snap.exam_percent)) : null;
+        const aPages = Number(snap.sard_pages) || 0;
+        const aAtt = Math.max(0, Math.min(100, Math.round(((22 - (Number(snap.absent_days) || 0)) / 22) * 100)));
+        const aMemo = snap.memo_grade || '';
+        const aBadge = aExam !== null ? `${aExam}%` : (aPages > 0 ? `${Math.round(aPages)} وجهاً` : (aMemo || 'أرشيف'));
+        const aRating = aExam !== null ? computeGradeRating(aExam) : (aMemo || 'مشارك');
+        linkedGrades.push({
+          gradeKey: `archive_${arc.id || aIdx}`,
+          type: 'archive',
+          sourceStudentId: sid,
+          label: `أرشيف ${arc.periodLabel || ('الدورة #' + arc.cycleNumber)} — ${aBadge}`,
+          exam_percent: aExam,
+          sard_pages: aPages,
+          attendance_rate: aAtt,
+          memo_grade: aMemo,
+          rev_grade: snap.rev_grade || '',
+          grade_badge: aBadge,
+          rating: aRating
+        });
+      });
+    }
 
     let examAvg = null;
     if (stuResults.length > 0) {

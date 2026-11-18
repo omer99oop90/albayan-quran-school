@@ -225,6 +225,15 @@ async function updateStudentRecord(studentId, fields) {
     }
   });
 
+  if (window.AlbayanCycleEngine) {
+    const cCfg = window.AlbayanCycleEngine.getConfig();
+    if (!normalizedFields.record_date) {
+      normalizedFields.record_date = new Date().toISOString().slice(0, 10);
+    }
+    normalizedFields.cycle_id = `cyc_${cCfg.cycleIndex || 1}_${cCfg.startDate}`;
+    normalizedFields.cycle_type = cCfg.periodType;
+  }
+
   // 1. Update in-memory cachedStudents array immediately for instant visual feedback
   let st = null;
   if (Array.isArray(cachedStudents)) {
@@ -347,31 +356,78 @@ function getDefaultMonth() {
 function getPeriodFilterPayload() {
   const filterYear = document.getElementById("filterYear")?.value || new Date().getFullYear();
   const filterMonth = document.getElementById("filterMonth")?.value || getDefaultMonth();
+  const cycCfg = window.AlbayanCycleEngine ? window.AlbayanCycleEngine.getConfig() : null;
   return {
     period_type: currentPeriodType,
     record_date: currentRecordDate,
     year: filterYear,
-    month: filterMonth
+    month: filterMonth,
+    cycle_type: cycCfg ? cycCfg.periodType : currentPeriodType,
+    cycle_start_date: cycCfg ? cycCfg.startDate : ""
   };
 }
 
+function renderActiveCycleBadgeInCircles() {
+  const wrapper = document.getElementById("periodFilterWrapper");
+  if (!wrapper || !window.AlbayanCycleEngine) return;
+  const stats = window.AlbayanCycleEngine.computeCycleStats();
+  let chip = document.getElementById("activeCycleStatusChip");
+  if (!chip) {
+    chip = document.createElement("span");
+    chip.id = "activeCycleStatusChip";
+    chip.style.cssText = "display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:800; background:rgba(15,118,110,0.10); color:#0F766E; border:1px solid rgba(15,118,110,0.2); margin-right:6px; white-space:nowrap;";
+    wrapper.appendChild(chip);
+  }
+  chip.textContent = `الدورة #${stats.config.cycleIndex || 1} (${stats.meta.badge}) • متبقي ${stats.remainingDays}ي`;
+}
+
 async function initPeriodSystem() {
-  const savedType = localStorage.getItem("record_period_type");
-  const savedMonths = localStorage.getItem("custom_period_months");
-  if (savedType) currentPeriodType = savedType;
-  if (savedMonths) customPeriodMonths = parseInt(savedMonths);
+  if (window.AlbayanCycleEngine) {
+    const cfg = window.AlbayanCycleEngine.getConfig();
+    currentPeriodType = cfg.periodType || "monthly";
+    customPeriodMonths = cfg.periodType === "term" ? 3 : (cfg.periodType === "yearly" ? 12 : 1);
+    const autoCheck = await window.AlbayanCycleEngine.checkAndAutoArchive().catch(() => null);
+    if (autoCheck && autoCheck.archived && typeof showNotice === "function") {
+      showNotice("تم أرشفة الدورة القرآنية السابقة تلقائياً وبدء دورة جديدة.");
+    }
+  } else {
+    const savedType = localStorage.getItem("record_period_type");
+    const savedMonths = localStorage.getItem("custom_period_months");
+    if (savedType) currentPeriodType = savedType;
+    if (savedMonths) customPeriodMonths = parseInt(savedMonths);
+  }
   updatePeriodUI();
+  renderActiveCycleBadgeInCircles();
+
+  window.addEventListener("albayan:cycle-updated", () => {
+    if (!window.AlbayanCycleEngine) return;
+    const cfg = window.AlbayanCycleEngine.getConfig();
+    currentPeriodType = cfg.periodType || "monthly";
+    customPeriodMonths = cfg.periodType === "term" ? 3 : (cfg.periodType === "yearly" ? 12 : 1);
+    updatePeriodUI();
+    renderActiveCycleBadgeInCircles();
+    if (activeCircleId !== null) loadStudents(true);
+  });
+
+  window.addEventListener("albayan:cycle-archived", () => {
+    renderActiveCycleBadgeInCircles();
+    if (activeCircleId !== null) loadStudents(true);
+  });
 
   try {
     const res = await fetch("/api/account/profile");
     if (res.ok) {
       const data = await res.json();
       if (data.settings) {
-        currentPeriodType = data.settings.record_period_type || "monthly";
-        customPeriodMonths = parseInt(data.settings.custom_period_months || 6);
+        const mapped = window.AlbayanCycleEngine
+          ? window.AlbayanCycleEngine.normalizePeriodType(data.settings.record_period_type || "monthly")
+          : (data.settings.record_period_type || "monthly");
+        currentPeriodType = mapped;
+        customPeriodMonths = parseInt(data.settings.custom_period_months || (mapped === "term" ? 3 : 1));
         localStorage.setItem("record_period_type", currentPeriodType);
         localStorage.setItem("custom_period_months", customPeriodMonths.toString());
         updatePeriodUI();
+        renderActiveCycleBadgeInCircles();
       }
     }
   } catch (err) {
@@ -418,10 +474,22 @@ function updatePeriodUI() {
 
   if (currentPeriodType === "daily") {
     updateDailyDateUI();
-  } else if (currentPeriodType === "custom") {
-    const customLabel = `الفصل 1 (${customPeriodMonths} أشهر)`;
+  } else if (currentPeriodType === "weekly") {
+    const stats = window.AlbayanCycleEngine ? window.AlbayanCycleEngine.computeCycleStats() : null;
+    const weeklyLabel = stats ? `الأسبوع الحالي (الدورة #${stats.config.cycleIndex})` : `الأسبوع الحالي`;
+    if (filterMonthInput && (!filterMonthInput.value || filterMonthInput.value === "صفر")) {
+      filterMonthInput.value = weeklyLabel;
+    }
+    if (monthTrigger) monthTrigger.textContent = filterMonthInput?.value || weeklyLabel;
+  } else if (currentPeriodType === "term" || currentPeriodType === "custom") {
+    const monthsVal = currentPeriodType === "term" ? 3 : customPeriodMonths;
+    const customLabel = `الفصل 1 (${monthsVal} أشهر)`;
     if (filterMonthInput && !filterMonthInput.value) filterMonthInput.value = customLabel;
     if (monthTrigger) monthTrigger.textContent = filterMonthInput?.value || customLabel;
+  } else if (currentPeriodType === "yearly") {
+    const yearlyLabel = `سجل نهاية السنة`;
+    if (filterMonthInput && !filterMonthInput.value) filterMonthInput.value = yearlyLabel;
+    if (monthTrigger) monthTrigger.textContent = filterMonthInput?.value || yearlyLabel;
   } else {
     // monthly
     if (monthTrigger && filterMonthInput) {
@@ -3139,7 +3207,7 @@ window.toggleSidebar = function() {
 window.openPeriodPicker = function(event) {
   if (currentPeriodType === "daily") {
     openDailyDatePicker(event);
-  } else if (currentPeriodType === "custom") {
+  } else if (currentPeriodType === "custom" || currentPeriodType === "term") {
     openCustomPeriodPicker(event);
   } else {
     openDatePicker(event);

@@ -47,6 +47,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (sm) sm.value = "all";
 
   loadAnalyticsData();
+
+  window.addEventListener("albayan:cycle-updated", () => {
+    hasAdaptedFilters = false;
+    loadAnalyticsData();
+  });
+  window.addEventListener("albayan:cycle-archived", () => {
+    hasAdaptedFilters = false;
+    loadAnalyticsData();
+  });
 });
 
 async function checkAuth() {
@@ -144,6 +153,7 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
   // 1. Parallel fetch from Firebase RTDB (with fast timeout)
   let rawCircles = null;
   let rawStudents = null;
+  let rawRecords = null;
   let rawExams = null;
   let rawResults = null;
   let rawSettings = null;
@@ -152,9 +162,10 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-    const [cRes, sRes, eRes, rRes, setRes] = await Promise.all([
+    const [cRes, sRes, recRes, eRes, rRes, setRes] = await Promise.all([
       fetch(`${rtdbBase}/circles.json`, { signal: controller.signal }).catch(() => null),
       fetch(`${rtdbBase}/students.json`, { signal: controller.signal }).catch(() => null),
+      fetch(`${rtdbBase}/student_records.json`, { signal: controller.signal }).catch(() => null),
       fetch(`${rtdbBase}/exams.json`, { signal: controller.signal }).catch(() => null),
       fetch(`${rtdbBase}/results.json`, { signal: controller.signal }).catch(() => null),
       fetch(`${rtdbBase}/settings.json`, { signal: controller.signal }).catch(() => null)
@@ -163,6 +174,7 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
 
     if (cRes && cRes.ok) rawCircles = await cRes.json().catch(() => null);
     if (sRes && sRes.ok) rawStudents = await sRes.json().catch(() => null);
+    if (recRes && recRes.ok) rawRecords = await recRes.json().catch(() => null);
     if (eRes && eRes.ok) rawExams = await eRes.json().catch(() => null);
     if (rRes && rRes.ok) rawResults = await rRes.json().catch(() => null);
     if (setRes && setRes.ok) rawSettings = await setRes.json().catch(() => null);
@@ -222,10 +234,87 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
   }
 
   // Normalize ID and structures
-  circles = (circles || []).map((c, idx) => ({ ...c, id: c.id !== undefined ? c.id : idx + 1, name: c.name || `حلقة ${idx + 1}` }));
-  students = (students || []).map((s, idx) => ({ ...s, id: s.id !== undefined ? s.id : idx + 1, name: s.name || `طالب ${idx + 1}` }));
+  circles = (circles || []).filter(c => c && !c.deleted).map((c, idx) => ({ ...c, id: c.id !== undefined ? c.id : idx + 1, name: c.name || `حلقة ${idx + 1}` }));
+  students = (students || []).filter(s => s && !s.deleted).map((s, idx) => ({ ...s, id: s.id !== undefined ? s.id : idx + 1, name: s.name || `طالب ${idx + 1}` }));
   exams = (exams || []).map((e, idx) => ({ ...e, id: e.id !== undefined ? e.id : idx + 1, title: e.title || `اختبار ${idx + 1}` }));
   results = (results || []).map((r, idx) => ({ ...r, id: r.id !== undefined ? r.id : idx + 1 }));
+
+  // Cycle & Record Filtering Integration (AlbayanCycleEngine)
+  const cycleEngine = window.AlbayanCycleEngine || null;
+  const activeCycleCfg = cycleEngine ? cycleEngine.getConfig() : null;
+  const activeArchives = cycleEngine ? cycleEngine.getArchives() : [];
+  if (month && String(month).startsWith("archive:") && activeArchives.length > 0) {
+    const arcId = String(month).slice("archive:".length);
+    const matchedArchive = activeArchives.find(a => a && a.id === arcId);
+    if (matchedArchive && Array.isArray(matchedArchive.studentSnapshots)) {
+      students = matchedArchive.studentSnapshots.map((snap, idx) => ({
+        id: snap.student_id || idx + 1,
+        name: snap.name,
+        circle_id: snap.circle_id,
+        circle_name: snap.circle_name,
+        teacher_name: snap.teacher_name,
+        from_surah: snap.from_surah || "",
+        to_surah: snap.to_surah || "",
+        memo_pages: Number(snap.memo_pages) || 0,
+        rev_pages: Number(snap.sard_pages) || 0,
+        sard_pages: Number(snap.sard_pages) || 0,
+        memo_grade: snap.memo_grade || "",
+        rev_grade: snap.rev_grade || "",
+        absent_days: Number(snap.absent_days) || 0
+      }));
+    }
+  } else {
+    let recList = [];
+    if (rawRecords) {
+      recList = Array.isArray(rawRecords) ? rawRecords.filter(Boolean) : Object.values(rawRecords);
+    }
+    if (recList.length > 0) {
+      let filteredRecs = recList.filter(r => r && !r.deleted);
+      if (month === "active_cycle" && cycleEngine) {
+        filteredRecs = cycleEngine.filterRecordsByActiveCycle(filteredRecs, activeCycleCfg);
+      } else if (month && month !== "all" && month !== "active_cycle") {
+        filteredRecs = filteredRecs.filter(r => {
+          if (window.AlbayanDataNormalizer && r.month) {
+            return window.AlbayanDataNormalizer.isSameMonth(r.month, month);
+          }
+          return String(r.month || "").trim() === String(month).trim();
+        });
+      } else if (cycleEngine && activeCycleCfg) {
+        filteredRecs = cycleEngine.filterRecordsByActiveCycle(filteredRecs, activeCycleCfg);
+      }
+
+      const recByStudent = new Map();
+      filteredRecs.forEach(r => {
+        const sid = String(r.student_id || "").replace(/^students_/, "").trim();
+        if (!sid) return;
+        const prev = recByStudent.get(sid);
+        const sCurr = (window.AlbayanDataNormalizer && window.AlbayanDataNormalizer.scoreRecordCompleteness) ? window.AlbayanDataNormalizer.scoreRecordCompleteness(r) : 0;
+        const sPrev = (prev && window.AlbayanDataNormalizer && window.AlbayanDataNormalizer.scoreRecordCompleteness) ? window.AlbayanDataNormalizer.scoreRecordCompleteness(prev) : -1;
+        if (!prev || sCurr >= sPrev) recByStudent.set(sid, r);
+      });
+
+      students = students.map(s => {
+        const sid = String(s.id || "").replace(/^students_/, "").trim();
+        const r = recByStudent.get(sid);
+        if (!r) {
+          return (month && month !== "all" && month !== "active_cycle")
+            ? { ...s, memo_pages: 0, rev_pages: 0, sard_pages: 0, absent_days: 0, memo_grade: "", rev_grade: "" }
+            : s;
+        }
+        return {
+          ...s,
+          from_surah: r.from_surah || s.from_surah || "",
+          to_surah: r.to_surah || s.to_surah || "",
+          memo_pages: r.memo_pages !== undefined ? r.memo_pages : (s.memo_pages || 0),
+          rev_pages: r.sard_pages !== undefined ? r.sard_pages : (r.rev_pages !== undefined ? r.rev_pages : (s.sard_pages || s.rev_pages || 0)),
+          sard_pages: r.sard_pages !== undefined ? r.sard_pages : (s.sard_pages || 0),
+          memo_grade: r.memo_grade !== undefined ? r.memo_grade : (s.memo_grade || ""),
+          rev_grade: r.rev_grade !== undefined ? r.rev_grade : (s.rev_grade || ""),
+          absent_days: r.absent_days !== undefined ? r.absent_days : (s.absent_days || 0)
+        };
+      });
+    }
+  }
 
   // Filter exams list
   const examsList = exams.map(e => ({
@@ -581,9 +670,7 @@ async function loadAnalyticsData() {
 
     analyticsCache = data;
 
-    if (data.settings) {
-      adaptAnalyticsFilters(data.settings);
-    }
+    adaptAnalyticsFilters(data.settings || {});
 
     // Populate Exam Select Options
     if (data.exams_list && Array.isArray(data.exams_list)) {
@@ -666,11 +753,34 @@ window.onAnalyticsExamChange = onAnalyticsExamChange;
 
 let hasAdaptedFilters = false;
 function adaptAnalyticsFilters(settings) {
-  if (!settings || hasAdaptedFilters) return;
+  if (hasAdaptedFilters) return;
   hasAdaptedFilters = true;
-  const isCustom = settings.record_period_type === "custom";
-  const monthsCount = settings.custom_period_months || 6;
+
+  const cycEng = window.AlbayanCycleEngine || null;
+  const cfg = cycEng ? cycEng.getConfig() : null;
+  const stats = cycEng ? cycEng.computeCycleStats(cfg) : null;
+  const archives = cycEng ? cycEng.getArchives() : [];
+
+  const periodType = cfg ? cfg.periodType : (settings && settings.record_period_type) || "monthly";
+  const isCustom = periodType === "custom";
+  const monthsCount = (settings && settings.custom_period_months) || 6;
   const totalTerms = Math.max(1, Math.floor(12 / monthsCount));
+
+  // Inject subtle Cycle Banner inside #viewCirclesAnalytics
+  const circlesSec = document.getElementById("viewCirclesAnalytics");
+  if (circlesSec && stats) {
+    let banner = document.getElementById("analyticsCycleStatusBanner");
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "analyticsCycleStatusBanner";
+      banner.style.cssText = "display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:11px 16px; border-radius:14px; background:rgba(15,118,110,0.08); border:1px solid rgba(15,118,110,0.18); color:#0F766E; font-size:13px; font-weight:700; margin-bottom:16px;";
+      circlesSec.insertBefore(banner, circlesSec.firstChild);
+    }
+    banner.innerHTML = `
+      <span>النظام المعتمد: <strong>${stats.meta.label}</strong> (الدورة #${stats.config.cycleIndex || 1})</span>
+      <span>متبقي ${stats.remainingDays} يوماً • دورات مؤرشفة: ${archives.length}</span>
+    `;
+  }
 
   const monthSelects = [
     document.getElementById("filterCirclesMonth"),
@@ -688,8 +798,25 @@ function adaptAnalyticsFilters(settings) {
       select.innerHTML = optionsHtml;
       const label = select.previousElementSibling;
       if (label) label.innerHTML = `<i data-lucide="clock" style="width:14px; height:14px;"></i> الفصل المخصص`;
+    } else if (cfg) {
+      // Remove any previously injected cycle/archive options cleanly before adding fresh ones
+      Array.from(select.querySelectorAll('option[data-cycle-opt="1"]')).forEach(o => o.remove());
+      const activeOpt = document.createElement("option");
+      activeOpt.value = "active_cycle";
+      activeOpt.dataset.cycleOpt = "1";
+      activeOpt.textContent = `الدورة النشطة (#${cfg.cycleIndex || 1} - ${stats ? stats.meta.badge : 'الحالية'})`;
+      select.insertBefore(activeOpt, select.firstChild);
+
+      archives.slice(0, 12).forEach(arc => {
+        if (!arc || !arc.id) return;
+        const opt = document.createElement("option");
+        opt.value = `archive:${arc.id}`;
+        opt.dataset.cycleOpt = "1";
+        opt.textContent = `أرشيف ${arc.periodLabel || ('الدورة #' + arc.cycleNumber)} (${arc.startDate || ''})`;
+        select.appendChild(opt);
+      });
     }
-    if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+    if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
       select.value = currentVal;
     }
   });

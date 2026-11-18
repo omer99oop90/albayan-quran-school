@@ -2689,7 +2689,8 @@
       const [circlesResult, usersList, examsList] = await Promise.all([
         CirclesService.fetchCircles({ forceRefresh: force }),
         pullUsersFromFirebase(),
-        pullExamsFromFirebase()
+        pullExamsFromFirebase(),
+        AlbayanCycleEngine.pullFromCloud().catch(() => null)
       ]);
 
       window.dispatchEvent(new CustomEvent('albayan:db-synced', {
@@ -2744,6 +2745,620 @@
     }
   }
 
+  // ==========================================================================
+  // LAYER 6: QURANIC RECORD CYCLE & AUTO-ARCHIVE ENGINE (AlbayanCycleEngine)
+  // ==========================================================================
+  const AlbayanCycleEngine = (function () {
+    const CONFIG_KEY = 'albayan_quran_cycle_v1';
+    const ARCHIVE_KEY = 'albayan_cycle_archives_v1';
+    let archiveInFlight = false;
+
+    const PERIOD_META = {
+      weekly: {
+        key: 'weekly',
+        label: 'أسبوعي (7 أيام)',
+        badge: 'أسبوعي',
+        description: 'دورة متابعة أسبوعية كل 7 أيام',
+        timeframe: 'week'
+      },
+      monthly: {
+        key: 'monthly',
+        label: 'شهري (الافتراضي)',
+        badge: 'شهري',
+        description: 'دورة شهرية قياسية (شهر واحد من تاريخ البداية)',
+        timeframe: 'month'
+      },
+      term: {
+        key: 'term',
+        label: 'فصلي / ربع سنوي',
+        badge: 'فصلي',
+        description: 'دورة فصلية ممتدة لثلاثة أشهر (ربع سنوي)',
+        timeframe: 'term'
+      },
+      yearly: {
+        key: 'yearly',
+        label: 'سنوي (عام دراسي)',
+        badge: 'سنوي',
+        description: 'دورة سنوية متصلة لعام دراسي كامل',
+        timeframe: 'year'
+      }
+    };
+
+    function todayYMD() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function firstOfMonthYMD() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      return `${y}-${m}-01`;
+    }
+
+    function parseYMD(str) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || '').trim());
+      if (!m) {
+        const t = new Date();
+        return new Date(t.getFullYear(), t.getMonth(), t.getDate());
+      }
+      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+
+    function formatYMD(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function addDays(dateObj, days) {
+      const d = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    function addMonths(dateObj, months) {
+      const targetMonth = dateObj.getMonth() + months;
+      const targetYear = dateObj.getFullYear() + Math.floor(targetMonth / 12);
+      const normMonth = ((targetMonth % 12) + 12) % 12;
+      const maxDay = new Date(targetYear, normMonth + 1, 0).getDate();
+      return new Date(targetYear, normMonth, Math.min(dateObj.getDate(), maxDay));
+    }
+
+    function normalizePeriodType(raw) {
+      const v = String(raw || '').trim().toLowerCase();
+      if (v === 'weekly' || v === 'daily' || v === 'week') return 'weekly';
+      if (v === 'term' || v === 'quarterly' || v === 'custom') return 'term';
+      if (v === 'yearly' || v === 'annual' || v === 'year') return 'yearly';
+      return 'monthly';
+    }
+
+    function normalizeEndAction(raw) {
+      return raw === 'cumulative' ? 'cumulative' : 'archive_reset';
+    }
+
+    function getDefaultConfig() {
+      const legacyType = localStorage.getItem('record_period_type');
+      return {
+        periodType: normalizePeriodType(legacyType || 'monthly'),
+        startDate: firstOfMonthYMD(),
+        endAction: 'archive_reset',
+        cycleIndex: 1,
+        lastArchiveAt: null,
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    function normalizeConfig(raw) {
+      const def = getDefaultConfig();
+      const src = raw && typeof raw === 'object' ? raw : {};
+      const startDate = /^\d{4}-\d{2}-\d{2}$/.test(String(src.startDate || ''))
+        ? src.startDate
+        : def.startDate;
+      return {
+        periodType: normalizePeriodType(src.periodType || src.record_period_type || def.periodType),
+        startDate,
+        endAction: normalizeEndAction(src.endAction || src.end_action),
+        cycleIndex: Math.max(1, parseInt(src.cycleIndex || src.cycle_index || 1, 10) || 1),
+        lastArchiveAt: src.lastArchiveAt || null,
+        updatedAt: src.updatedAt || new Date().toISOString()
+      };
+    }
+
+    function getConfig() {
+      try {
+        const raw = localStorage.getItem(CONFIG_KEY);
+        if (raw) return normalizeConfig(JSON.parse(raw));
+      } catch (e) {}
+      const def = getDefaultConfig();
+      try { localStorage.setItem(CONFIG_KEY, JSON.stringify(def)); } catch (e) {}
+      return def;
+    }
+
+    function computeCycleStats(configInput = null, refYMD = null) {
+      const cfg = normalizeConfig(configInput || getConfig());
+      const startObj = parseYMD(cfg.startDate);
+      let nextStartObj;
+      if (cfg.periodType === 'weekly') {
+        nextStartObj = addDays(startObj, 7);
+      } else if (cfg.periodType === 'term') {
+        nextStartObj = addMonths(startObj, 3);
+      } else if (cfg.periodType === 'yearly') {
+        nextStartObj = addMonths(startObj, 12);
+      } else {
+        nextStartObj = addMonths(startObj, 1);
+      }
+      const endObj = addDays(nextStartObj, -1);
+      const todayObj = parseYMD(refYMD || todayYMD());
+
+      const MS_DAY = 86400000;
+      const totalDays = Math.max(1, Math.round((nextStartObj.getTime() - startObj.getTime()) / MS_DAY));
+      const rawElapsed = Math.floor((todayObj.getTime() - startObj.getTime()) / MS_DAY) + 1;
+      const elapsedDays = Math.max(0, Math.min(totalDays, rawElapsed));
+      const remainingDays = Math.max(0, Math.ceil((nextStartObj.getTime() - todayObj.getTime()) / MS_DAY));
+      const cappedRemaining = todayObj < startObj ? totalDays : Math.min(totalDays, remainingDays);
+      const progressPct = todayObj < startObj ? 0 : Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+      const meta = PERIOD_META[cfg.periodType] || PERIOD_META.monthly;
+
+      return {
+        config: cfg,
+        meta,
+        startDate: formatYMD(startObj),
+        endDate: formatYMD(endObj),
+        nextStartDate: formatYMD(nextStartObj),
+        todayStr: formatYMD(todayObj),
+        totalDays,
+        elapsedDays,
+        remainingDays: cappedRemaining,
+        progressPct,
+        isExpired: todayObj.getTime() >= nextStartObj.getTime()
+      };
+    }
+
+    async function saveConfig(partial = {}, options = {}) {
+      const current = getConfig();
+      const merged = normalizeConfig({
+        ...current,
+        ...partial,
+        updatedAt: new Date().toISOString()
+      });
+
+      try {
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(merged));
+        localStorage.setItem('record_period_type', merged.periodType);
+        const monthsMap = { weekly: 1, monthly: 1, term: 3, yearly: 12 };
+        localStorage.setItem('custom_period_months', String(monthsMap[merged.periodType] || 1));
+      } catch (e) {}
+
+      window.dispatchEvent(new CustomEvent('albayan:cycle-updated', { detail: merged }));
+
+      if (!options.localOnly) {
+        AlbayanFirebaseDAL.put('settings/quran_cycle', merged).catch(() => {});
+        AlbayanFirebaseDAL.put('settings/record_period_type', merged.periodType).catch(() => {});
+        try {
+          fetch('/api/account/system-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              record_period_type: merged.periodType,
+              custom_period_months: merged.periodType === 'term' ? 3 : (merged.periodType === 'yearly' ? 12 : 1),
+              cycle_start_date: merged.startDate,
+              cycle_end_action: merged.endAction
+            })
+          }).catch(() => {});
+        } catch (e) {}
+      }
+
+      return merged;
+    }
+
+    function getArchives() {
+      try {
+        const raw = localStorage.getItem(ARCHIVE_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveArchivesLocal(list) {
+      const clean = Array.isArray(list) ? list.slice(0, 60) : [];
+      try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(clean)); } catch (e) {}
+      return clean;
+    }
+
+    function isDateInCycle(dateStr, stats) {
+      if (!dateStr) return false;
+      const s = String(dateStr).slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return true;
+      return s >= stats.startDate && s <= stats.endDate;
+    }
+
+    function filterRecordsByActiveCycle(records = [], cfgInput = null) {
+      const stats = computeCycleStats(cfgInput || getConfig());
+      const startTs = parseYMD(stats.startDate).getTime();
+      const endTs = parseYMD(stats.endDate).getTime() + 86399999;
+      return (records || []).filter((r) => {
+        if (!r || r.deleted) return false;
+        const tsStr = r.record_date || r.updated_at || r.created_at;
+        if (!tsStr) return true;
+        if (/^\d{4}-\d{2}-\d{2}/.test(String(tsStr))) {
+          const d = parseYMD(String(tsStr).slice(0, 10)).getTime();
+          return d >= startTs && d <= endTs;
+        }
+        return true;
+      });
+    }
+
+    async function collectCurrentSnapshotData(stats) {
+      let circles = AlbayanStateStore.getCircles() || [];
+      let allStudents = [];
+      let allRecords = [];
+      let allResults = [];
+
+      try {
+        const [cRes, sRes, recRes, resRes] = await Promise.all([
+          circles.length ? Promise.resolve({ ok: false }) : AlbayanFirebaseDAL.get('circles'),
+          AlbayanFirebaseDAL.get('students'),
+          AlbayanFirebaseDAL.get('student_records'),
+          AlbayanFirebaseDAL.get('results')
+        ]);
+
+        if (cRes && cRes.ok && cRes.data) {
+          circles = AlbayanDataNormalizer.resolveCircles(cRes.data).circles || [];
+        }
+        if (sRes && sRes.ok && sRes.data) {
+          allStudents = AlbayanDataNormalizer.resolveStudents(sRes.data).students || [];
+        }
+        if (recRes && recRes.ok && recRes.data) {
+          allRecords = AlbayanDataNormalizer.normalizeCollectionEntries(recRes.data)
+            .map(([key, r]) => (r ? { ...r, _fbKey: key } : null))
+            .filter(Boolean);
+        }
+        if (resRes && resRes.ok && resRes.data) {
+          allResults = AlbayanDataNormalizer.normalizeCollectionEntries(resRes.data)
+            .map(([, r]) => r)
+            .filter(Boolean);
+        }
+      } catch (e) {}
+
+      if (circles.length === 0 && window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalCircles === 'function') {
+        try { circles = await window.AlbayanLocalDB.getLocalCircles(); } catch (e) {}
+      }
+      if (allStudents.length === 0 && window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalStudents === 'function') {
+        try {
+          for (const c of circles) {
+            const list = await window.AlbayanLocalDB.getLocalStudents(c.id);
+            if (Array.isArray(list)) allStudents.push(...list);
+          }
+        } catch (e) {}
+      }
+      if (allStudents.length === 0) {
+        allStudents = Array.from(AlbayanStateStore.getAllKnownStudentsMap ? Object.values(AlbayanStateStore.getAllKnownStudentsMap()) : []);
+      }
+
+      const circleById = new Map();
+      circles.forEach((c) => {
+        const cid = AlbayanDataNormalizer.normalizeCircleId(c.id);
+        if (cid !== null) circleById.set(String(cid), c);
+      });
+
+      const cycleRecords = filterRecordsByActiveCycle(allRecords, stats.config);
+      const recordByStudent = new Map();
+      cycleRecords.forEach((rec) => {
+        if (!rec || rec.deleted) return;
+        const sid = AlbayanDataNormalizer.normalizeStudentId(rec.student_id);
+        if (sid === null) return;
+        const existing = recordByStudent.get(String(sid));
+        const currScore = AlbayanDataNormalizer.scoreRecordCompleteness ? AlbayanDataNormalizer.scoreRecordCompleteness(rec) : 0;
+        const prevScore = existing && AlbayanDataNormalizer.scoreRecordCompleteness ? AlbayanDataNormalizer.scoreRecordCompleteness(existing) : -1;
+        if (!existing || currScore >= prevScore) {
+          recordByStudent.set(String(sid), rec);
+        }
+      });
+
+      const resultByStudent = new Map();
+      allResults.forEach((r) => {
+        if (!r || r.deleted) return;
+        const sid = AlbayanDataNormalizer.normalizeStudentId(r.student_id);
+        if (sid === null) return;
+        const pct = r.percentage !== undefined ? Number(r.percentage) : (r.total ? Math.round((Number(r.score || 0) / Number(r.total)) * 100) : null);
+        if (pct === null || Number.isNaN(pct)) return;
+        const arr = resultByStudent.get(String(sid)) || [];
+        arr.push(pct);
+        resultByStudent.set(String(sid), arr);
+      });
+
+      let totalMemoPages = 0;
+      let totalSardPages = 0;
+      let totalAbsentDays = 0;
+      let examPercents = [];
+
+      const studentSnapshots = allStudents
+        .filter((s) => s && !s.deleted && s.name)
+        .map((s) => {
+          const sid = AlbayanDataNormalizer.normalizeStudentId(s.id !== undefined ? s.id : s.student_id);
+          const cid = AlbayanDataNormalizer.normalizeCircleId(s.circle_id);
+          const cObj = circleById.get(String(cid)) || {};
+          const rec = recordByStudent.get(String(sid)) || {};
+          const memoPages = Number(rec.memo_pages !== undefined ? rec.memo_pages : (s.memo_pages || 0)) || 0;
+          const sardPages = Number(rec.sard_pages !== undefined ? rec.sard_pages : (s.sard_pages || 0)) || 0;
+          const absentDays = Number(rec.absent_days !== undefined ? rec.absent_days : (s.absent_days || 0)) || 0;
+          const scores = resultByStudent.get(String(sid)) || [];
+          const examAvg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : (rec.exam_score !== undefined && rec.exam_score !== '' ? Number(rec.exam_score) : null);
+
+          totalMemoPages += memoPages;
+          totalSardPages += sardPages;
+          totalAbsentDays += absentDays;
+          if (examAvg !== null && !Number.isNaN(examAvg)) examPercents.push(examAvg);
+
+          return {
+            student_id: sid,
+            name: s.name,
+            circle_id: cid,
+            circle_name: s.circle_name || cObj.name || 'حلقة قرآنية',
+            teacher_name: s.teacher_name || cObj.teacher_name || '',
+            from_surah: rec.from_surah || s.from_surah || '',
+            from_ayah: rec.from_ayah || s.from_ayah || 0,
+            to_surah: rec.to_surah || s.to_surah || '',
+            to_ayah: rec.to_ayah || s.to_ayah || 0,
+            memo_pages: memoPages,
+            memo_grade: rec.memo_grade || s.memo_grade || '',
+            rev_from_surah: rec.rev_from_surah || s.rev_from_surah || '',
+            rev_to_surah: rec.rev_to_surah || s.rev_to_surah || '',
+            sard_pages: sardPages,
+            rev_grade: rec.rev_grade || s.rev_grade || '',
+            absent_days: absentDays,
+            attendance_mark: rec.attendance_mark !== undefined ? rec.attendance_mark : (s.attendance_mark || ''),
+            activity_mark: rec.activity_mark || s.activity_mark || '',
+            exam_grade: rec.exam_grade || s.exam_grade || 'لم يختبر بعد',
+            exam_percent: examAvg
+          };
+        });
+
+      const avgExamPercent = examPercents.length > 0
+        ? Math.round(examPercents.reduce((a, b) => a + b, 0) / examPercents.length)
+        : 0;
+      const totalCapacityDays = Math.max(1, studentSnapshots.length * 22);
+      const attendanceRate = studentSnapshots.length > 0
+        ? Math.max(0, Math.round(((totalCapacityDays - totalAbsentDays) / totalCapacityDays) * 1000) / 10)
+        : 100;
+
+      return {
+        circlesCount: circles.length,
+        studentsCount: studentSnapshots.length,
+        totalMemoPages: Math.round(totalMemoPages * 10) / 10,
+        totalSardPages: Math.round(totalSardPages * 10) / 10,
+        totalAbsentDays,
+        avgExamPercent,
+        attendanceRate,
+        studentSnapshots,
+        rawRecords: cycleRecords,
+        rawStudents: allStudents
+      };
+    }
+
+    async function resetActiveCountersForNewCycle(rawRecords = [], rawStudents = [], newCycleId = '') {
+      const nowIso = new Date().toISOString();
+      const blankFields = {
+        from_surah: '',
+        from_ayah: 0,
+        to_surah: '',
+        to_ayah: 0,
+        memo_pages: 0,
+        memo_grade: '',
+        rev_from_surah: '',
+        rev_from_ayah: 0,
+        rev_to_surah: '',
+        rev_to_ayah: 0,
+        sard_pages: 0,
+        rev_grade: '',
+        absent_days: 0,
+        attendance_mark: 30,
+        activity_mark: '',
+        exam_grade: 'لم يختبر بعد',
+        cycle_id: newCycleId,
+        updated_at: nowIso
+      };
+
+      // Reset flat fields on students in cloud & local caches so analytics/certificates start fresh cleanly
+      for (const s of (rawStudents || [])) {
+        if (!s || s.deleted) continue;
+        const sid = AlbayanDataNormalizer.normalizeStudentId(s.id !== undefined ? s.id : s.student_id);
+        if (sid === null) continue;
+        const resetStu = {
+          ...s,
+          id: sid,
+          circle_id: AlbayanDataNormalizer.normalizeCircleId(s.circle_id),
+          ...blankFields
+        };
+        AlbayanFirebaseDAL.put(`students/${sid}`, resetStu, { retries: 1 }).catch(() => {});
+      }
+
+      // Stamp/reset current active student_records with fresh counters if they exist
+      for (const rec of (rawRecords || [])) {
+        if (!rec || rec.deleted || !rec._fbKey) continue;
+        if (String(rec.month || '').includes('سجل نهاية السنة')) continue;
+        const resetRec = {
+          ...rec,
+          ...blankFields
+        };
+        delete resetRec._fbKey;
+        AlbayanFirebaseDAL.put(`student_records/${rec._fbKey}`, resetRec, { retries: 1 }).catch(() => {});
+      }
+
+      // Clear cached rosters in memory so next load renders fresh cycle state immediately
+      AlbayanStateStore.invalidateRawCloudCaches();
+      if (AlbayanStateStore.state && AlbayanStateStore.state.rosters) {
+        AlbayanStateStore.state.rosters.clear();
+      }
+      if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.clearPeriodCache === 'function') {
+        try { await window.AlbayanLocalDB.clearPeriodCache(); } catch (e) {}
+      }
+    }
+
+    async function archiveCurrentCycle(options = {}) {
+      if (archiveInFlight) return { ok: false, skipped: true };
+      archiveInFlight = true;
+      try {
+        const cfg = getConfig();
+        const stats = computeCycleStats(cfg);
+        const manual = !!options.manual;
+        const shouldReset = options.resetCounters !== undefined ? !!options.resetCounters : (manual || cfg.endAction === 'archive_reset');
+        const snap = await collectCurrentSnapshotData(stats);
+
+        const archiveId = `cyc_${cfg.cycleIndex}_${Date.now()}`;
+        const archiveEntry = {
+          id: archiveId,
+          cycleNumber: cfg.cycleIndex || 1,
+          periodType: cfg.periodType,
+          periodLabel: `${stats.meta.badge} — الدورة #${cfg.cycleIndex || 1}`,
+          startDate: stats.startDate,
+          endDate: manual && stats.todayStr < stats.endDate ? stats.todayStr : stats.endDate,
+          archivedAt: new Date().toISOString(),
+          endAction: manual ? 'manual_archive' : cfg.endAction,
+          summary: {
+            totalCircles: snap.circlesCount,
+            totalStudents: snap.studentsCount,
+            totalMemoPages: snap.totalMemoPages,
+            totalSardPages: snap.totalSardPages,
+            totalAbsentDays: snap.totalAbsentDays,
+            avgExamPercent: snap.avgExamPercent,
+            attendanceRate: snap.attendanceRate
+          },
+          studentSnapshots: snap.studentSnapshots
+        };
+
+        const archives = getArchives();
+        archives.unshift(archiveEntry);
+        saveArchivesLocal(archives);
+
+        const nextStart = manual ? todayYMD() : stats.nextStartDate;
+        const nextCycleIndex = (cfg.cycleIndex || 1) + 1;
+
+        if (shouldReset) {
+          await resetActiveCountersForNewCycle(snap.rawRecords, snap.rawStudents, archiveId);
+        }
+
+        const updatedConfig = await saveConfig({
+          ...cfg,
+          startDate: nextStart,
+          cycleIndex: nextCycleIndex,
+          lastArchiveAt: archiveEntry.archivedAt
+        });
+
+        await AlbayanFirebaseDAL.put(`cycle_archives/${archiveId}`, archiveEntry).catch(() => {});
+        await AlbayanFirebaseDAL.touchSyncMeta('cycle_archives', manual ? 'manual_archive' : 'auto_archive').catch(() => {});
+
+        window.dispatchEvent(new CustomEvent('albayan:cycle-archived', { detail: { archive: archiveEntry, config: updatedConfig } }));
+        return { ok: true, archive: archiveEntry, config: updatedConfig };
+      } catch (err) {
+        AlbayanDiagnostics.log('CycleEngine', 'archiveCurrentCycle', 'error', err);
+        return { ok: false, error: err };
+      } finally {
+        archiveInFlight = false;
+      }
+    }
+
+    async function checkAndAutoArchive() {
+      const cfg = getConfig();
+      const stats = computeCycleStats(cfg);
+      if (!stats.isExpired) return { expired: false, stats };
+
+      if (cfg.endAction === 'cumulative') {
+        // Cumulative mode: roll startDate forward into current active window without resetting scores
+        let rolled = parseYMD(cfg.startDate);
+        const todayObj = parseYMD(todayYMD());
+        let safety = 0;
+        let nextIndex = cfg.cycleIndex || 1;
+        while (safety < 36) {
+          const candidateNext = cfg.periodType === 'weekly'
+            ? addDays(rolled, 7)
+            : cfg.periodType === 'term'
+              ? addMonths(rolled, 3)
+              : cfg.periodType === 'yearly'
+                ? addMonths(rolled, 12)
+                : addMonths(rolled, 1);
+          if (candidateNext.getTime() > todayObj.getTime()) break;
+          rolled = candidateNext;
+          nextIndex++;
+          safety++;
+        }
+        const nextCfg = await saveConfig({
+          ...cfg,
+          startDate: formatYMD(rolled),
+          cycleIndex: nextIndex
+        });
+        return { expired: true, cumulativeRolled: true, config: nextCfg };
+      }
+
+      // archive_reset mode: archive completed cycle once and start fresh
+      const existing = getArchives();
+      const alreadyArchived = existing.some(a => a && Number(a.cycleNumber) === Number(cfg.cycleIndex) && a.startDate === cfg.startDate);
+      if (alreadyArchived) {
+        return { expired: false, stats };
+      }
+      const res = await archiveCurrentCycle({ manual: false, resetCounters: true });
+      return { expired: true, archived: !!(res && res.ok), result: res };
+    }
+
+    async function pullFromCloud() {
+      try {
+        const [cfgRes, arcRes] = await Promise.all([
+          AlbayanFirebaseDAL.get('settings/quran_cycle'),
+          AlbayanFirebaseDAL.get('cycle_archives')
+        ]);
+
+        if (cfgRes && cfgRes.ok && cfgRes.data && typeof cfgRes.data === 'object') {
+          const localCfg = getConfig();
+          const cloudCfg = normalizeConfig(cfgRes.data);
+          const localTs = Date.parse(localCfg.updatedAt || '') || 0;
+          const cloudTs = Date.parse(cloudCfg.updatedAt || '') || 0;
+          if (cloudTs > localTs) {
+            await saveConfig(cloudCfg, { localOnly: true });
+          }
+        }
+
+        if (arcRes && arcRes.ok && arcRes.data) {
+          const entries = AlbayanDataNormalizer.normalizeCollectionEntries(arcRes.data)
+            .map(([, val]) => val)
+            .filter(v => v && v.id);
+          const mergedMap = new Map();
+          getArchives().forEach(a => { if (a && a.id) mergedMap.set(a.id, a); });
+          entries.forEach(a => { if (a && a.id) mergedMap.set(a.id, a); });
+          const sorted = Array.from(mergedMap.values()).sort((a, b) =>
+            String(b.archivedAt || '').localeCompare(String(a.archivedAt || ''))
+          );
+          saveArchivesLocal(sorted);
+        }
+
+        await checkAndAutoArchive();
+        return getConfig();
+      } catch (e) {
+        return getConfig();
+      }
+    }
+
+    return {
+      PERIOD_META,
+      getConfig,
+      saveConfig,
+      computeCycleStats,
+      getArchives,
+      archiveCurrentCycle,
+      checkAndAutoArchive,
+      pullFromCloud,
+      filterRecordsByActiveCycle,
+      isDateInCycle,
+      normalizePeriodType
+    };
+  })();
+
   // Expose Clean Layered Architecture & Backward-Compatible Globals
   window.firebaseConfig = firebaseConfig;
   window.AlbayanDiagnostics = AlbayanDiagnostics;
@@ -2752,6 +3367,7 @@
   window.AlbayanStateStore = AlbayanStateStore;
   window.CirclesService = CirclesService;
   window.RosterService = RosterService;
+  window.AlbayanCycleEngine = AlbayanCycleEngine;
 
   window.pullCirclesFromFirebase = pullCirclesFromFirebase;
   window.saveCircleToFirebase = saveCircleToFirebase;
@@ -2785,6 +3401,9 @@
   // Notify pages immediately and on DOMContentLoaded that the Firebase layer is ready
   const fireReady = () => {
     window.dispatchEvent(new CustomEvent('albayan:firebase-ready'));
+    setTimeout(() => {
+      AlbayanCycleEngine.pullFromCloud().catch(() => {});
+    }, 350);
   };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', fireReady);

@@ -21,31 +21,58 @@ function safeCreateIcons() {
 
 let currentUserData = null;
 
+// Draft state inside the Quranic Cycle modal before pressing "حفظ وتطبيق النظام"
+let draftCycleConfig = null;
+
 document.addEventListener("DOMContentLoaded", async () => {
   initAppTheme();
-  initAvatarPreset();
   initViewModeSettings();
   initFontSettings();
-  initSecurityScore();
   initLastBackupInfo();
   initToggles();
+  initRecordPeriodSettings();
   safeCreateIcons();
 
   try {
     await loadUserProfile();
   } catch (err) {
-    console.error("Error loading user profile:", err);
-  } finally {
-    safeCreateIcons();
+    console.warn("Profile load fallback:", err);
   }
 
-  // Handle ESC key to close any active sheet
+  // Silent background Firebase sync (no UI settings shown)
+  runBackgroundCloudSync();
+
+  window.addEventListener("albayan:cycle-updated", () => {
+    refreshRecordPeriodBadgesAndDraft(false);
+  });
+
+  window.addEventListener("albayan:cycle-archived", () => {
+    refreshRecordPeriodBadgesAndDraft(true);
+    renderCycleArchivesPreview();
+  });
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeAllSheets();
     }
   });
+
+  safeCreateIcons();
 });
+
+function runBackgroundCloudSync() {
+  try {
+    if (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.pullFromCloud === "function") {
+      window.AlbayanCycleEngine.pullFromCloud().then(() => {
+        refreshRecordPeriodBadgesAndDraft(false);
+        renderCycleArchivesPreview();
+      }).catch(() => {});
+    }
+    if (typeof window.flushPendingQueueToFirebase === "function") {
+      window.flushPendingQueueToFirebase().catch(() => {});
+    }
+  } catch (e) {}
+}
 
 /* =========================================================================
    1. Bottom Sheets & Modals Controller
@@ -59,8 +86,6 @@ function openSheet(sheetId) {
   sheet.classList.add("active");
   if (backdrop) backdrop.classList.add("active");
   document.body.style.overflow = "hidden";
-
-  // Render icons inside sheet
   safeCreateIcons();
 }
 
@@ -90,18 +115,32 @@ window.closeSheet = closeSheet;
 window.closeAllSheets = closeAllSheets;
 
 /* =========================================================================
-   2. Toggles Controller (Notifications & Theme)
+   2. Alert Toast Banner
+   ========================================================================= */
+function showAlert(msg, isOk = true) {
+  const box = document.getElementById("alertMsg");
+  if (!box) return;
+  box.textContent = msg;
+  box.className = `alert-box ${isOk ? "ok" : "err"}`;
+  box.style.display = "block";
+  clearTimeout(showAlert._timer);
+  showAlert._timer = setTimeout(() => {
+    box.style.display = "none";
+  }, 3800);
+}
+
+/* =========================================================================
+   3. Toggles & Theme Switcher (Dark / Light Mode)
    ========================================================================= */
 function initToggles() {
   const notifToggle = document.getElementById("notificationsToggle");
   if (notifToggle) {
-    const saved = localStorage.getItem("appNotifications") !== "false";
-    notifToggle.checked = saved;
+    notifToggle.checked = localStorage.getItem("appNotifications") !== "false";
   }
 
   const themeToggle = document.getElementById("themeToggle");
   if (themeToggle) {
-    const savedTheme = localStorage.getItem("appTheme") || "dark";
+    const savedTheme = localStorage.getItem("appTheme") || "light";
     themeToggle.checked = (savedTheme === "dark");
   }
 }
@@ -109,20 +148,13 @@ function initToggles() {
 function handleNotificationsToggle(input) {
   const enabled = input.checked;
   localStorage.setItem("appNotifications", enabled ? "true" : "false");
-  showAlert(enabled ? "تم تفعيل الإشعارات والتنبيهات 🔔" : "تم كتم الإشعارات مؤقتاً 🔕", true);
+  showAlert(enabled ? "تم تفعيل الإشعارات والتنبيهات" : "تم كتم الإشعارات مؤقتاً", true);
 }
 
 function handleThemeToggle(input) {
-  const isDark = input.checked;
-  setAppTheme(isDark ? "dark" : "light");
+  setAppTheme(input.checked ? "dark" : "light");
 }
 
-window.handleNotificationsToggle = handleNotificationsToggle;
-window.handleThemeToggle = handleThemeToggle;
-
-/* =========================================================================
-   3. Theme Switcher (Dark / Light Mode)
-   ========================================================================= */
 function initAppTheme() {
   const savedTheme = localStorage.getItem("appTheme") || "light";
   applyTheme(savedTheme, false);
@@ -145,1004 +177,62 @@ function applyTheme(theme, notify = true) {
   }
 
   const themeToggle = document.getElementById("themeToggle");
-  if (themeToggle) {
-    themeToggle.checked = (theme === "dark");
-  }
+  if (themeToggle) themeToggle.checked = (theme === "dark");
 
   const themeIcon = document.getElementById("themeRowIcon");
   if (themeIcon) {
     themeIcon.setAttribute("data-lucide", theme === "dark" ? "moon" : "sun");
   }
 
-  const deskThemeIcon = document.getElementById("desktopHeaderThemeIcon");
-  if (deskThemeIcon) {
-    deskThemeIcon.setAttribute("data-lucide", theme === "dark" ? "moon" : "sun");
-  }
-
-  const deskThemeLabel = document.getElementById("desktopThemeLabel");
-  if (deskThemeLabel) {
-    deskThemeLabel.textContent = theme === "dark" ? "الوضع الليلي" : "الوضع النهاري";
-  }
-
   safeCreateIcons();
 
-  const sysThemeEl = document.getElementById("sysThemeMode");
-  if (sysThemeEl) {
-    sysThemeEl.textContent = theme === "dark" ? "ليلي فاخر 🌙" : "نهاري أنيق ☀️";
-  }
-
   if (notify) {
-    showAlert(theme === "dark"
-      ? "تم تفعيل الوضع الليلي الفاخر (Dark Mode) 🌙"
-      : "تم تفعيل الوضع النهاري الأنيق (Light Mode) ☀️", true);
+    showAlert(theme === "dark" ? "تم تفعيل الوضع الليلي" : "تم تفعيل الوضع النهاري", true);
   }
 }
 
+window.handleNotificationsToggle = handleNotificationsToggle;
+window.handleThemeToggle = handleThemeToggle;
 window.setAppTheme = setAppTheme;
 
 /* =========================================================================
-   4. Avatar & Identity Customization
+   4. Circles View Mode Settings
    ========================================================================= */
-const AVATAR_PRESETS = {
-  initials: { type: "initials" },
-  quran:    { type: "icon", icon: "book-open", color: "#34d399", bg: "rgba(16, 185, 129, 0.15)" },
-  minaret:  { type: "icon", icon: "landmark",  color: "#fb923c", bg: "rgba(234, 88, 12, 0.15)" },
-  star:     { type: "icon", icon: "star",      color: "#fbbf24", bg: "rgba(245, 158, 11, 0.15)" },
-  pen:      { type: "icon", icon: "pen",       color: "#f59e0b", bg: "rgba(217, 119, 6, 0.15)" },
-  grad:     { type: "icon", icon: "award",     color: "#fb7185", bg: "rgba(244, 63, 94, 0.15)" },
-  moon:     { type: "icon", icon: "moon",      color: "#2dd4bf", bg: "rgba(20, 184, 166, 0.15)" }
-};
-
-function initAvatarPreset() {
-  const saved = localStorage.getItem("userAvatarPreset") || "initials";
-  setAvatarPreset(saved, false);
+function getViewModeLabel(mode) {
+  if (mode === "grid") return "شبكة مضغوطة";
+  if (mode === "details") return "قائمة صفوف";
+  return "لوحات تفصيلية";
 }
 
-function setAvatarPreset(presetKey, notify = true) {
-  localStorage.setItem("userAvatarPreset", presetKey);
-
-  document.querySelectorAll(".avatar-option-btn").forEach(btn => {
-    btn.classList.toggle("active", btn.getAttribute("data-avatar") === presetKey);
-  });
-
-  const avatarBox = document.getElementById("userAvatar");
-  if (!avatarBox) return;
-
-  const username = (currentUserData && currentUserData.username)
-    || (document.getElementById("heroUsername")?.textContent)
-    || "م";
-  const initialChar = username.trim().charAt(0).toUpperCase();
-
-  const preset = AVATAR_PRESETS[presetKey] || AVATAR_PRESETS.initials;
-
-  if (preset.type === "icon") {
-    avatarBox.style.background = preset.bg;
-    avatarBox.style.color = preset.color;
-    avatarBox.innerHTML = `<i data-lucide="${preset.icon}" style="width:26px; height:26px; color:${preset.color};"></i>`;
-  } else {
-    avatarBox.style.background = "";
-    avatarBox.style.color = "";
-    avatarBox.innerHTML = `<span>${initialChar}</span>`;
-  }
-
-  safeCreateIcons();
-
-  if (notify) {
-    showAlert("تم تطبيق وتحديث الشعار الرمزي لحسابك بنجاح! ✨", true);
-    setTimeout(() => closeSheet('sheet-avatar'), 700);
-  }
-}
-
-window.setAvatarPreset = setAvatarPreset;
-
-/* =========================================================================
-   5. Circles View Mode Settings
-   ========================================================================= */
 function initViewModeSettings() {
   const currentMode = localStorage.getItem("circlesViewMode") || "boards";
-  const radios = document.querySelectorAll('input[name="circles_view"]');
-  radios.forEach(r => {
+  document.querySelectorAll('input[name="circles_view"]').forEach(r => {
     const card = r.closest(".view-mode-card");
-    if (r.value === currentMode) {
-      r.checked = true;
-      if (card) card.classList.add("active");
-    } else {
-      if (card) card.classList.remove("active");
-    }
+    const active = (r.value === currentMode);
+    r.checked = active;
+    if (card) card.classList.toggle("active", active);
   });
+  const badge = document.getElementById("currentViewModeBadge");
+  if (badge) badge.textContent = getViewModeLabel(currentMode);
 }
 
 window.saveViewMode = function(mode) {
   localStorage.setItem("circlesViewMode", mode);
-
-  const radios = document.querySelectorAll('input[name="circles_view"]');
-  radios.forEach(r => {
+  document.querySelectorAll('input[name="circles_view"]').forEach(r => {
     const card = r.closest(".view-mode-card");
-    if (r.checked) {
-      if (card) card.classList.add("active");
-    } else {
-      if (card) card.classList.remove("active");
-    }
+    const active = (r.value === mode);
+    r.checked = active;
+    if (card) card.classList.toggle("active", active);
   });
+  const badge = document.getElementById("currentViewModeBadge");
+  if (badge) badge.textContent = getViewModeLabel(mode);
 
-  showAlert("تم حفظ أسلوب عرض الحلقات بنجاح!", true);
-  setTimeout(() => closeSheet('sheet-view-mode'), 600);
+  showAlert("تم حفظ طريقة عرض الحلقات بنجاح", true);
+  setTimeout(() => closeSheet("sheet-view-mode"), 450);
 };
 
 /* =========================================================================
-   6. Password Match & Visibility Handlers
-   ========================================================================= */
-function checkPasswordMatch() {
-  const newPass     = document.getElementById("newCodeInput")?.value || "";
-  const confirmPass = document.getElementById("confirmCodeInput")?.value || "";
-  const msg         = document.getElementById("matchMessage");
-  if (!msg) return;
-
-  if (!confirmPass) { msg.style.display = "none"; return; }
-
-  msg.style.display = "block";
-  if (newPass === confirmPass) {
-    msg.innerHTML = `<span style="color:#16a34a; font-weight:700;"><i data-lucide="check-circle" style="width:14px; height:14px; vertical-align:-2px;"></i> الرمزان متطابقان تماماً</span>`;
-  } else {
-    msg.innerHTML = `<span style="color:#ef4444; font-weight:700;"><i data-lucide="alert-circle" style="width:14px; height:14px; vertical-align:-2px;"></i> الرمزان غير متطابقين بعد</span>`;
-  }
-  safeCreateIcons();
-}
-
-window.checkPasswordMatch = checkPasswordMatch;
-
-/* Password eye toggle */
-function togglePasswordVisibility(inputId, btn) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-  if (input.type === "password") {
-    input.type = "text";
-    btn.innerHTML = '<i data-lucide="eye-off" style="width:18px; height:18px;"></i>';
-  } else {
-    input.type = "password";
-    btn.innerHTML = '<i data-lucide="eye" style="width:18px; height:18px;"></i>';
-  }
-  safeCreateIcons();
-}
-window.togglePasswordVisibility = togglePasswordVisibility;
-
-/* Alert banner toast */
-function showAlert(msg, isOk = true) {
-  const box = document.getElementById("alertMsg");
-  if (!box) return;
-  box.textContent = msg;
-  box.className = `alert-box ${isOk ? "ok" : "err"}`;
-  box.style.display = "block";
-  setTimeout(() => { box.style.display = "none"; }, 4000);
-}
-
-/* =========================================================================
-   7. Security Score Indicator (Shield Badge - No Blue)
-   ========================================================================= */
-function initSecurityScore() {
-  const hasChangedBefore = localStorage.getItem("hasChangedPassword") === "true";
-  let score = 40;
-  let checks = { length: false, mixed: false, special: false, long: false };
-
-  if (hasChangedBefore) {
-    score = 85;
-    checks.length = true;
-    checks.mixed  = true;
-    checks.long   = true;
-  }
-
-  renderSecurityScore(score, checks);
-}
-
-function renderSecurityScore(score, checks) {
-  const numEl    = document.getElementById("scoreNumber");
-  const badgeEl  = document.getElementById("scoreBadge");
-  const badgeTxt = document.getElementById("scoreBadgeText");
-  const iconWrap = document.getElementById("scoreIconBadge");
-
-  if (numEl) numEl.textContent = `${score}%`;
-
-  if (badgeEl && badgeTxt) {
-    if (score >= 80) {
-      badgeTxt.textContent = "مستوى أمان ممتاز 🛡️";
-      badgeEl.style.background = "rgba(16, 185, 129, 0.15)";
-      badgeEl.style.color = "#34d399";
-      badgeEl.style.borderColor = "rgba(16, 185, 129, 0.3)";
-      if (iconWrap) { iconWrap.className = "score-icon-badge high"; }
-    } else if (score >= 60) {
-      badgeTxt.textContent = "مستوى أمان جيد";
-      badgeEl.style.background = "rgba(234, 88, 12, 0.15)";
-      badgeEl.style.color = "#fb923c";
-      badgeEl.style.borderColor = "rgba(234, 88, 12, 0.3)";
-      if (iconWrap) { iconWrap.className = "score-icon-badge mid"; }
-    } else {
-      badgeTxt.textContent = "يُنصح بتحديث الرمز";
-      badgeEl.style.background = "rgba(245, 158, 11, 0.15)";
-      badgeEl.style.color = "#fbbf24";
-      badgeEl.style.borderColor = "rgba(245, 158, 11, 0.3)";
-      if (iconWrap) { iconWrap.className = "score-icon-badge"; }
-    }
-  }
-
-  updateScoreCheckItem("sc-length",  checks.length,  "طول مناسب (4+ خانات)");
-  updateScoreCheckItem("sc-mixed",   checks.mixed,   "يحتوي حروفاً وأرقاماً");
-  updateScoreCheckItem("sc-special", checks.special, "يحتوي رموزاً خاصة");
-  updateScoreCheckItem("sc-long",    checks.long,    "طويل (8+ خانات)");
-
-  safeCreateIcons();
-}
-
-function updateScoreCheckItem(id, pass, label) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const iconName = pass ? "check-circle" : "circle";
-  el.className = `sc-item ${pass ? "pass" : "fail"}`;
-  el.innerHTML = `<i data-lucide="${iconName}" style="width:13px; height:13px;"></i> ${label}`;
-}
-
-function upgradeSecurityScore() {
-  localStorage.setItem("hasChangedPassword", "true");
-  renderSecurityScore(95, { length: true, mixed: true, special: true, long: true });
-  safeCreateIcons();
-}
-
-/* =========================================================================
-   8. User Profile Loading & Updates
-   ========================================================================= */
-async function loadUserProfile() {
-  const isStandalone = window.IS_CAPACITOR_APP || window.location.protocol === 'file:' || window.location.origin.includes('capacitor://') || (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80'));
-  let fetchedData = null;
-  try {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
-      const res = await fetch("/api/account/profile", { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (!res.ok) {
-        if (res.status === 401 && !isStandalone) { window.location.href = "login.html"; return; }
-        throw new Error("Local profile fetch error");
-      }
-
-      fetchedData = await res.json();
-      currentUserData = fetchedData.user;
-    } catch (fetchErr) {
-      // Standalone / Offline fallback from local cache
-      let username = "مسؤول النظام";
-      let role = "admin";
-      try {
-        const cached = localStorage.getItem("albayan_logged_user");
-        if (cached) {
-          const u = JSON.parse(cached);
-          if (u && u.username) username = u.username;
-          if (u && u.role) role = u.role;
-        }
-      } catch(e) {}
-      currentUserData = {
-        username: username,
-        role: role,
-        is_superadmin: 1
-      };
-    }
-
-    const username = currentUserData.username || "مستخدم";
-    const heroUser = document.getElementById("heroUsername");
-    const userInput = document.getElementById("usernameInput");
-    const metaHandle = document.getElementById("heroUserMeta");
-
-    if (heroUser) heroUser.textContent = username;
-    if (userInput) userInput.value = username;
-    if (metaHandle) metaHandle.textContent = `@${username.replace(/\s+/g, '_')}`;
-
-    const previewInitials = document.getElementById("avatarPreviewInitials");
-    if (previewInitials) previewInitials.textContent = username.charAt(0).toUpperCase();
-
-    initAvatarPreset();
-
-    // Role mapping
-    const isSuper = currentUserData.is_superadmin === 1;
-    const role    = currentUserData.role || "teacher";
-
-    let roleText = "معلم قرآن كريم";
-    if (isSuper) {
-      roleText = "مدير النظام الأقصى (SuperAdmin)";
-    } else if (role === "admin") {
-      roleText = "مشرف اختبارات وإدارة";
-    }
-
-    const badgeEl = document.getElementById("heroRoleBadge");
-    if (badgeEl) {
-      badgeEl.textContent = roleText;
-      if (isSuper) badgeEl.className = "profile-role-pill superadmin";
-      else if (role === "admin") badgeEl.className = "profile-role-pill admin";
-    }
-
-    let createdHtml = "مُسجّل مسبقاً";
-    if (currentUserData.created_at) {
-      if (window.HijriDate) {
-        const dual = window.HijriDate.formatDualDate(currentUserData.created_at);
-        createdHtml = `<span class="hijri-primary">${dual.hijri}</span> <small class="gregorian-secondary">(${dual.gregorian})</small>`;
-      } else {
-        createdHtml = currentUserData.created_at.split(" ")[0];
-      }
-    }
-
-    const hqsJoin = document.getElementById("hqsJoinDate");
-    const metaId  = document.getElementById("metaUserId");
-    const metaCr  = document.getElementById("metaCreatedAt");
-    const metaLs  = document.getElementById("metaLastSeen");
-
-    if (hqsJoin) hqsJoin.innerHTML = createdHtml;
-    if (metaId)  metaId.textContent  = `#${currentUserData.id || '1'}`;
-    if (metaCr)  metaCr.innerHTML  = createdHtml;
-    if (metaLs)  metaLs.textContent  = currentUserData.last_seen ? "الآن (نشط)" : "الآن";
-
-    // Permissions List
-    const permContainer = document.getElementById("permissionsList");
-    if (permContainer) {
-      permContainer.innerHTML = "";
-      if (isSuper) {
-        permContainer.innerHTML =
-          `<span class="chip-item super"><i data-lucide="crown" style="width:14px; height:14px; vertical-align:-2px;"></i> جميع الصلاحيات المطلقة (SuperAdmin)</span>`;
-      } else {
-        const perms   = currentUserData.permissions || [];
-        const permMap = {
-          "circles":     "إدارة الحلقات والطلاب",
-          "exams":       "إدارة وبنك الاختبارات",
-          "analytics":   "عرض الإحصائيات والتقارير",
-          "users":       "إدارة الحسابات والصلاحيات",
-          "all_circles": "الوصول لجميع الحلقات"
-        };
-
-        if (perms.length === 0) {
-          permContainer.innerHTML = `<span class="chip-item">صلاحيات المعلم الأساسية</span>`;
-        } else {
-          perms.forEach(p => {
-            const label = permMap[p] || p;
-            permContainer.innerHTML += `<span class="chip-item">${label}</span>`;
-          });
-        }
-      }
-    }
-
-    if (fetchedData && fetchedData.settings) {
-      initRecordPeriodSettings(fetchedData.settings);
-    } else {
-      initRecordPeriodSettings();
-    }
-
-    safeCreateIcons();
-
-  } catch (err) {
-    console.error("Error loading user profile:", err);
-  }
-}
-
-async function handleUpdateProfile(e) {
-  e.preventDefault();
-  const btn      = document.getElementById("btnSaveProfile");
-  const username = document.getElementById("usernameInput").value.trim();
-
-  if (!username) { showAlert("الرجاء كتابة اسم المستخدم.", false); return; }
-
-  btn.disabled = true;
-  btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px; display:inline-block; vertical-align:middle;"></i> جاري الحفظ...`;
-  safeCreateIcons();
-
-  try {
-    const res  = await fetch("/api/account/update-profile", {
-      method: "POST",
-      headers: csrfHeaders(),
-      body: JSON.stringify({ username })
-    });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      showAlert(data.message || "تم تحديث اسم المستخدم بنجاح 🟢", true);
-      document.getElementById("heroUsername").textContent = username;
-      const metaHandle = document.getElementById("heroUserMeta");
-      if (metaHandle) metaHandle.textContent = `@${username.replace(/\s+/g, '_')}`;
-      if (currentUserData) currentUserData.username = username;
-      const previewInitials = document.getElementById("avatarPreviewInitials");
-      if (previewInitials) previewInitials.textContent = username.charAt(0).toUpperCase();
-      initAvatarPreset();
-      setTimeout(() => closeSheet('sheet-profile'), 800);
-    } else {
-      showAlert(data.message || "فشل تحديث اسم المستخدم.", false);
-    }
-  } catch (err) {
-    showAlert("حدث خطأ أثناء حفظ الاسم.", false);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `<i data-lucide="check" style="width:18px; height:18px;"></i> حفظ وتحديث الاسم`;
-    safeCreateIcons();
-  }
-}
-
-/* =========================================================================
-   9. Password / Passcode Updates
-   ========================================================================= */
-async function handleChangeCode(e) {
-  e.preventDefault();
-  const btn          = document.getElementById("btnSaveCode");
-  const current_code = document.getElementById("currentCodeInput").value.trim();
-  const new_code     = document.getElementById("newCodeInput").value.trim();
-  const confirm_code = document.getElementById("confirmCodeInput").value.trim();
-
-  if (!current_code || !new_code || !confirm_code) {
-    showAlert("يرجى ملء كافة حقول الرمز السرّي.", false); return;
-  }
-  if (new_code !== confirm_code) {
-    showAlert("الرمز السرّي الجديد وتأكيده غير متطابقين.", false); return;
-  }
-  if (new_code.length < 4) {
-    showAlert("الرمز السرّي الجديد يجب أن يتكون من 4 خانات على الأقل.", false); return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px; display:inline-block; vertical-align:middle;"></i> جاري التعديل...`;
-  safeCreateIcons();
-
-  try {
-    const res  = await fetch("/api/account/change-code", {
-      method: "POST",
-      headers: csrfHeaders(),
-      body: JSON.stringify({ current_code, new_code, confirm_code })
-    });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      showAlert(data.message || "تم تغيير الرمز السرّي بنجاح 🔒", true);
-      document.getElementById("currentCodeInput").value = "";
-      document.getElementById("newCodeInput").value     = "";
-      document.getElementById("confirmCodeInput").value = "";
-      document.getElementById("strengthContainer").style.display = "none";
-      document.getElementById("matchMessage").style.display      = "none";
-      upgradeSecurityScore();
-      setTimeout(() => closeSheet('sheet-password'), 900);
-    } else {
-      showAlert(data.message || "فشل تغيير الرمز السرّي.", false);
-    }
-  } catch (err) {
-    showAlert("حدث خطأ أثناء تغيير الرمز السرّي.", false);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `<i data-lucide="lock" style="width:18px; height:18px;"></i> تحديث الرمز السرّي الآن`;
-    safeCreateIcons();
-  }
-}
-
-/* =========================================================================
-   10. Backup & Restore Data Functions
-   ========================================================================= */
-function initLastBackupInfo() {
-  const saved = localStorage.getItem("lastBackupTime");
-  if (saved) {
-    const el = document.getElementById("lastBackupInfo");
-    const timeEl = document.getElementById("lastBackupTime");
-    const sysEl  = document.getElementById("sysLastBackup");
-    if (el) el.style.display = "flex";
-    if (timeEl) timeEl.textContent = saved;
-    if (sysEl)  sysEl.textContent  = saved;
-  }
-}
-
-function downloadBackup() {
-  const dual = window.HijriDate ? window.HijriDate.formatDualDate(new Date()) : { hijri: new Date().toLocaleDateString('ar-SA') + ' هـ', gregorian: new Date().toLocaleDateString('ar-EG') + ' م' };
-  const backupTimeHtml = `<span class="hijri-primary">${dual.hijri}</span> <small class="gregorian-secondary">(${dual.gregorian})</small>`;
-  localStorage.setItem("lastBackupTime", `${dual.hijri} (${dual.gregorian})`);
-
-  const el = document.getElementById("lastBackupInfo");
-  const timeEl = document.getElementById("lastBackupTime");
-  const sysEl  = document.getElementById("sysLastBackup");
-  if (el) el.style.display = "flex";
-  if (timeEl) timeEl.innerHTML = backupTimeHtml;
-  if (sysEl)  sysEl.innerHTML  = backupTimeHtml;
-
-  window.location.href = "/api/account/backup";
-  showAlert("جاري تحضير وتنزيل النسخة الاحتياطية المجمعة... 📥", true);
-}
-
-function onBackupFileSelected(input) {
-  const label = document.getElementById("dropzoneLabel");
-  const btn   = document.getElementById("btnRestoreBackup");
-  if (input.files && input.files[0]) {
-    const file = input.files[0];
-    if (label) label.textContent = `الملف المختار: ${file.name} (${Math.round(file.size / 1024)} KB)`;
-    if (btn)   btn.disabled = false;
-  }
-}
-
-window.handleDragOver = function(e) {
-  e.preventDefault();
-  const dz = document.getElementById("fileDropzone");
-  if (dz) dz.classList.add("drag-over");
-};
-
-window.handleDragLeave = function(e) {
-  const dz = document.getElementById("fileDropzone");
-  if (dz) dz.classList.remove("drag-over");
-};
-
-window.handleFileDrop = function(e) {
-  e.preventDefault();
-  const dz = document.getElementById("fileDropzone");
-  if (dz) dz.classList.remove("drag-over");
-  const files = e.dataTransfer?.files;
-  if (files && files.length > 0) {
-    const fakeInput = document.getElementById("backupFileInput");
-    if (fakeInput) {
-      const dt = new DataTransfer();
-      dt.items.add(files[0]);
-      fakeInput.files = dt.files;
-      onBackupFileSelected(fakeInput);
-    }
-  }
-};
-
-async function handleRestoreBackup(e) {
-  e.preventDefault();
-  const fileInput = document.getElementById("backupFileInput");
-  const btn       = document.getElementById("btnRestoreBackup");
-  const progress  = document.getElementById("restoreProgress");
-  const pFill     = document.getElementById("restoreProgressFill");
-  const pPct      = document.getElementById("restoreProgressPct");
-  const pText     = document.getElementById("restoreProgressText");
-
-  if (!fileInput || !fileInput.files || !fileInput.files[0]) {
-    showAlert("يرجى اختيار ملف النسخة الاحتياطية أولاً.", false);
-    return;
-  }
-
-  if (!confirm("⚠️ تنبيه أمان: سيتم استرجاع واستبدال البيانات الحالية بمحتويات النسخة المختارة. هل ترغب في المتابعة؟")) {
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px; display:inline-block; vertical-align:middle;"></i> جاري استعادة البيانات...`;
-  safeCreateIcons();
-
-  if (progress) progress.style.display = "block";
-
-  let pct = 0;
-  const progressInterval = setInterval(() => {
-    pct = Math.min(pct + Math.random() * 12, 85);
-    if (pFill) pFill.style.width = `${pct}%`;
-    if (pPct)  pPct.textContent  = `${Math.round(pct)}%`;
-  }, 300);
-
-  const formData = new FormData();
-  formData.append("backup_file", fileInput.files[0]);
-
-  try {
-    const res  = await fetch("/api/account/restore", {
-      method: "POST",
-      headers: { "X-CSRF-Token": getCsrfToken() },
-      body: formData
-    });
-    const data = await res.json();
-
-    clearInterval(progressInterval);
-    if (pFill) pFill.style.width = "100%";
-    if (pPct)  pPct.textContent  = "100%";
-    if (pText) pText.textContent = "اكتملت الاستعادة بنجاح!";
-
-    if (res.ok && data.success) {
-      showAlert(data.message || "تمت استعادة النسخة الاحتياطية بنجاح! 🟢", true);
-      setTimeout(() => window.location.reload(), 1800);
-    } else {
-      showAlert(data.message || "فشلت عملية استعادة النسخة الاحتياطية.", false);
-      if (progress) progress.style.display = "none";
-    }
-  } catch (err) {
-    clearInterval(progressInterval);
-    if (progress) progress.style.display = "none";
-    showAlert("حدث خطأ أثناء رفع النسخة واستعادتها.", false);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `<i data-lucide="refresh-cw" style="width:18px; height:18px;"></i> بدء استعادة البيانات الآن`;
-    safeCreateIcons();
-  }
-}
-
-window.downloadBackup        = downloadBackup;
-window.onBackupFileSelected  = onBackupFileSelected;
-window.handleRestoreBackup   = handleRestoreBackup;
-window.handleUpdateProfile   = handleUpdateProfile;
-window.handleChangeCode      = handleChangeCode;
-
-/* =========================================================================
-   11. Record Period Duration Controller
-   ========================================================================= */
-let activeRecordPeriodType = "monthly";
-let activeCustomMonths = 5;
-
-function initRecordPeriodSettings(settings = null) {
-  if (settings) {
-    activeRecordPeriodType = settings.record_period_type || "monthly";
-    activeCustomMonths = parseInt(settings.custom_period_months || 5);
-  } else {
-    activeRecordPeriodType = localStorage.getItem("record_period_type") || "monthly";
-    activeCustomMonths = parseInt(localStorage.getItem("custom_period_months") || "5");
-  }
-
-  updateRecordPeriodUI();
-}
-
-function getCustomTermsDescription(months) {
-  const count = Math.max(1, Math.floor(12 / months));
-  let termsStr = "";
-  if (count === 1) termsStr = "فصل سنوي واحد";
-  else if (count === 2) termsStr = "فصلان في السنة";
-  else if (count >= 3 && count <= 10) termsStr = `${count} فصول في السنة`;
-  else termsStr = `${count} فصلاً في السنة`;
-
-  return `فصل كل ${months} أشهر (${termsStr})`;
-}
-
-let tempPreviousPeriodType = "monthly";
-
-function updateRecordPeriodUI() {
-  const badge = document.getElementById("currentRecordPeriodBadge");
-  if (badge) {
-    if (activeRecordPeriodType === "daily") {
-      badge.textContent = "يومي (متابعة يومية)";
-      badge.style.color = "#F59E0B";
-    } else if (activeRecordPeriodType === "custom") {
-      const termsCount = Math.max(1, Math.floor(12 / activeCustomMonths));
-      const termsStr = termsCount === 1 ? "فصل سنوي واحد" : (termsCount === 2 ? "فصلان" : `${termsCount} فصول`);
-      badge.textContent = `مخصص (${activeCustomMonths} أشهر لكل فصل - ${termsStr})`;
-      badge.style.color = "#A855F7";
-    } else {
-      badge.textContent = "شهري (الافتراضي)";
-      badge.style.color = "#10B981";
-    }
-  }
-
-  // Update Dropdown value
-  const select = document.getElementById("recordPeriodSelect");
-  if (select) {
-    select.value = activeRecordPeriodType;
-  }
-
-  // Update Live Summary Card
-  const title = document.getElementById("summaryCardTitle");
-  const desc = document.getElementById("summaryCardDesc");
-  const icon = document.getElementById("summaryCardIcon");
-  const actionRow = document.getElementById("customMonthsActionRow");
-  const customMonthsCount = document.getElementById("summaryCustomMonthsCount");
-
-  if (activeRecordPeriodType === "daily") {
-    if (title) title.textContent = "نظام يومي (متابعة يومية)";
-    if (desc) desc.textContent = "تسجيل التسميع لكل يوم بتاريخه مع تجميع الإحصائيات شهرياً.";
-    if (icon) {
-      icon.className = "summary-card-icon amber";
-      icon.innerHTML = `<i data-lucide="sun"></i>`;
-    }
-    if (actionRow) actionRow.style.display = "none";
-  } else if (activeRecordPeriodType === "custom") {
-    if (title) title.textContent = `نظام مخصص (${activeCustomMonths} أشهر لكل فصل)`;
-    if (desc) desc.textContent = getCustomTermsDescription(activeCustomMonths) + "، يتم حساب السجلات لكل فصل دراسي مخصص.";
-    if (icon) {
-      icon.className = "summary-card-icon purple";
-      icon.innerHTML = `<i data-lucide="calendar-plus"></i>`;
-    }
-    if (actionRow) actionRow.style.display = "block";
-    if (customMonthsCount) customMonthsCount.textContent = activeCustomMonths;
-  } else {
-    if (title) title.textContent = "نظام شهري (الافتراضي)";
-    if (desc) desc.textContent = "حساب السجلات حسب الأشهر الهجرية/الميلادية (سجل منفصل لكل شهر).";
-    if (icon) {
-      icon.className = "summary-card-icon emerald";
-      icon.innerHTML = `<i data-lucide="calendar"></i>`;
-    }
-    if (actionRow) actionRow.style.display = "none";
-  }
-
-  safeCreateIcons();
-}
-
-function handleRecordPeriodDropdownChange(val) {
-  if (val === "custom") {
-    openCustomMonthsModal();
-  } else {
-    activeRecordPeriodType = val;
-    tempPreviousPeriodType = val;
-    updateRecordPeriodUI();
-  }
-}
-
-function openCustomMonthsModal() {
-  tempPreviousPeriodType = activeRecordPeriodType;
-  const input = document.getElementById("customMonthsModalInput");
-  if (input) input.value = activeCustomMonths;
-  updateModalTermsPreview(activeCustomMonths);
-  openSheet("sheet-custom-months");
-}
-
-function cancelCustomMonthsModal() {
-  closeSheet("sheet-custom-months");
-  // If user wasn't previously on custom, restore dropdown
-  if (activeRecordPeriodType !== "custom") {
-    const select = document.getElementById("recordPeriodSelect");
-    if (select) select.value = activeRecordPeriodType;
-  }
-  openSheet("sheet-record-period");
-}
-
-function confirmCustomMonthsModal() {
-  const input = document.getElementById("customMonthsModalInput");
-  let val = parseInt(input ? input.value : 6, 10);
-  if (isNaN(val) || val < 1) val = 1;
-  if (val > 12) val = 12;
-
-  activeCustomMonths = val;
-  activeRecordPeriodType = "custom";
-  tempPreviousPeriodType = "custom";
-
-  closeSheet("sheet-custom-months");
-  updateRecordPeriodUI();
-  openSheet("sheet-record-period");
-}
-
-function stepCustomMonths(delta) {
-  const input = document.getElementById("customMonthsModalInput");
-  if (!input) return;
-  let val = parseInt(input.value || 6, 10) + delta;
-  if (val < 1) val = 1;
-  if (val > 12) val = 12;
-  input.value = val;
-  updateModalTermsPreview(val);
-}
-
-function onCustomMonthsModalInput(val) {
-  let num = parseInt(val, 10);
-  if (isNaN(num) || num < 1) num = 1;
-  if (num > 12) num = 12;
-  updateModalTermsPreview(num);
-}
-
-function setCustomMonthsPreset(months) {
-  const input = document.getElementById("customMonthsModalInput");
-  if (input) input.value = months;
-  updateModalTermsPreview(months);
-}
-
-function updateModalTermsPreview(months) {
-  const preview = document.getElementById("modalTermsPreviewBadge");
-  if (preview) {
-    preview.textContent = "🗓️ " + getCustomTermsDescription(months);
-  }
-}
-
-async function saveRecordPeriodSettings() {
-  const btn = document.getElementById("btnSaveRecordPeriod");
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px; display:inline-block; vertical-align:middle;"></i> جاري الحفظ...`;
-    safeCreateIcons();
-  }
-
-  try {
-    const res = await fetch("/api/account/system-settings", {
-      method: "POST",
-      headers: csrfHeaders(),
-      body: JSON.stringify({
-        record_period_type: activeRecordPeriodType,
-        custom_period_months: activeCustomMonths
-      })
-    });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      localStorage.setItem("record_period_type", activeRecordPeriodType);
-      localStorage.setItem("custom_period_months", activeCustomMonths.toString());
-      showAlert("تم حفظ وتطبيق نظام مدة السجل بنجاح 🟢", true);
-      updateRecordPeriodUI();
-      setTimeout(() => closeSheet('sheet-record-period'), 800);
-    } else {
-      showAlert(data.message || "تعذر حفظ إعدادات النظام.", false);
-    }
-  } catch (err) {
-    console.error("Error saving record period:", err);
-    showAlert("حدث خطأ في الاتصال بالخادم.", false);
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<span class="btn-txt">حفظ وتطبيق النظام</span>`;
-      safeCreateIcons();
-    }
-  }
-}
-
-window.initRecordPeriodSettings = initRecordPeriodSettings;
-window.handleRecordPeriodDropdownChange = handleRecordPeriodDropdownChange;
-window.openCustomMonthsModal = openCustomMonthsModal;
-window.cancelCustomMonthsModal = cancelCustomMonthsModal;
-window.confirmCustomMonthsModal = confirmCustomMonthsModal;
-window.stepCustomMonths = stepCustomMonths;
-window.onCustomMonthsModalInput = onCustomMonthsModalInput;
-window.setCustomMonthsPreset = setCustomMonthsPreset;
-window.saveRecordPeriodSettings = saveRecordPeriodSettings;
-
-/* =========================================================================
-   12. Auth Logout
-   ========================================================================= */
-async function logout() {
-  if (typeof window.albayanLogout === 'function') {
-    return window.albayanLogout();
-  }
-  try {
-    localStorage.removeItem("albayan_logged_user");
-    localStorage.removeItem("albayan_saved_token");
-    sessionStorage.clear();
-  } catch (e) {}
-  try {
-    await fetch("/api/logout", { method: "POST", headers: csrfHeaders() });
-  } catch (e) {}
-  window.location.href = "login.html?logout=1";
-}
-window.logout = logout;
-
-/* =========================================================================
-   13. Firebase Cloud Sync Settings Handlers (Direct RTDB + Smart State)
-   ========================================================================= */
-async function checkFirebaseConnectionInSettings() {
-  const badge = document.getElementById("settingsSyncStatusBadge");
-  const pill = document.getElementById("fbSyncModalStatusPill");
-  const diag = document.getElementById("fbSyncDiagnosticBox");
-  const pendingEl = document.getElementById("fbPendingCountVal");
-  const lastTimeEl = document.getElementById("fbLastSyncTimeVal");
-
-  if (pill) pill.textContent = "جاري الفحص...";
-  if (diag) diag.textContent = "يتم الآن فحص الاتصال بسحابة Firebase...";
-
-  // 1. Check direct Firebase RTDB from phone
-  let directCloudOk = false;
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-    const res = await fetch("https://bayan-56e77-default-rtdb.asia-southeast1.firebasedatabase.app/.json?shallow=true", {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-    if (res.ok) directCloudOk = true;
-  } catch (e) {
-    directCloudOk = false;
-  }
-
-  // Count local pending items from IndexedDB
-  let localPending = 0;
-  if (window.AlbayanLocalDB) {
-    try { localPending = await window.AlbayanLocalDB.getPendingCount(); } catch(e) {}
-  }
-
-  // 2. If direct Firebase is online
-  if (directCloudOk) {
-    if (pendingEl) pendingEl.textContent = localPending;
-    const lastSync = localStorage.getItem("albayan_last_cloud_sync_time") || "نشط الآن";
-    if (lastTimeEl) lastTimeEl.textContent = lastSync;
-
-    if (pill) { 
-      pill.textContent = "متصل بالسحابة 🟢"; 
-      pill.style.background = "#dcfce7"; 
-      pill.style.color = "#15803d"; 
-    }
-    if (badge) { 
-      badge.textContent = "متصل بالسحابة 🟢"; 
-      badge.style.color = "#16a34a"; 
-    }
-    if (diag) {
-      diag.textContent = "التطبيق متصل مباشرة بقاعدة البيانات السحابية (Firebase RTDB). المزامنة وجلب البيانات سارية بنجاح.";
-    }
-    return;
-  }
-
-  // 3. Fallback: check local LAN server
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch("/api/sync/status", { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (res.ok) {
-      const data = await res.json();
-      if (pendingEl) pendingEl.textContent = (data.pending_records_count || 0) + localPending;
-      if (lastTimeEl) lastTimeEl.textContent = data.last_sync_time || "لم تتم بعد";
-
-      if (data.is_syncing) {
-        if (pill) { pill.textContent = "جاري المزامنة..."; pill.style.background = "#dbeafe"; pill.style.color = "#1e40af"; }
-        if (badge) { badge.textContent = "جاري المزامنة..."; badge.style.color = "#2563eb"; }
-        if (diag) diag.textContent = "عملية مزامنة السجلات قيد التنفيذ حالياً بين السيرفر المحلي وFirebase.";
-      } else if (data.cloud_connected) {
-        if (pill) { pill.textContent = "متصل بالسحابة 🟢"; pill.style.background = "#dcfce7"; pill.style.color = "#15803d"; }
-        if (badge) { badge.textContent = "متصل بالسحابة 🟢"; badge.style.color = "#16a34a"; }
-        if (diag) diag.textContent = data.last_sync_status || "الاتصال جاهز والمزامنة الفورية مفعلة عبر السيرفر والسحابة.";
-      } else {
-        if (pill) { pill.textContent = "يعمل بالإنترنت المحلي 🔵"; pill.style.background = "#e0f2fe"; pill.style.color = "#0369a1"; }
-        if (badge) { badge.textContent = "يعمل بالإنترنت المحلي 🔵"; badge.style.color = "#0284c7"; }
-        if (diag) diag.textContent = "النظام متصل بالحاسوب/الشبكة المحلية وتتم العمليات محلياً.";
-      }
-      return;
-    }
-  } catch (err) {
-    // Local server unreachable
-  }
-
-  // 4. Standalone / Offline
-  if (pendingEl) pendingEl.textContent = localPending;
-  if (pill) { pill.textContent = "يعمل دون اتصال ⚪"; pill.style.background = "#f1f5f9"; pill.style.color = "#475569"; }
-  if (badge) { badge.textContent = "يعمل دون اتصال ⚪"; badge.style.color = "#64748b"; }
-  if (diag) diag.textContent = "لا يوجد اتصال بالإنترنت أو الخادم، التطبيق يعمل بوضع حفظ البيانات على هذا الجهاز دون اتصال.";
-}
-
-async function handleManualSyncInSettings() {
-  const btn = document.getElementById("fbTriggerSyncBtn");
-  const diag = document.getElementById("fbSyncDiagnosticBox");
-
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<span>جاري المزامنة مع السحابة...</span>`;
-  }
-  if (diag) diag.textContent = "يتم الآن جلب وتحديث البيانات من سحابة Firebase...";
-
-  let synced = false;
-  // Direct Firebase pull
-  if (typeof window.pullAllDataFromFirebase === 'function') {
-    try {
-      await window.pullAllDataFromFirebase();
-      synced = true;
-    } catch(e) {}
-  } else if (typeof window.pullCirclesFromFirebase === 'function') {
-    try {
-      await window.pullCirclesFromFirebase();
-      if (typeof window.pullExamsFromFirebase === 'function') {
-        await window.pullExamsFromFirebase();
-      }
-      synced = true;
-    } catch(e) {}
-  }
-
-  // Direct Firebase push of queued local records
-  if (typeof window.flushPendingQueueToFirebase === 'function') {
-    try { await window.flushPendingQueueToFirebase(); } catch(e) {}
-  }
-
-  // Also trigger local server if reachable
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch("/api/sync/trigger", { method: "POST", headers: csrfHeaders(), signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (res.ok) synced = true;
-  } catch(e) {}
-
-  // Fetch full bundle from local server to ensure complete SQLite -> IndexedDB sync
-  try {
-    const bRes = await fetch("/api/sync/export-bundle");
-    if (bRes.ok) {
-      const bData = await bRes.json();
-      if (bData && bData.bundle && window.AlbayanLocalDB && typeof window.AlbayanLocalDB.importFullDatabase === 'function') {
-        await window.AlbayanLocalDB.importFullDatabase(bData.bundle);
-        synced = true;
-      }
-    }
-  } catch(e) {}
-
-  const nowStr = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-  try { localStorage.setItem("albayan_last_cloud_sync_time", nowStr); } catch(e) {}
-
-  showAlert(synced ? "تمت المزامنة بنجاح مع سحابة مدرسة البيان." : "تم تحديث البيانات المحلية.", true);
-  await checkFirebaseConnectionInSettings();
-
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = `<i data-lucide="refresh-cw" style="width:17px; height:17px;"></i><span>مزامنة السحابة الآن</span>`;
-    safeCreateIcons();
-  }
-}
-
-window.checkFirebaseConnectionInSettings = checkFirebaseConnectionInSettings;
-window.handleManualSyncInSettings = handleManualSyncInSettings;
-
-
-/* =========================================================================
-   14. Typography & Font System Handlers
+   5. Typography & Font System Handlers
    ========================================================================= */
 function initFontSettings() {
   const currentFont = localStorage.getItem("appFontFamily") || "Cairo";
@@ -1155,28 +245,23 @@ function updateFontBadgeUI(fontKey) {
   const badge = document.getElementById("currentFontFamilyBadge");
   if (!badge) return;
   const map = {
-    "Cairo": "خط كايرو (الافتراضي)",
-    "Tajawal": "خط تجوال (ناعم وأنيق)",
-    "Alexandria": "خط الإسكندرية (هندسي فريد)",
-    "Amiri": "خط أميري (تراثي قرآني)",
-    "Almarai": "خط المراعي (رقمي حديث)",
-    "custom": "خط مخصص (من جهازك)"
+    "Cairo": "خط كايرو",
+    "Tajawal": "خط تجوال",
+    "Alexandria": "خط الإسكندرية",
+    "Amiri": "خط أميري",
+    "Almarai": "خط المراعي",
+    "custom": "خط مخصص"
   };
   badge.textContent = map[fontKey] || fontKey;
 }
 
 function updateFontCardsUI(fontKey) {
-  const cards = document.querySelectorAll(".font-select-card");
-  cards.forEach(card => {
+  document.querySelectorAll(".font-select-card").forEach(card => {
     const key = card.dataset.font;
     const radio = card.querySelector('input[type="radio"]');
-    if (key === fontKey) {
-      card.classList.add("active");
-      if (radio) radio.checked = true;
-    } else {
-      card.classList.remove("active");
-      if (radio) radio.checked = false;
-    }
+    const isMatch = (key === fontKey);
+    card.classList.toggle("active", isMatch);
+    if (radio) radio.checked = isMatch;
   });
 }
 
@@ -1189,9 +274,9 @@ function updateCustomFontStatusUI() {
   const customCard = document.getElementById("customFontSelectCard");
 
   if (customData) {
-    if (customContainer) customContainer.style.display = "block";
+    if (customContainer) customContainer.style.display = "flex";
     if (emptyContainer) emptyContainer.style.display = "none";
-    if (customCard) customCard.style.display = "block";
+    if (customCard) customCard.style.display = "flex";
 
     const nameEl = document.getElementById("customFontFileName");
     if (nameEl) nameEl.textContent = customName;
@@ -1223,16 +308,15 @@ window.selectAppFont = function(fontKey) {
     "Almarai": "خط المراعي",
     "custom": "الخط المخصص"
   };
-  showAlert(`تم تفعيل ${fontNames[fontKey] || fontKey} بنجاح عبر كامل صفحات المنظومة!`, true);
+  showAlert(`تم تفعيل ${fontNames[fontKey] || fontKey} عبر المنظومة`, true);
 };
 
 window.handleCustomFontUpload = function(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
 
-  // Max 4MB validation
   if (file.size > 4 * 1024 * 1024) {
-    showAlert("حجم ملف الخط كبير جداً (أكثر من 4 ميغابايت). يرجى اختيار ملف خط أخف وزناً.", false);
+    showAlert("حجم ملف الخط يتجاوز 4 ميغابايت، يرجى اختيار ملف أصغر.", false);
     return;
   }
 
@@ -1247,7 +331,6 @@ window.handleCustomFontUpload = function(event) {
     try {
       const dataUrl = e.target.result;
       const sizeStr = (file.size / 1024).toFixed(1) + " كيلوبايت";
-
       localStorage.setItem("appCustomFontData", dataUrl);
       localStorage.setItem("appCustomFontName", file.name);
       localStorage.setItem("appCustomFontFormat", format);
@@ -1259,19 +342,15 @@ window.handleCustomFontUpload = function(event) {
 
       window.selectAppFont("custom");
       updateCustomFontStatusUI();
-      showAlert(`تم رفع وتفعيل الخط "${file.name}" بنجاح!`, true);
-    } catch(err) {
-      showAlert("تعذر حفظ الخط في المتصفح: " + err.message, false);
+    } catch (err) {
+      showAlert("تعذر حفظ الخط في الجهاز.", false);
     }
-  };
-  reader.onerror = function() {
-    showAlert("حدث خطأ أثناء قراءة ملف الخط.", false);
   };
   reader.readAsDataURL(file);
 };
 
 window.removeCustomFont = function() {
-  if (!confirm("هل أنت متأكد من حذف الخط المخصص والعودة للخط الافتراضي؟")) return;
+  if (!confirm("هل تريد حذف الخط المخصص والعودة للخط الافتراضي؟")) return;
   localStorage.removeItem("appCustomFontData");
   localStorage.removeItem("appCustomFontName");
   localStorage.removeItem("appCustomFontFormat");
@@ -1282,146 +361,709 @@ window.removeCustomFont = function() {
 
   window.selectAppFont("Cairo");
   updateCustomFontStatusUI();
-  showAlert("تم حذف الخط المخصص وتفعيل خط كايرو الافتراضي.", true);
 };
 
 /* =========================================================================
-   15. Local LAN Server Handlers
+   6. User Profile Loading & Clean Email/Meta Display
    ========================================================================= */
-function initLanServerSettings() {
-  const currentUrl = localStorage.getItem("albayan_server_url") || "";
-  const input = document.getElementById("lanServerInput");
-  const badge = document.getElementById("settingsLanServerBadge");
-  const pill = document.getElementById("lanServerStatusPill");
-  const savedVal = document.getElementById("lanSavedUrlVal");
+function isValidFullEmail(val) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(val || "").trim());
+}
 
-  if (input && !input.value) {
-    input.value = currentUrl || "http://10.104.106.182:5000";
-  }
-  if (savedVal) {
-    savedVal.textContent = currentUrl || "غير مربوط (محلي فقط)";
-  }
+async function loadUserProfile() {
+  const isStandalone = window.IS_CAPACITOR_APP || window.location.protocol === 'file:' || window.location.origin.includes('capacitor://') || (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80'));
+  let fetchedData = null;
 
-  if (currentUrl) {
-    if (badge) {
-      badge.textContent = "مربوط: " + currentUrl.replace(/^https?:\/\//, '');
-      badge.style.color = "#10b981";
-    }
-    if (pill) {
-      pill.textContent = "مربوط (يفحص الاتصال...)";
-      pill.style.background = "#dbeafe";
-      pill.style.color = "#1e40af";
-    }
-    // Quick test
+  try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-    fetch(currentUrl + "/api/health", { method: "GET", mode: "cors", signal: controller.signal })
-      .then(res => res.json())
-      .then(() => {
-        clearTimeout(timeoutId);
-        if (pill) {
-          pill.textContent = "متصل بنجاح ✓";
-          pill.style.background = "rgba(16, 185, 129, 0.15)";
-          pill.style.color = "#10b981";
-        }
-      })
-      .catch(() => {
-        clearTimeout(timeoutId);
-        if (pill) {
-          pill.textContent = "غير متاح حالياً (يعمل محلياً)";
-          pill.style.background = "rgba(245, 158, 11, 0.15)";
-          pill.style.color = "#b45309";
-        }
-      });
+    const timeoutId = setTimeout(() => controller.abort(), 1600);
+    const res = await fetch("/api/account/profile", { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      if (res.status === 401 && !isStandalone) {
+        window.location.href = "login.html";
+        return;
+      }
+      throw new Error("Local profile unavailable");
+    }
+    fetchedData = await res.json();
+    currentUserData = fetchedData.user;
+  } catch (err) {
+    let username = "مسؤول النظام";
+    let role = "admin";
+    let email = "";
+    try {
+      const cached = localStorage.getItem("albayan_logged_user");
+      if (cached) {
+        const u = JSON.parse(cached);
+        if (u && u.username) username = u.username;
+        if (u && u.role) role = u.role;
+        if (u && u.email) email = u.email;
+      }
+    } catch (e) {}
+    currentUserData = {
+      username,
+      role,
+      email,
+      is_superadmin: role === "admin" ? 1 : 0
+    };
+  }
+
+  const username = (currentUserData && currentUserData.username) || "مسؤول النظام";
+  const heroUser = document.getElementById("heroUsername");
+  const userInput = document.getElementById("usernameInput");
+  const initialsEl = document.getElementById("profileInitials");
+  const metaEl = document.getElementById("heroUserMeta");
+
+  if (heroUser) heroUser.textContent = username;
+  if (userInput) userInput.value = username;
+  if (initialsEl) initialsEl.textContent = username.trim().charAt(0).toUpperCase() || "م";
+
+  // Hide incomplete email/handle like "admin@" or "@admin" unless it is a valid full email
+  if (metaEl) {
+    const candidateEmail = currentUserData && currentUserData.email;
+    if (isValidFullEmail(candidateEmail)) {
+      metaEl.textContent = candidateEmail.trim();
+      metaEl.style.display = "block";
+    } else {
+      metaEl.textContent = "";
+      metaEl.style.display = "none";
+    }
+  }
+
+  const isSuper = currentUserData.is_superadmin === 1;
+  const role = currentUserData.role || "teacher";
+  let roleText = "معلم قرآن كريم";
+  let isEmeraldRole = true;
+  if (isSuper) {
+    roleText = "مدير النظام";
+    isEmeraldRole = false;
+  } else if (role === "admin") {
+    roleText = "مشرف وإدارة";
+    isEmeraldRole = false;
+  } else if (role === "supervisor") {
+    roleText = "مشرف تربوي";
+    isEmeraldRole = true;
+  }
+
+  const badgeEl = document.getElementById("heroRoleBadge");
+  if (badgeEl) {
+    badgeEl.textContent = roleText;
+    badgeEl.className = isEmeraldRole ? "profile-role-pill emerald" : "profile-role-pill";
+  }
+
+  if (fetchedData && fetchedData.settings && window.AlbayanCycleEngine) {
+    const remoteType = fetchedData.settings.record_period_type;
+    if (remoteType) {
+      await window.AlbayanCycleEngine.saveConfig({
+        periodType: window.AlbayanCycleEngine.normalizePeriodType(remoteType)
+      }, { localOnly: true });
+    }
+  }
+  refreshRecordPeriodBadgesAndDraft(false);
+}
+
+async function handleUpdateProfile(e) {
+  e.preventDefault();
+  const btn = document.getElementById("btnSaveProfile");
+  const username = (document.getElementById("usernameInput")?.value || "").trim();
+  if (!username) {
+    showAlert("يرجى كتابة الاسم المطلوب.", false);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px;"></i><span>جاري الحفظ...</span>`;
+  safeCreateIcons();
+
+  let savedRemote = false;
+  try {
+    const res = await fetch("/api/account/update-profile", {
+      method: "POST",
+      headers: csrfHeaders(),
+      body: JSON.stringify({ username })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) savedRemote = true;
+  } catch (err) {}
+
+  // Always update local session cache seamlessly for offline/Capacitor mode
+  try {
+    const cachedRaw = localStorage.getItem("albayan_logged_user");
+    const cached = cachedRaw ? JSON.parse(cachedRaw) : {};
+    cached.username = username;
+    localStorage.setItem("albayan_logged_user", JSON.stringify(cached));
+  } catch (e) {}
+
+  if (currentUserData) currentUserData.username = username;
+  const heroUser = document.getElementById("heroUsername");
+  const initialsEl = document.getElementById("profileInitials");
+  if (heroUser) heroUser.textContent = username;
+  if (initialsEl) initialsEl.textContent = username.charAt(0).toUpperCase() || "م";
+
+  showAlert(savedRemote ? "تم تحديث الاسم الشخصي بنجاح" : "تم حفظ الاسم الشخصي بنجاح", true);
+  setTimeout(() => closeSheet("sheet-profile"), 550);
+
+  btn.disabled = false;
+  btn.innerHTML = `<i data-lucide="check" style="width:17px; height:17px;"></i><span>حفظ وتحديث الاسم</span>`;
+  safeCreateIcons();
+}
+
+window.handleUpdateProfile = handleUpdateProfile;
+
+/* =========================================================================
+   7. Password / Passcode Updates & Visibility
+   ========================================================================= */
+function checkPasswordMatch() {
+  const newPass = document.getElementById("newCodeInput")?.value || "";
+  const confirmPass = document.getElementById("confirmCodeInput")?.value || "";
+  const msg = document.getElementById("matchMessage");
+  if (!msg) return;
+
+  if (!confirmPass) {
+    msg.style.display = "none";
+    return;
+  }
+
+  msg.style.display = "block";
+  if (newPass === confirmPass) {
+    msg.innerHTML = `<span style="color:#0F766E; font-weight:700;">✓ الرمزان متطابقان</span>`;
   } else {
-    if (badge) {
-      badge.textContent = "يعمل بوضع الجوال (محلي)";
-      badge.style.color = "#64748b";
-    }
-    if (pill) {
-      pill.textContent = "محلي (بدون خادم)";
-      pill.style.background = "#e2e8f0";
-      pill.style.color = "#475569";
-    }
+    msg.innerHTML = `<span style="color:#DC2626; font-weight:700;">الرمزان غير متطابقين</span>`;
   }
 }
 
-async function testAndSaveLanServer() {
-  const input = document.getElementById("lanServerInput");
-  const btn = document.getElementById("lanTestConnectBtn");
-  const diag = document.getElementById("lanServerDiagnosticBox");
-  let val = (input ? input.value : "").trim().replace(/\/$/, "");
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === "password") {
+    input.type = "text";
+    btn.innerHTML = '<i data-lucide="eye-off" style="width:17px; height:17px;"></i>';
+  } else {
+    input.type = "password";
+    btn.innerHTML = '<i data-lucide="eye" style="width:17px; height:17px;"></i>';
+  }
+  safeCreateIcons();
+}
 
-  if (!val) {
-    val = "http://10.104.106.182:5000";
+async function handleChangeCode(e) {
+  e.preventDefault();
+  const btn = document.getElementById("btnSaveCode");
+  const current_code = (document.getElementById("currentCodeInput")?.value || "").trim();
+  const new_code = (document.getElementById("newCodeInput")?.value || "").trim();
+  const confirm_code = (document.getElementById("confirmCodeInput")?.value || "").trim();
+
+  if (!current_code || !new_code || !confirm_code) {
+    showAlert("يرجى تعبئة كافة الحقول.", false);
+    return;
   }
-  if (!val.startsWith("http://") && !val.startsWith("https://")) {
-    val = "http://" + val;
+  if (new_code !== confirm_code) {
+    showAlert("الرمز الجديد وتأكيده غير متطابقين.", false);
+    return;
   }
-  const urlParts = val.match(/^(https?:\/\/[^\/:]+)(?::(\d+))?/);
-  if (urlParts && !urlParts[2]) {
-    val = urlParts[1] + ":5000";
+  if (new_code.length < 4) {
+    showAlert("يجب أن لا يقل الرمز عن 4 خانات.", false);
+    return;
   }
-  if (input) input.value = val;
+
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px;"></i><span>جاري التحديث...</span>`;
+  safeCreateIcons();
+
+  let updated = false;
+  try {
+    const res = await fetch("/api/account/change-code", {
+      method: "POST",
+      headers: csrfHeaders(),
+      body: JSON.stringify({ current_code, new_code, confirm_code })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      updated = true;
+    } else if (data && data.message) {
+      showAlert(data.message, false);
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="lock" style="width:17px; height:17px;"></i><span>تحديث الرمز السرّي</span>`;
+      safeCreateIcons();
+      return;
+    }
+  } catch (err) {
+    // Offline/Cloud fallback via AlbayanFirebaseDAL for matching current user
+    try {
+      const cachedRaw = localStorage.getItem("albayan_logged_user");
+      const cachedUser = cachedRaw ? JSON.parse(cachedRaw) : null;
+      if (cachedUser && cachedUser.id && window.AlbayanFirebaseDAL) {
+        const uRes = await window.AlbayanFirebaseDAL.get(`users/${cachedUser.id}`);
+        if (uRes && uRes.ok && uRes.data) {
+          const cloudUser = uRes.data;
+          if (!cloudUser.passcode || String(cloudUser.passcode) === current_code || String(cloudUser.password || "") === current_code) {
+            await window.AlbayanFirebaseDAL.put(`users/${cachedUser.id}/passcode`, new_code);
+            updated = true;
+          } else {
+            showAlert("الرمز السرّي الحالي غير صحيح.", false);
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="lock" style="width:17px; height:17px;"></i><span>تحديث الرمز السرّي</span>`;
+            safeCreateIcons();
+            return;
+          }
+        }
+      }
+    } catch (fbErr) {}
+  }
+
+  if (updated) {
+    localStorage.setItem("hasChangedPassword", "true");
+    document.getElementById("currentCodeInput").value = "";
+    document.getElementById("newCodeInput").value = "";
+    document.getElementById("confirmCodeInput").value = "";
+    const msg = document.getElementById("matchMessage");
+    if (msg) msg.style.display = "none";
+    showAlert("تم تحديث الرمز السرّي بنجاح", true);
+    setTimeout(() => closeSheet("sheet-password"), 650);
+  } else {
+    showAlert("تعذر التحقق من الخادم لتحديث الرمز حالياً.", false);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<i data-lucide="lock" style="width:17px; height:17px;"></i><span>تحديث الرمز السرّي</span>`;
+  safeCreateIcons();
+}
+
+window.checkPasswordMatch = checkPasswordMatch;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.handleChangeCode = handleChangeCode;
+
+/* =========================================================================
+   8. Quranic Record Cycle Configuration (مدة ونظام السجل القرآني)
+   ========================================================================= */
+function getCycleEngineSafe() {
+  return window.AlbayanCycleEngine || null;
+}
+
+function initRecordPeriodSettings() {
+  refreshRecordPeriodBadgesAndDraft(true);
+  renderCycleArchivesPreview();
+}
+
+function refreshRecordPeriodBadgesAndDraft(resetDraft = false) {
+  const eng = getCycleEngineSafe();
+  if (!eng) return;
+  const cfg = eng.getConfig();
+  if (!draftCycleConfig || resetDraft) {
+    draftCycleConfig = { ...cfg };
+  }
+  const stats = eng.computeCycleStats(cfg);
+
+  const badge = document.getElementById("currentRecordPeriodBadge");
+  if (badge) {
+    badge.textContent = stats.meta.badge;
+  }
+  const subtitle = document.getElementById("recordPeriodSubtitle");
+  if (subtitle) {
+    subtitle.textContent = `الدورة #${cfg.cycleIndex || 1} • متبقي ${stats.remainingDays} يوماً`;
+  }
+
+  renderCycleSheetUI(draftCycleConfig);
+}
+
+function openRecordPeriodSheet() {
+  const eng = getCycleEngineSafe();
+  if (eng) {
+    draftCycleConfig = { ...eng.getConfig() };
+    renderCycleSheetUI(draftCycleConfig);
+    renderCycleArchivesPreview();
+  }
+  openSheet("sheet-record-period");
+}
+
+function renderCycleSheetUI(cfg) {
+  const eng = getCycleEngineSafe();
+  if (!eng || !cfg) return;
+  const stats = eng.computeCycleStats(cfg);
+
+  // Duration option buttons
+  document.querySelectorAll("#cycleDurationGrid .cycle-duration-option").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.period === stats.config.periodType);
+  });
+
+  // Start Date picker
+  const dateInput = document.getElementById("cycleStartDateInput");
+  if (dateInput && dateInput.value !== stats.startDate) {
+    dateInput.value = stats.startDate;
+  }
+
+  const hijriHint = document.getElementById("cycleHijriStartHint");
+  if (hijriHint) {
+    if (window.HijriDate && typeof window.HijriDate.formatDualDate === "function") {
+      const dual = window.HijriDate.formatDualDate(stats.startDate);
+      hijriHint.textContent = dual.hijri || "";
+    } else {
+      hijriHint.textContent = "";
+    }
+  }
+
+  // Live progress bar & labels
+  const pTitle = document.getElementById("cycleProgressTitle");
+  if (pTitle) pTitle.textContent = `الدورة #${stats.config.cycleIndex || 1} • ${stats.meta.badge}`;
+
+  const remPill = document.getElementById("cycleRemainingBadge");
+  if (remPill) {
+    remPill.textContent = stats.remainingDays === 0
+      ? "انتهت مدة الدورة"
+      : (stats.remainingDays === 1 ? "متبقي يوم واحد" : `متبقي ${stats.remainingDays} يوماً`);
+  }
+
+  const pFill = document.getElementById("cycleProgressFill");
+  if (pFill) pFill.style.width = `${stats.progressPct}%`;
+
+  const startTxt = document.getElementById("cycleDatesStartText");
+  const endTxt = document.getElementById("cycleDatesEndText");
+  if (startTxt) startTxt.textContent = `البداية: ${stats.startDate}`;
+  if (endTxt) endTxt.textContent = `النهاية: ${stats.endDate} (${stats.elapsedDays}/${stats.totalDays} يوم)`;
+
+  // End-of-period behavior radios
+  const isArchive = stats.config.endAction !== "cumulative";
+  const cardArchive = document.getElementById("endActionCardArchive");
+  const cardCum = document.getElementById("endActionCardCumulative");
+  if (cardArchive) {
+    cardArchive.classList.toggle("active", isArchive);
+    const radio = cardArchive.querySelector("input");
+    if (radio) radio.checked = isArchive;
+  }
+  if (cardCum) {
+    cardCum.classList.toggle("active", !isArchive);
+    const radio = cardCum.querySelector("input");
+    if (radio) radio.checked = !isArchive;
+  }
+}
+
+function selectCyclePeriodType(periodType) {
+  if (!draftCycleConfig) {
+    const eng = getCycleEngineSafe();
+    draftCycleConfig = eng ? { ...eng.getConfig() } : { periodType: "monthly", startDate: "", endAction: "archive_reset" };
+  }
+  draftCycleConfig.periodType = periodType;
+  renderCycleSheetUI(draftCycleConfig);
+}
+
+function onCycleStartDateChange(dateStr) {
+  if (!dateStr) return;
+  if (!draftCycleConfig) {
+    const eng = getCycleEngineSafe();
+    draftCycleConfig = eng ? { ...eng.getConfig() } : {};
+  }
+  draftCycleConfig.startDate = dateStr;
+  renderCycleSheetUI(draftCycleConfig);
+}
+
+function selectCycleEndAction(action) {
+  if (!draftCycleConfig) {
+    const eng = getCycleEngineSafe();
+    draftCycleConfig = eng ? { ...eng.getConfig() } : {};
+  }
+  draftCycleConfig.endAction = (action === "cumulative") ? "cumulative" : "archive_reset";
+  renderCycleSheetUI(draftCycleConfig);
+}
+
+async function saveRecordPeriodSettings() {
+  const btn = document.getElementById("btnSaveRecordPeriod");
+  const eng = getCycleEngineSafe();
+  if (!eng) return;
 
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<span>جارٍ فحص الاتصال بالخادم...</span>`;
+    btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px;"></i><span>جاري الحفظ...</span>`;
+    safeCreateIcons();
   }
-  if (diag) {
-    diag.innerHTML = `<span style="color:#2563eb;">جارٍ محاولة الاتصال بـ ${val}/api/health...</span>`;
-  }
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
 
   try {
-    const res = await fetch(val + "/api/health", { method: "GET", mode: "cors", signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (res.ok) {
-      localStorage.setItem("albayan_server_url", val);
-      if (diag) {
-        diag.innerHTML = `<span style="color:#10b981; font-weight:bold;">✓ تم الاتصال بنجاح بالخادم وحفظ الإعدادات!</span>`;
-      }
-      initLanServerSettings();
-      showAlert("تم حفظ عنوان الخادم والاتصال بنجاح.", true);
-    } else {
-      throw new Error("HTTP error " + res.status);
-    }
-  } catch(err) {
-    clearTimeout(timeoutId);
-    localStorage.setItem("albayan_server_url", val);
-    initLanServerSettings();
-    if (diag) {
-      diag.innerHTML = `
-        <div style="color:#ef4444; font-weight:bold;">لم يستجب الخادم على العنوان (${val})</div>
-        <div style="font-size:11px; color:#64748b; margin-top:4px;">
-          تم حفظ العنوان، ولكن تأكد أن الكمبيوتر يعمل على نفس الشبكة ومشغّل للأمر python app.py. سيستمر التطبيق بالعمل محلياً بصورة طبيعية.
-        </div>
-      `;
-    }
-    showAlert("تم حفظ العنوان، لكن الخادم غير متصل حالياً. التطبيق سيعمل محلياً.", false);
+    const saved = await eng.saveConfig(draftCycleConfig || eng.getConfig());
+    draftCycleConfig = { ...saved };
+    refreshRecordPeriodBadgesAndDraft(true);
+    showAlert("تم حفظ وتطبيق نظام السجل القرآني في كافة الصفحات", true);
+    setTimeout(() => closeSheet("sheet-record-period"), 600);
+  } catch (err) {
+    showAlert("حدث خطأ أثناء حفظ إعدادات الدورة.", false);
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = `<i data-lucide="check-circle" style="width:17px; height:17px;"></i><span>فحص وحفظ الاتصال بالخادم</span>`;
+      btn.innerHTML = `<i data-lucide="check" style="width:17px; height:17px;"></i><span>حفظ وتطبيق النظام</span>`;
       safeCreateIcons();
     }
   }
 }
 
-function disconnectLanServer() {
-  localStorage.removeItem("albayan_server_url");
-  const input = document.getElementById("lanServerInput");
-  if (input) input.value = "";
-  const diag = document.getElementById("lanServerDiagnosticBox");
-  if (diag) {
-    diag.innerHTML = `<span style="color:#10b981;">تم إلغاء الربط. التطبيق يعمل الآن بوضع الجوال المستقل (محلي فقط).</span>`;
+async function handleArchiveCurrentCycleNow() {
+  const eng = getCycleEngineSafe();
+  const btn = document.getElementById("btnArchiveCycleNow");
+  if (!eng) return;
+
+  if (!confirm("سيتم أرشفة درجات الحفظ والمراجعة والحضور للدورة الحالية وبدء دورة جديدة. هل ترغب في المتابعة؟")) {
+    return;
   }
-  initLanServerSettings();
-  showAlert("تم التحويل لوضع الجوال المستقل بدون سيرفر.", true);
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px;"></i><span>جاري الأرشفة وبدء الدورة الجديدة...</span>`;
+    safeCreateIcons();
+  }
+
+  try {
+    // Save any pending duration/start edits first
+    if (draftCycleConfig) {
+      await eng.saveConfig(draftCycleConfig);
+    }
+    const res = await eng.archiveCurrentCycle({ manual: true, resetCounters: true });
+    if (res && res.ok) {
+      draftCycleConfig = { ...res.config };
+      refreshRecordPeriodBadgesAndDraft(true);
+      renderCycleArchivesPreview();
+      showAlert(`تم إغلاق وأرشفة الدورة #${res.archive.cycleNumber} بنجاح وبدأت الدورة الجديدة`, true);
+    } else {
+      showAlert("تعذر إتمام الأرشفة، يرجى المحاولة مجدداً.", false);
+    }
+  } catch (err) {
+    showAlert("حدث خطأ أثناء أرشفة الدورة.", false);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="archive" style="width:17px; height:17px;"></i><span>إغلاق الدورة الحالية وأرشفتها الآن</span>`;
+      safeCreateIcons();
+    }
+  }
 }
 
+function renderCycleArchivesPreview() {
+  const eng = getCycleEngineSafe();
+  const box = document.getElementById("cycleArchivesPreviewBox");
+  const listEl = document.getElementById("cycleArchivesList");
+  const countEl = document.getElementById("cycleArchivesCountBadge");
+  if (!eng || !box || !listEl) return;
+
+  const archives = eng.getArchives();
+  if (!archives || archives.length === 0) {
+    box.style.display = "none";
+    return;
+  }
+
+  box.style.display = "block";
+  if (countEl) countEl.textContent = `${archives.length} دورات`;
+
+  listEl.innerHTML = archives.slice(0, 4).map(a => {
+    const s = a.summary || {};
+    return `
+      <div class="cycle-archive-item">
+        <div>
+          <strong style="display:block; color:var(--st-text);">${a.periodLabel || ('الدورة #' + a.cycleNumber)}</strong>
+          <small style="color:var(--st-muted);">${a.startDate || ''} → ${a.endDate || ''}</small>
+        </div>
+        <span class="row-badge-pill neutral">${s.totalStudents || 0} طالب • ${s.totalMemoPages || 0} وجه</span>
+      </div>
+    `;
+  }).join("");
+}
+
+window.initRecordPeriodSettings = initRecordPeriodSettings;
+window.openRecordPeriodSheet = openRecordPeriodSheet;
+window.selectCyclePeriodType = selectCyclePeriodType;
+window.onCycleStartDateChange = onCycleStartDateChange;
+window.selectCycleEndAction = selectCycleEndAction;
+window.saveRecordPeriodSettings = saveRecordPeriodSettings;
+window.handleArchiveCurrentCycleNow = handleArchiveCurrentCycleNow;
+
+/* =========================================================================
+   9. Backup & Restore Data Functions (Desktop API + Offline Bundle Fallback)
+   ========================================================================= */
+function initLastBackupInfo() {
+  const saved = localStorage.getItem("lastBackupTime");
+  const sub = document.getElementById("lastBackupSubtitle");
+  if (saved && sub) {
+    sub.textContent = `آخر نسخة: ${saved}`;
+  }
+}
+
+async function downloadBackup() {
+  const dual = window.HijriDate
+    ? window.HijriDate.formatDualDate(new Date())
+    : { hijri: new Date().toLocaleDateString('ar-SA'), gregorian: new Date().toISOString().slice(0, 10) };
+
+  localStorage.setItem("lastBackupTime", `${dual.hijri} (${dual.gregorian})`);
+  initLastBackupInfo();
+
+  const isStandalone = window.IS_CAPACITOR_APP || window.location.protocol === 'file:' || window.location.origin.includes('capacitor://');
+  if (!isStandalone) {
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 1500);
+      const ping = await fetch("/api/account/profile", { signal: controller.signal });
+      clearTimeout(tid);
+      if (ping.ok) {
+        window.location.href = "/api/account/backup";
+        showAlert("جاري تنزيل ملف النسخة الاحتياطية (ZIP)...", true);
+        return;
+      }
+    } catch (e) {}
+  }
+
+  // Client-side full backup bundle fallback for Capacitor / Offline
+  try {
+    const bundle = {
+      exportedAt: new Date().toISOString(),
+      app: "AlBayanQuranSchool",
+      cycleConfig: window.AlbayanCycleEngine ? window.AlbayanCycleEngine.getConfig() : null,
+      cycleArchives: window.AlbayanCycleEngine ? window.AlbayanCycleEngine.getArchives() : [],
+      localData: {}
+    };
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && !k.startsWith("appCustomFontData")) {
+        bundle.localData[k] = localStorage.getItem(k);
+      }
+    }
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `albayan-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 300);
+    showAlert("تم تصدير ملف النسخة الاحتياطية بنجاح", true);
+  } catch (err) {
+    showAlert("تعذر إنشاء النسخة الاحتياطية.", false);
+  }
+}
+
+function onBackupFileSelected(input) {
+  const label = document.getElementById("dropzoneLabel");
+  const btn = document.getElementById("btnRestoreBackup");
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    if (label) label.textContent = `${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`;
+    if (btn) btn.disabled = false;
+  }
+}
+
+window.handleDragOver = function(e) {
+  e.preventDefault();
+  document.getElementById("fileDropzone")?.classList.add("drag-over");
+};
+
+window.handleDragLeave = function() {
+  document.getElementById("fileDropzone")?.classList.remove("drag-over");
+};
+
+window.handleFileDrop = function(e) {
+  e.preventDefault();
+  document.getElementById("fileDropzone")?.classList.remove("drag-over");
+  const files = e.dataTransfer?.files;
+  if (files && files.length > 0) {
+    const fakeInput = document.getElementById("backupFileInput");
+    if (fakeInput) {
+      const dt = new DataTransfer();
+      dt.items.add(files[0]);
+      fakeInput.files = dt.files;
+      onBackupFileSelected(fakeInput);
+    }
+  }
+};
+
+async function handleRestoreBackup(e) {
+  e.preventDefault();
+  const fileInput = document.getElementById("backupFileInput");
+  const btn = document.getElementById("btnRestoreBackup");
+  const progress = document.getElementById("restoreProgress");
+  const pFill = document.getElementById("restoreProgressFill");
+  const pPct = document.getElementById("restoreProgressPct");
+  const pText = document.getElementById("restoreProgressText");
+
+  if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+    showAlert("يرجى اختيار ملف النسخة الاحتياطية أولاً.", false);
+    return;
+  }
+
+  const file = fileInput.files[0];
+  if (!confirm("سيتم استعادة البيانات من الملف المختار. هل ترغب بالمتابعة؟")) return;
+
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px;"></i><span>جاري الاستعادة...</span>`;
+  safeCreateIcons();
+  if (progress) progress.style.display = "block";
+
+  if (file.name.toLowerCase().endsWith(".json")) {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (parsed && parsed.localData && typeof parsed.localData === "object") {
+        Object.entries(parsed.localData).forEach(([k, v]) => {
+          localStorage.setItem(k, v);
+        });
+      }
+      if (pFill) pFill.style.width = "100%";
+      if (pPct) pPct.textContent = "100%";
+      if (pText) pText.textContent = "اكتملت الاستعادة!";
+      showAlert("تمت استعادة النسخة الاحتياطية بنجاح", true);
+      setTimeout(() => window.location.reload(), 900);
+      return;
+    } catch (jsonErr) {
+      if (progress) progress.style.display = "none";
+      showAlert("ملف JSON غير صالح.", false);
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="refresh-cw" style="width:17px; height:17px;"></i><span>بدء استعادة البيانات الآن</span>`;
+      safeCreateIcons();
+      return;
+    }
+  }
+
+  let pct = 10;
+  const progressInterval = setInterval(() => {
+    pct = Math.min(pct + 12, 85);
+    if (pFill) pFill.style.width = `${pct}%`;
+    if (pPct) pPct.textContent = `${Math.round(pct)}%`;
+  }, 250);
+
+  const formData = new FormData();
+  formData.append("backup_file", file);
+
+  try {
+    const res = await fetch("/api/account/restore", {
+      method: "POST",
+      headers: { "X-CSRF-Token": getCsrfToken() },
+      body: formData
+    });
+    const data = await res.json();
+    clearInterval(progressInterval);
+    if (res.ok && data.success) {
+      if (pFill) pFill.style.width = "100%";
+      if (pPct) pPct.textContent = "100%";
+      if (pText) pText.textContent = "اكتملت الاستعادة!";
+      showAlert(data.message || "تمت استعادة النسخة الاحتياطية بنجاح", true);
+      setTimeout(() => window.location.reload(), 1200);
+    } else {
+      if (progress) progress.style.display = "none";
+      showAlert(data.message || "فشلت عملية استعادة النسخة.", false);
+    }
+  } catch (err) {
+    clearInterval(progressInterval);
+    if (progress) progress.style.display = "none";
+    showAlert("تعذّر استعادة الملف، يرجى التأكد من صيغته.", false);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i data-lucide="refresh-cw" style="width:17px; height:17px;"></i><span>بدء استعادة البيانات الآن</span>`;
+    safeCreateIcons();
+  }
+}
+
+window.downloadBackup = downloadBackup;
+window.onBackupFileSelected = onBackupFileSelected;
+window.handleRestoreBackup = handleRestoreBackup;
+
+/* =========================================================================
+   10. Auth Logout
+   ========================================================================= */
 function confirmLogout() {
   if (typeof window.albayanLogout === 'function') {
     return window.albayanLogout();
@@ -1430,32 +1072,10 @@ function confirmLogout() {
     localStorage.removeItem("albayan_logged_user");
     localStorage.removeItem("albayan_saved_token");
     sessionStorage.clear();
-  } catch(e) {}
+  } catch (e) {}
   fetch("/api/logout", { method: "POST" }).catch(() => {});
   window.location.href = "login.html?logout=1";
 }
 
 window.confirmLogout = confirmLogout;
-window.testAndSaveLanServer = testAndSaveLanServer;
-window.disconnectLanServer = disconnectLanServer;
-window.initLanServerSettings = initLanServerSettings;
-
-// Initial check when settings loads
-document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(checkFirebaseConnectionInSettings, 500);
-  setTimeout(initLanServerSettings, 200);
-
-  // Auto open sheet if query param present
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("open") === "lan-server") {
-    setTimeout(() => openSheet("sheet-lan-server"), 300);
-  }
-});
-
-// Global Escape Key Listener for Modals
-document.addEventListener("keydown", function(e) {
-  if (e.key === "Escape") {
-    closeAllSheets();
-  }
-});
-
+window.logout = confirmLogout;
