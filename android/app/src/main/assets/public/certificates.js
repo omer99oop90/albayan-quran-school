@@ -1,7 +1,8 @@
 /**
- * Albayan Smart Certificates Studio - JavaScript Core
- * High-Resolution 300 DPI Canvas Engine & Android Mobile Experience
- * Pure Minimalist Icons & Smooth Pointer Drag System
+ * Albayan Smart Certificates Studio - PixelLab Mobile Architecture
+ * High-Resolution 300 DPI Canvas Engine (3508 x 2480)
+ * Context-Aware Bottom Bar, Non-Blocking Tray, Slide-Over Layers Drawer,
+ * Pinch-to-Zoom & Golden Magnetic Snap Guides
  */
 
 (function () {
@@ -14,15 +15,40 @@
   const STUDIO_DRAFT_KEY = 'albayan_cert_studio_draft_v2';
   const STUDIO_PRESETS_KEY = 'albayan_cert_studio_presets_v2';
 
+  const STUDIO_FONTS = [
+    { value: 'Amiri', label: 'الأميري', sub: 'نسخ فاخر' },
+    { value: 'Scheherazade New', label: 'شهرزاد', sub: 'نسخ تقليدي' },
+    { value: 'Aref Ruqaa', label: 'عارف رقعة', sub: 'ثلث ورقعة' },
+    { value: 'El Messiri', label: 'المسيري', sub: 'ديواني رشيق' },
+    { value: 'Reem Kufi', label: 'ريم كوفي', sub: 'كوفي هندسي' },
+    { value: 'Cairo', label: 'كايرو', sub: 'حديث واضح' },
+    { value: 'Tajawal', label: 'تجوّل', sub: 'حديث أنيق' }
+  ];
+
+  const STUDIO_COLORS = [
+    { hex: '#1B3A4B', name: 'كحلي داكن' },
+    { hex: '#0F5132', name: 'زمردي قرآني' },
+    { hex: '#C59B27', name: 'ذهبي ملكي' },
+    { hex: '#DFBC55', name: 'ذهبي فاتح' },
+    { hex: '#8B1E0F', name: 'عنابي فاخر' },
+    { hex: '#FFFFFF', name: 'أبيض ناصع' },
+    { hex: '#111827', name: 'أسود كربوني' },
+    { hex: '#334155', name: 'رمادي أردوازي' },
+    { hex: '#845EC2', name: 'بنفسجي ملكي' }
+  ];
+
   function createDefaultElements() {
     return {
-      cert_title: { x: 50, y: 31, size: 108, align: 'center', color: '#8B1E0F', fontFamily: 'Amiri', isBold: true, opacity: 1, rotation: 0, zIndex: 20, visible: true, width: 1100, height: 140 },
-      student_name: { x: 50, y: 47, size: 116, align: 'center', color: '#1B3A4B', fontFamily: 'Amiri', isBold: true, opacity: 1, rotation: 0, zIndex: 30, visible: true, width: 1300, height: 160 },
-      grade_badge: { x: 50, y: 58, size: 54, align: 'center', color: '#C59B27', fontFamily: 'Amiri', isBold: true, opacity: 1, rotation: 0, zIndex: 40, visible: true, width: 700, height: 90 },
-      body_text: { x: 50, y: 69, size: 48, align: 'center', color: '#334155', fontFamily: 'Amiri', isBold: false, opacity: 1, rotation: 0, zIndex: 50, visible: true, width: 2200, height: 220, maxWidth: 2600 },
-      circle_info: { x: 28, y: 86, size: 44, align: 'center', color: '#475569', fontFamily: 'Cairo', isBold: true, opacity: 1, rotation: 0, zIndex: 60, visible: true, width: 650, height: 90 },
-      teacher_info: { x: 72, y: 86, size: 44, align: 'center', color: '#475569', fontFamily: 'Cairo', isBold: true, opacity: 1, rotation: 0, zIndex: 70, visible: true, width: 650, height: 90 },
-      school_stamp: { x: 50, y: 85, size: 180, align: 'center', color: '#C59B27', fontFamily: 'Cairo', isBold: true, opacity: 1, rotation: 0, zIndex: 80, visible: true, width: 220, height: 220 }
+      ornamental_border: { type: 'border', x: 50, y: 50, size: 100, opacity: 1, rotation: 0, zIndex: 5, visible: true, locked: true },
+      school_logo: { type: 'image', subType: 'school_logo', x: 92, y: 10, size: 170, width: 170, height: 170, opacity: 1, rotation: 0, zIndex: 15, visible: true, locked: false },
+      quran_emblem: { type: 'image', subType: 'quran_emblem', x: 8, y: 10, size: 160, width: 160, height: 160, opacity: 1, rotation: 0, zIndex: 16, visible: false, locked: false },
+      cert_title: { type: 'text', x: 50, y: 31, size: 108, align: 'center', color: '#8B1E0F', fontFamily: 'Amiri', isBold: true, lineHeight: 1.3, strokeEnabled: false, strokeWidth: 4, strokeColor: '#ffffff', shadowEnabled: false, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.45)', opacity: 1, rotation: 0, zIndex: 20, visible: true, locked: false, width: 1100, height: 140 },
+      student_name: { type: 'text', x: 50, y: 47, size: 116, align: 'center', color: '#1B3A4B', fontFamily: 'Amiri', isBold: true, lineHeight: 1.3, strokeEnabled: false, strokeWidth: 4, strokeColor: '#ffffff', shadowEnabled: false, shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.45)', opacity: 1, rotation: 0, zIndex: 30, visible: true, locked: false, width: 1300, height: 160 },
+      grade_badge: { type: 'text', x: 50, y: 58, size: 54, align: 'center', color: '#C59B27', fontFamily: 'Amiri', isBold: true, lineHeight: 1.3, strokeEnabled: false, strokeWidth: 3, strokeColor: '#ffffff', shadowEnabled: false, shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.45)', opacity: 1, rotation: 0, zIndex: 40, visible: true, locked: false, width: 700, height: 90 },
+      body_text: { type: 'text', x: 50, y: 69, size: 48, align: 'center', color: '#334155', fontFamily: 'Amiri', isBold: false, lineHeight: 1.65, strokeEnabled: false, strokeWidth: 3, strokeColor: '#ffffff', shadowEnabled: false, shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.4)', opacity: 1, rotation: 0, zIndex: 50, visible: true, locked: false, width: 2200, height: 220, maxWidth: 2600 },
+      circle_info: { type: 'text', x: 28, y: 86, size: 44, align: 'center', color: '#475569', fontFamily: 'Cairo', isBold: true, lineHeight: 1.3, strokeEnabled: false, strokeWidth: 3, strokeColor: '#ffffff', shadowEnabled: false, shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.4)', opacity: 1, rotation: 0, zIndex: 60, visible: true, locked: false, width: 650, height: 90 },
+      teacher_info: { type: 'text', x: 72, y: 86, size: 44, align: 'center', color: '#475569', fontFamily: 'Cairo', isBold: true, lineHeight: 1.3, strokeEnabled: false, strokeWidth: 3, strokeColor: '#ffffff', shadowEnabled: false, shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.4)', opacity: 1, rotation: 0, zIndex: 70, visible: true, locked: false, width: 650, height: 90 },
+      school_stamp: { type: 'image', subType: 'school_stamp', x: 50, y: 85, size: 180, align: 'center', color: '#C59B27', fontFamily: 'Cairo', isBold: true, opacity: 1, rotation: 0, zIndex: 80, visible: true, locked: false, width: 180, height: 180 }
     };
   }
 
@@ -43,13 +69,17 @@
     primaryColor: '#8B1E0F',
     accentColor: '#C59B27',
 
-    // Element Positions & Styles (% of canvas width / height)
+    // Elements
     elements: createDefaultElements(),
+    activeElementKey: null, // Start clean in default 4-tab PixelLab state
 
-    activeElementKey: 'student_name',
+    // PixelLab UI State
+    activeTool: null, // 'templates' | 'add' | 'presets' | 'font' | 'size' | 'color' | 'position' | 'format' | 'effects' | 'rotate' | 'opacity' | 'layer'
+    layersDrawerOpen: false,
+    snapGridEnabled: true,
 
     // Filter & Audience State
-    filterMode: 'all', // 'all', 'circle', 'single', 'top_achievers'
+    filterMode: 'all',
     selectedCircleId: 'all',
     selectedStudentId: '',
     studentSearchQuery: '',
@@ -93,11 +123,11 @@
     });
   }
 
-  // --- Drag & Scale State ---
   let customElementIdCounter = 1;
 
   const dragState = {
     isDragging: false,
+    hasMoved: false,
     key: null,
     pointerId: null,
     startX: 0,
@@ -116,86 +146,56 @@
     startY: 0,
     startSize: 60,
     startWidth: 200,
-    startHeight: 100
+    startHeight: 100,
+    startMaxWidth: 2600
   };
 
-  // --- Preloaded Images ---
+  // Preloaded Images
   let schoolLogoImg = null;
   let quranEmblemImg = null;
 
-  // --- DOM Elements ---
+  // Core DOM Refs
   const canvas = document.getElementById('certCanvas');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas ? canvas.getContext('2d') : null;
   const canvasFrame = document.getElementById('certCanvasFrame');
   const dragOverlay = document.getElementById('certDragOverlay');
-  const bottomSheet = document.getElementById('bottomSheet');
-  const sheetBackdrop = document.getElementById('sheetBackdrop');
-  const sheetTitle = document.getElementById('sheetTitle');
   const certToast = document.getElementById('certToast');
+  const bottomBarEl = document.getElementById('pxBottomBar');
+  const contextualTrayEl = document.getElementById('pxContextualTray');
+  const trayInnerEl = document.getElementById('pxTrayInner');
 
-  // App Bar Elements
   const prevStudentBtn = document.getElementById('prevStudentBtn');
   const nextStudentBtn = document.getElementById('nextStudentBtn');
   const currentStudentNameEl = document.getElementById('currentStudentName');
   const studentCounterEl = document.getElementById('studentCounter');
-  const quickShareBtn = document.getElementById('quickShareBtn');
-  const quickExportBtn = document.getElementById('quickExportBtn');
-  const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-
-  // Sliders & Position Controls
-  const sliderX = document.getElementById('sliderX');
-  const sliderY = document.getElementById('sliderY');
-  const sliderSize = document.getElementById('sliderSize');
-  const valXDisplay = document.getElementById('valXDisplay');
-  const valYDisplay = document.getElementById('valYDisplay');
-  const valSizeDisplay = document.getElementById('valSizeDisplay');
-  const currentElemBadge = document.getElementById('currentElemBadge');
-  const resetElemPosBtn = document.getElementById('resetElemPosBtn');
 
   // --- Initializer ---
   async function initStudio() {
     initAuthAndUser();
-    initMobileSidebar();
-    setupBottomNavigation();
-    setupStudioTabs();
-    setupBottomSheetDrag();
-    setupTemplates();
+    setupTopBarAndModals();
+    setupLayersDrawer();
     setupTextEditModal();
-    setupTypographyAndFonts();
-    setupPositioningSliders();
+    setupFileInputs();
     setupFilterListeners();
     setupExportHandlers();
-    setupStageControls();
-    setupElementContextBar();
     setupHistoryManager();
     setupPanAndGestures();
 
-    // Restore saved auto-draft if available, otherwise sync initial template UI
     await loadDraftFromStorage();
-    syncStudioControlsUI();
-    renderElementSelectorAndLayers();
-    renderSavedPresetsList();
+    syncElementVisibilityFlags();
+    syncSnapGridUI();
 
-    // Load assets
     await preloadAssets();
-
-    // Fetch circles and filter options
     await fetchFilterOptions();
-
-    // Fetch initial student list
     await fetchStudentsList();
 
-    // Build interactive overlay handles once
     buildDragOverlayHandles();
-
-    // Initial Render
+    renderLayersDrawer();
+    renderBottomToolbar();
     renderCertificate();
-    updateTypographyPanelActiveElement();
 
-    // Push initial clean state to undo history
     pushHistoryState('الحالة الأولية');
 
-    // Refresh Lucide icons
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
@@ -233,7 +233,6 @@
       } catch (e) {}
     }
 
-    // Fallback (or primary on Capacitor) cached session
     try {
       const cached = localStorage.getItem('albayan_logged_user');
       if (cached) {
@@ -248,15 +247,14 @@
     window.location.href = 'login.html';
   }
 
-  // Global Logout
   window.logout = async function () {
     if (typeof window.albayanLogout === 'function') {
       return window.albayanLogout();
     }
     sessionStorage.clear();
     try {
-      localStorage.removeItem("albayan_logged_user");
-      localStorage.removeItem("albayan_saved_token");
+      localStorage.removeItem('albayan_logged_user');
+      localStorage.removeItem('albayan_saved_token');
     } catch (e) {}
     try {
       await fetch('/api/logout', { method: 'POST' });
@@ -264,23 +262,9 @@
     window.location.href = 'login.html?logout=1';
   };
 
-  // --- Mobile Sidebar Controls ---
-  function initMobileSidebar() {
-    if (typeof initMobileBottomNav === 'function') {
-      initMobileBottomNav();
-    }
-  }
-
-  window.toggleSidebar = function (forceState) {
-    if (typeof toggleBottomMoreSheet === 'function') {
-      toggleBottomMoreSheet();
-    }
-  };
-
-
   // --- Toast Notification ---
   let toastTimer = null;
-  function showToast(message, duration = 3000) {
+  function showToast(message, duration = 2600) {
     if (!certToast) return;
     if (toastTimer) {
       clearTimeout(toastTimer);
@@ -321,131 +305,1353 @@
     ]);
   }
 
-  // --- Navigation & Section Switching ---
-  function setupBottomNavigation() {
-    const navItems = document.querySelectorAll('.bottom-nav-item');
-    navItems.forEach((item) => {
-      item.addEventListener('click', () => {
-        const target = item.getAttribute('data-target');
-        switchSectionTab(target);
+  // --- Unified Top Bar & Modals ---
+  function setupTopBarAndModals() {
+    const studentPill = document.getElementById('studentPill');
+    const studentsModal = document.getElementById('studentsFilterModal');
+    const closeStudentsBtn = document.getElementById('closeStudentsModalBtn');
+
+    if (studentPill && studentsModal) {
+      studentPill.addEventListener('click', () => openStudentsModal());
+    }
+    if (closeStudentsBtn && studentsModal) {
+      closeStudentsBtn.addEventListener('click', () => { studentsModal.style.display = 'none'; });
+    }
+    if (studentsModal) {
+      studentsModal.addEventListener('click', (e) => {
+        if (e.target === studentsModal) studentsModal.style.display = 'none';
       });
-    });
-
-    const closeBtn = document.getElementById('sheetCloseBtn');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', closeBottomSheet);
     }
-    if (sheetBackdrop) {
-      sheetBackdrop.addEventListener('click', closeBottomSheet);
-    }
-  }
 
-  function setupStudioTabs() {
-    const tabBtns = document.querySelectorAll('.studio-tab-btn');
-    tabBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const target = btn.getAttribute('data-tab');
-        switchSectionTab(target);
+    const openExportBtn = document.getElementById('openExportModalBtn');
+    const exportModal = document.getElementById('exportShareModal');
+    const closeExportBtn = document.getElementById('closeExportModalBtn');
+
+    if (openExportBtn && exportModal) {
+      openExportBtn.addEventListener('click', () => {
+        exportModal.style.display = 'flex';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
       });
-    });
-  }
-
-  function switchSectionTab(tabName) {
-    const effectiveTab = tabName === 'Placement' ? 'Typography' : tabName;
-
-    document.querySelectorAll('.bottom-nav-item').forEach((n) => {
-      n.classList.toggle('active', n.getAttribute('data-target') === effectiveTab);
-    });
-
-    document.querySelectorAll('.studio-tab-btn').forEach((b) => {
-      b.classList.toggle('active', b.getAttribute('data-tab') === effectiveTab);
-    });
-
-    document.querySelectorAll('.sheet-tab-panel').forEach((panel) => {
-      panel.classList.remove('active');
-    });
-
-    const targetPanel = document.getElementById(`tabPanel${effectiveTab}`);
-    if (targetPanel) {
-      targetPanel.classList.add('active');
+    }
+    if (closeExportBtn && exportModal) {
+      closeExportBtn.addEventListener('click', () => { exportModal.style.display = 'none'; });
+    }
+    if (exportModal) {
+      exportModal.addEventListener('click', (e) => {
+        if (e.target === exportModal) exportModal.style.display = 'none';
+      });
     }
 
-    const titlesMap = {
-      Templates: 'القوالب والخلفيات',
-      Typography: 'إعدادات النص',
-      Students: 'ترشيح الطلاب والمميزين',
-      Export: 'التصدير والمشاركة'
+    const snapBtn = document.getElementById('snapGridToggleBtn');
+    if (snapBtn) {
+      snapBtn.addEventListener('click', () => {
+        state.snapGridEnabled = !state.snapGridEnabled;
+        syncSnapGridUI();
+        showToast(state.snapGridEnabled ? 'تم تفعيل الشبكة والمحاذاة المغناطيسية' : 'تم إيقاف الشبكة والمحاذاة');
+      });
+    }
+
+    const zoomFitBtn = document.getElementById('zoomFitBtn');
+    if (zoomFitBtn) {
+      zoomFitBtn.addEventListener('click', () => {
+        state.scale = 1;
+        state.panX = 0;
+        state.panY = 0;
+        applyCanvasTransform();
+      });
+    }
+
+    const trayCloseBtn = document.getElementById('pxTrayCloseBtn');
+    if (trayCloseBtn) {
+      trayCloseBtn.addEventListener('click', () => {
+        state.activeTool = null;
+        renderTray();
+        renderBottomToolbar();
+      });
+    }
+
+    // Android Back Button integration for Studio modals, Layers drawer, Tray, and Selection
+    const prevBackHandler = typeof window.albayanHandleBack === 'function' ? window.albayanHandleBack : null;
+    window.albayanHandleBack = function (fromPopState) {
+      const textModal = document.getElementById('textEditModal');
+      if (textModal && textModal.style.display !== 'none') {
+        closeQuickTextEditor();
+        return true;
+      }
+      if (exportModal && exportModal.style.display !== 'none') {
+        exportModal.style.display = 'none';
+        return true;
+      }
+      if (studentsModal && studentsModal.style.display !== 'none') {
+        studentsModal.style.display = 'none';
+        return true;
+      }
+      if (state.layersDrawerOpen) {
+        toggleLayersDrawer(false);
+        return true;
+      }
+      if (state.activeTool) {
+        state.activeTool = null;
+        renderTray();
+        renderBottomToolbar();
+        return true;
+      }
+      if (state.activeElementKey) {
+        setSelectedElement(null);
+        return true;
+      }
+      return prevBackHandler ? prevBackHandler(fromPopState) : false;
     };
-    if (sheetTitle) {
-      sheetTitle.textContent = titlesMap[effectiveTab] || 'الإعدادات';
+  }
+
+  function openStudentsModal() {
+    const modal = document.getElementById('studentsFilterModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      syncStudentGradeSelectorUI();
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }
+
+  function syncSnapGridUI() {
+    const snapBtn = document.getElementById('snapGridToggleBtn');
+    const gridEl = document.getElementById('canvasSnapGrid');
+    if (snapBtn) {
+      snapBtn.classList.toggle('active', Boolean(state.snapGridEnabled));
+      snapBtn.setAttribute('aria-pressed', String(Boolean(state.snapGridEnabled)));
+    }
+    if (gridEl) {
+      gridEl.classList.toggle('visible', Boolean(state.snapGridEnabled));
+    }
+  }
+
+  // --- Element Helpers & Selection ---
+  function getElementKind(key, elem) {
+    if (!key || !elem) return 'none';
+    if (elem.type === 'border' || key === 'ornamental_border') return 'border';
+    if (elem.type === 'image' || key === 'school_stamp' || key === 'school_logo' || key === 'quran_emblem') return 'image';
+    return 'text';
+  }
+
+  function getElementLabel(key, elem) {
+    const labels = {
+      ornamental_border: 'الإطار الزخرفي',
+      school_logo: 'شعار المدرسة',
+      quran_emblem: 'المصحف الشريف',
+      student_name: 'اسم الطالب',
+      cert_title: 'عنوان الشهادة',
+      grade_badge: 'العلامة والتقدير',
+      body_text: 'نص التكريم',
+      circle_info: 'بيانات الحلقة',
+      teacher_info: 'بيانات المعلم',
+      school_stamp: 'الختم الرسمي'
+    };
+    if (labels[key]) return labels[key];
+    if (elem && elem.isCustom) {
+      if (elem.type === 'text') {
+        const t = (elem.text || '').trim();
+        return t ? (t.length > 16 ? t.substring(0, 14) + '...' : t) : 'نص إضافي';
+      }
+      return 'صورة / ملصق';
+    }
+    return key;
+  }
+
+  function getSortedElementKeys() {
+    return Object.keys(state.elements).sort((a, b) => {
+      const za = state.elements[a]?.zIndex ?? 50;
+      const zb = state.elements[b]?.zIndex ?? 50;
+      return za - zb;
+    });
+  }
+
+  function syncElementVisibilityFlags() {
+    if (state.elements.ornamental_border) {
+      state.showOrnamentalBorder = state.elements.ornamental_border.visible !== false;
+    }
+    if (state.elements.school_logo) {
+      state.showSchoolLogo = state.elements.school_logo.visible !== false;
+    }
+    if (state.elements.quran_emblem) {
+      state.showQuranEmblem = state.elements.quran_emblem.visible !== false;
+    }
+    if (state.elements.school_stamp) {
+      state.showOfficialStamp = state.elements.school_stamp.visible !== false;
+    }
+  }
+
+  function setSelectedElement(key) {
+    const prevKind = getElementKind(state.activeElementKey, state.elements[state.activeElementKey]);
+    state.activeElementKey = key || null;
+    const nextKind = getElementKind(state.activeElementKey, state.elements[state.activeElementKey]);
+
+    if (nextKind === 'none') {
+      if (!['templates', 'add', 'presets'].includes(state.activeTool)) {
+        state.activeTool = null;
+      }
+    } else if (prevKind !== nextKind) {
+      // Keep compatible tool open or reset when switching between text <-> image <-> none
+      const textTools = ['font', 'size', 'color', 'position', 'format', 'effects'];
+      const imageTools = ['size', 'rotate', 'position', 'opacity', 'layer'];
+      if (nextKind === 'text' && !textTools.includes(state.activeTool)) state.activeTool = null;
+      else if (nextKind === 'image' && !imageTools.includes(state.activeTool)) state.activeTool = null;
+      else if (nextKind === 'border' && !['opacity', 'layer'].includes(state.activeTool)) state.activeTool = null;
     }
 
-    if (window.innerWidth < 1100) {
-      bottomSheet.classList.add('open');
-      sheetBackdrop.classList.add('active');
+    highlightActiveHandle();
+    renderLayersDrawer();
+    renderBottomToolbar();
+    renderTray();
+  }
+
+  // =========================================================
+  // PIXELLAB CONTEXT-AWARE BOTTOM TOOLBAR & TRAY
+  // =========================================================
+  function renderBottomToolbar() {
+    if (!bottomBarEl) return;
+    const key = state.activeElementKey;
+    const elem = key ? state.elements[key] : null;
+    const kind = getElementKind(key, elem);
+
+    bottomBarEl.className = 'px-bottom-bar ' + (kind === 'none' ? 'mode-default' : 'mode-contextual');
+
+    let tools = [];
+    if (kind === 'none') {
+      tools = [
+        { id: 'templates', label: 'القوالب والزخارف', icon: 'palette' },
+        { id: 'add', label: 'إضافة نص/عنصر', icon: 'plus-circle' },
+        { id: 'students', label: 'الطلاب والدرجات', icon: 'users' },
+        { id: 'presets', label: 'حفظ القالب', icon: 'bookmark-plus' }
+      ];
+    } else if (kind === 'text') {
+      tools = [
+        { id: 'edit', label: 'تعديل النص', icon: 'edit-3' },
+        { id: 'font', label: 'الخط', icon: 'type' },
+        { id: 'size', label: 'الحجم', icon: 'sliders-horizontal' },
+        { id: 'color', label: 'اللون', icon: 'palette' },
+        { id: 'position', label: 'الموقع', icon: 'move' },
+        { id: 'format', label: 'التنسيق', icon: 'align-center' },
+        { id: 'effects', label: 'المؤثرات', icon: 'sparkles' },
+        { id: 'duplicate', label: 'تكرار', icon: 'copy' },
+        { id: 'delete', label: 'حذف', icon: 'trash-2', danger: true }
+      ];
+    } else if (kind === 'image') {
+      tools = [
+        { id: 'replace_image', label: 'تغيير الصورة', icon: 'image' },
+        { id: 'size', label: 'الحجم', icon: 'maximize-2' },
+        { id: 'rotate', label: 'التدوير', icon: 'rotate-cw' },
+        { id: 'position', label: 'الموقع', icon: 'move' },
+        { id: 'opacity', label: 'الشفافية', icon: 'contrast' },
+        { id: 'layer', label: 'الطبقة', icon: 'layers' },
+        { id: 'delete', label: 'حذف', icon: 'trash-2', danger: true }
+      ];
+    } else {
+      // border
+      tools = [
+        { id: 'opacity', label: 'الشفافية', icon: 'contrast' },
+        { id: 'layer', label: 'الطبقة', icon: 'layers' },
+        { id: 'delete', label: 'إخفاء', icon: 'eye-off', danger: true }
+      ];
     }
+
+    bottomBarEl.innerHTML = '';
+    tools.forEach((tool) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-tool-btn' + (state.activeTool === tool.id ? ' active' : '') + (tool.danger ? ' danger' : '');
+      btn.setAttribute('data-tool', tool.id);
+      btn.innerHTML = `<i data-lucide="${tool.icon}" style="width:20px; height:20px;"></i><span>${tool.label}</span>`;
+      btn.addEventListener('click', () => handleBottomToolClick(tool.id));
+      bottomBarEl.appendChild(btn);
+    });
+
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons({ nameAttr: 'data-lucide' });
+    }
+  }
+
+  function handleBottomToolClick(toolId) {
+    if (toolId === 'students') {
+      openStudentsModal();
+      return;
+    }
+    if (toolId === 'edit') {
+      openQuickTextEditor(state.activeElementKey || 'student_name');
+      return;
+    }
+    if (toolId === 'duplicate') {
+      duplicateActiveElement();
+      return;
+    }
+    if (toolId === 'delete') {
+      deleteOrHideActiveElement();
+      return;
+    }
+    if (toolId === 'replace_image') {
+      const inp = document.getElementById('replaceImageInput');
+      if (inp) inp.click();
+      return;
+    }
+
+    // Toggle contextual tray
+    state.activeTool = state.activeTool === toolId ? null : toolId;
+    renderBottomToolbar();
+    renderTray();
+  }
+
+  // --- Contextual Tray Renderer (~56px compact strip above bottom bar) ---
+  function renderTray() {
+    if (!contextualTrayEl || !trayInnerEl) return;
+    const tool = state.activeTool;
+    const key = state.activeElementKey;
+    const elem = key ? state.elements[key] : null;
+
+    if (!tool) {
+      contextualTrayEl.style.display = 'none';
+      trayInnerEl.innerHTML = '';
+      return;
+    }
+
+    // Guard element-specific tools if nothing selected
+    const elementTools = ['font', 'size', 'color', 'position', 'format', 'effects', 'rotate', 'opacity', 'layer'];
+    if (elementTools.includes(tool) && !elem) {
+      state.activeTool = null;
+      contextualTrayEl.style.display = 'none';
+      trayInnerEl.innerHTML = '';
+      return;
+    }
+
+    contextualTrayEl.style.display = 'flex';
+    trayInnerEl.innerHTML = '';
+
+    if (tool === 'templates') buildTemplatesTray(trayInnerEl);
+    else if (tool === 'add') buildAddElementTray(trayInnerEl);
+    else if (tool === 'presets') buildPresetsTray(trayInnerEl);
+    else if (tool === 'font') buildFontTray(trayInnerEl, elem);
+    else if (tool === 'size') buildSizeTray(trayInnerEl, key, elem);
+    else if (tool === 'color') buildColorTray(trayInnerEl, elem);
+    else if (tool === 'position') buildPositionTray(trayInnerEl, key, elem);
+    else if (tool === 'format') buildFormatTray(trayInnerEl, key, elem);
+    else if (tool === 'effects') buildEffectsTray(trayInnerEl, key, elem);
+    else if (tool === 'rotate') buildRotateTray(trayInnerEl, elem);
+    else if (tool === 'opacity') buildOpacityTray(trayInnerEl, key, elem);
+    else if (tool === 'layer') buildLayerTray(trayInnerEl);
 
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
   }
 
-  function closeBottomSheet() {
-    bottomSheet.classList.remove('open');
-    sheetBackdrop.classList.remove('active');
-  }
+  function buildTemplatesTray(container) {
+    const templates = [
+      { id: 'academic', name: 'عاجي أكاديمي', bg: 'linear-gradient(135deg,#fafaf9,#e7e5e4)' },
+      { id: 'gold', name: 'ذهبي ملكي', bg: 'linear-gradient(135deg,#0f172a,#1e293b)' },
+      { id: 'emerald', name: 'زمردي قرآني', bg: 'linear-gradient(135deg,#022c22,#064e3b)' },
+      { id: 'navy', name: 'كحلي إمبراطوري', bg: 'linear-gradient(135deg,#091e3a,#1e3a8a)' },
+      { id: 'blank', name: 'صفحة فارغة', bg: '#ffffff' }
+    ];
 
-  function setupBottomSheetDrag() {
-    const handle = document.getElementById('sheetDragHandle');
-    if (!handle) return;
-
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-
-    handle.addEventListener('touchstart', (e) => {
-      startY = e.touches[0].clientY;
-      isDragging = true;
-    }, { passive: true });
-
-    handle.addEventListener('touchmove', (e) => {
-      if (!isDragging) return;
-      currentY = e.touches[0].clientY;
-      const diff = currentY - startY;
-      if (diff > 0) {
-        bottomSheet.style.transform = `translateY(${diff}px)`;
-      }
-    }, { passive: true });
-
-    handle.addEventListener('touchend', () => {
-      if (!isDragging) return;
-      isDragging = false;
-      const diff = currentY - startY;
-      bottomSheet.style.transform = '';
-      if (diff > 80) {
-        closeBottomSheet();
-      }
+    templates.forEach((tpl) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-tpl-chip' + (state.currentTemplate === tpl.id ? ' active' : '');
+      btn.innerHTML = `<span class="px-tpl-swatch" style="background:${tpl.bg};"></span><span>${tpl.name}</span>`;
+      btn.addEventListener('click', () => {
+        applyTemplatePreset(tpl.id);
+        renderTray();
+        renderLayersDrawer();
+        renderCertificate();
+        pushHistoryState('تغيير القالب');
+      });
+      container.appendChild(btn);
     });
-  }
 
-  function syncStudioControlsUI() {
-    document.querySelectorAll('.template-card').forEach((card) => {
-      card.classList.toggle('active', card.getAttribute('data-template') === state.currentTemplate);
+    // Custom Background Upload & Remove
+    const bgBtn = document.createElement('button');
+    bgBtn.type = 'button';
+    bgBtn.className = 'px-tray-chip' + (state.currentTemplate === 'custom' ? ' active' : '');
+    bgBtn.innerHTML = '<i data-lucide="image-plus" style="width:15px;height:15px;"></i><span>خلفية مخصصة</span>';
+    bgBtn.addEventListener('click', () => {
+      const inp = document.getElementById('customBgInput');
+      if (inp) inp.click();
     });
-    const customBgActions = document.getElementById('customBgActions');
-    if (customBgActions) {
-      customBgActions.style.display = state.customBgImage ? 'flex' : 'none';
+    container.appendChild(bgBtn);
+
+    if (state.customBgImage) {
+      const rmBgBtn = document.createElement('button');
+      rmBgBtn.type = 'button';
+      rmBgBtn.className = 'px-tray-chip danger';
+      rmBgBtn.innerHTML = '<i data-lucide="trash-2" style="width:14px;height:14px;"></i><span>إلغاء الخلفية</span>';
+      rmBgBtn.addEventListener('click', () => {
+        applyTemplatePreset('academic');
+        renderTray();
+        renderCertificate();
+        pushHistoryState('إزالة الخلفية المخصصة');
+      });
+      container.appendChild(rmBgBtn);
     }
-    ['showOrnamentalBorder', 'showQuranEmblem', 'showSchoolLogo', 'showOfficialStamp'].forEach((prop) => {
-      const el = document.getElementById(prop);
-      if (el) el.checked = Boolean(state[prop]);
+
+    const div = document.createElement('div');
+    div.className = 'px-tray-divider';
+    container.appendChild(div);
+
+    // Quick Decoration Toggles
+    const decos = [
+      { prop: 'showOrnamentalBorder', elemKey: 'ornamental_border', label: 'الإطار' },
+      { prop: 'showSchoolLogo', elemKey: 'school_logo', label: 'الشعار' },
+      { prop: 'showQuranEmblem', elemKey: 'quran_emblem', label: 'المصحف' },
+      { prop: 'showOfficialStamp', elemKey: 'school_stamp', label: 'الختم' }
+    ];
+
+    decos.forEach((d) => {
+      const active = Boolean(state[d.prop]);
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'px-tray-chip' + (active ? ' active' : '');
+      chip.textContent = (active ? '✓ ' : '') + d.label;
+      chip.addEventListener('click', () => {
+        const nextVal = !state[d.prop];
+        state[d.prop] = nextVal;
+        if (state.elements[d.elemKey]) {
+          state.elements[d.elemKey].visible = nextVal;
+        }
+        buildDragOverlayHandles();
+        renderLayersDrawer();
+        renderTray();
+        renderCertificate();
+        pushHistoryState('تعديل الزخارف');
+      });
+      container.appendChild(chip);
     });
-    const gradeSelect = document.getElementById('gradeSourceSelect');
-    if (gradeSelect && state.gradeSource) {
-      gradeSelect.value = state.gradeSource;
+
+    // Grade Source Quick Switcher
+    const gradeSrcSelect = document.createElement('select');
+    gradeSrcSelect.className = 'form-select-sm';
+    gradeSrcSelect.style.width = 'auto';
+    gradeSrcSelect.style.flexShrink = '0';
+    gradeSrcSelect.innerHTML = `
+      <option value="all_weighted">المعدل العام</option>
+      <option value="exams">الاختبارات فقط</option>
+      <option value="sard">السرد والحفظ</option>
+    `;
+    gradeSrcSelect.value = state.gradeSource || 'all_weighted';
+    gradeSrcSelect.addEventListener('change', (e) => {
+      state.gradeSource = e.target.value;
+      renderCertificate();
+      pushHistoryState('تغيير مصدر الدرجات');
+    });
+    container.appendChild(gradeSrcSelect);
+  }
+
+  function buildAddElementTray(container) {
+    const addTxtBtn = document.createElement('button');
+    addTxtBtn.type = 'button';
+    addTxtBtn.className = 'px-tray-chip active';
+    addTxtBtn.innerHTML = '<i data-lucide="type" style="width:15px;height:15px;"></i><span>+ نص جديد</span>';
+    addTxtBtn.addEventListener('click', () => addCustomText('نص جديد', { openEditor: true }));
+    container.appendChild(addTxtBtn);
+
+    const addImgBtn = document.createElement('button');
+    addImgBtn.type = 'button';
+    addImgBtn.className = 'px-tray-chip';
+    addImgBtn.innerHTML = '<i data-lucide="image-plus" style="width:15px;height:15px;"></i><span>+ صورة / ملصق</span>';
+    addImgBtn.addEventListener('click', () => {
+      const inp = document.getElementById('customStickerInput');
+      if (inp) inp.click();
+    });
+    container.appendChild(addImgBtn);
+
+    const div = document.createElement('div');
+    div.className = 'px-tray-divider';
+    container.appendChild(div);
+
+    const quickVars = [
+      { label: '+ اسم الطالب', tag: '{{اسم_الطالب}}' },
+      { label: '+ التقدير', tag: '{{التقدير}}' },
+      { label: '+ المعدل', tag: '{{المعدل}}' },
+      { label: '+ الحلقة', tag: '{{اسم_الحلقة}}' },
+      { label: '+ المعلم', tag: '{{اسم_المعلم}}' },
+      { label: '+ التاريخ الهجري', tag: '{{التاريخ_الهجري}}' }
+    ];
+    quickVars.forEach((v) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-tray-chip';
+      btn.textContent = v.label;
+      btn.addEventListener('click', () => addCustomText(v.tag, { openEditor: false, toast: `تمت إضافة ${v.label}` }));
+      container.appendChild(btn);
+    });
+  }
+
+  function buildPresetsTray(container) {
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'px-inline-input';
+    nameInput.placeholder = 'اسم القالب...';
+    nameInput.value = 'تصميم البيان ' + (getSavedPresets().length + 1);
+
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'px-tray-chip active';
+    saveBtn.innerHTML = '<i data-lucide="bookmark-plus" style="width:15px;height:15px;"></i><span>حفظ</span>';
+    saveBtn.addEventListener('click', () => saveNamedPreset(nameInput.value));
+
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'px-tray-chip danger';
+    resetBtn.innerHTML = '<i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i><span>افتراضي</span>';
+    resetBtn.addEventListener('click', resetStudioDesign);
+
+    container.appendChild(nameInput);
+    container.appendChild(saveBtn);
+    container.appendChild(resetBtn);
+
+    const presets = getSavedPresets();
+    if (presets.length > 0) {
+      const div = document.createElement('div');
+      div.className = 'px-tray-divider';
+      container.appendChild(div);
+
+      presets.forEach((preset) => {
+        const chip = document.createElement('div');
+        chip.className = 'px-tray-chip';
+        chip.style.gap = '6px';
+
+        const applySpan = document.createElement('span');
+        applySpan.textContent = preset.name;
+        applySpan.addEventListener('click', async () => {
+          await applyDesignSnapshotObj(preset.snapshot);
+          pushHistoryState('استرجاع قالب: ' + preset.name);
+          showToast('تم تطبيق القالب: ' + preset.name);
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.textContent = '×';
+        delBtn.style.cssText = 'border:none;background:transparent;color:#dc2626;font-weight:800;font-size:15px;cursor:pointer;padding:0 2px;';
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const next = getSavedPresets().filter((p) => p.id !== preset.id);
+          localStorage.setItem(STUDIO_PRESETS_KEY, JSON.stringify(next));
+          renderTray();
+          showToast('تم حذف القالب');
+        });
+
+        chip.appendChild(applySpan);
+        chip.appendChild(delBtn);
+        container.appendChild(chip);
+      });
     }
   }
 
+  function buildFontTray(container, elem) {
+    const activeFont = elem.fontFamily || state.fontFamily || 'Amiri';
+    const allFonts = [
+      ...STUDIO_FONTS,
+      ...state.customFonts.map((cf) => ({ value: cf.name, label: cf.label || 'خط مخصص', sub: 'مرفوع' }))
+    ];
+
+    allFonts.forEach((f) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-font-chip' + (activeFont === f.value ? ' active' : '');
+      btn.innerHTML = `<strong style="font-family:'${f.value}', serif;">${f.label}</strong><small>${f.sub}</small>`;
+      btn.addEventListener('click', () => {
+        elem.fontFamily = f.value;
+        state.fontFamily = f.value;
+        renderTray();
+        renderCertificate();
+        pushHistoryState('تغيير الخط');
+      });
+      container.appendChild(btn);
+    });
+
+    const uploadBtn = document.createElement('button');
+    uploadBtn.type = 'button';
+    uploadBtn.className = 'px-tray-chip';
+    uploadBtn.innerHTML = '<i data-lucide="upload" style="width:14px;height:14px;"></i><span>رفع خط (.ttf)</span>';
+    uploadBtn.addEventListener('click', () => {
+      const inp = document.getElementById('customFontInput');
+      if (inp) inp.click();
+    });
+    container.appendChild(uploadBtn);
+  }
+
+  function buildSizeTray(container, key, elem) {
+    const isImage = getElementKind(key, elem) === 'image';
+    const min = isImage ? 60 : 18;
+    const max = isImage ? 1200 : 260;
+    const step = isImage ? 10 : 2;
+    const currVal = Math.round(isImage ? (elem.width || elem.size || 200) : (elem.size || 60));
+
+    const wrap = document.createElement('div');
+    wrap.className = 'px-slider-row';
+
+    const minusBtn = document.createElement('button');
+    minusBtn.type = 'button';
+    minusBtn.className = 'px-step-btn';
+    minusBtn.textContent = '−';
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.className = 'px-range';
+    slider.min = min;
+    slider.max = max;
+    slider.step = step;
+    slider.value = currVal;
+
+    const plusBtn = document.createElement('button');
+    plusBtn.type = 'button';
+    plusBtn.className = 'px-step-btn';
+    plusBtn.textContent = '+';
+
+    const badge = document.createElement('span');
+    badge.className = 'px-val-badge';
+    badge.textContent = `${currVal}px`;
+
+    const applySize = (val, commit = false) => {
+      const clamped = Math.max(min, Math.min(max, Math.round(val)));
+      if (isImage && elem.type === 'image' && key !== 'school_stamp') {
+        const aspect = (elem.width && elem.height) ? (elem.width / elem.height) : 1;
+        elem.width = clamped;
+        elem.height = Math.max(40, Math.round(clamped / aspect));
+        elem.size = Math.max(elem.width, elem.height);
+      } else {
+        elem.size = clamped;
+        if (key === 'school_stamp') {
+          elem.width = clamped;
+          elem.height = clamped;
+        }
+      }
+      slider.value = clamped;
+      badge.textContent = `${clamped}px`;
+      syncHandlePosition(key);
+      scheduleCanvasDraw();
+      if (commit) {
+        renderCertificate();
+        pushHistoryState('تعديل الحجم');
+      }
+    };
+
+    slider.addEventListener('input', (e) => applySize(Number(e.target.value), false));
+    slider.addEventListener('change', (e) => applySize(Number(e.target.value), true));
+    minusBtn.addEventListener('click', () => applySize(Number(slider.value) - step, true));
+    plusBtn.addEventListener('click', () => applySize(Number(slider.value) + step, true));
+
+    wrap.appendChild(minusBtn);
+    wrap.appendChild(slider);
+    wrap.appendChild(plusBtn);
+    wrap.appendChild(badge);
+    container.appendChild(wrap);
+  }
+
+  function buildColorTray(container, elem) {
+    const currentColor = String(elem.color || state.primaryColor || '#1B3A4B').toUpperCase();
+
+    STUDIO_COLORS.forEach((c) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'px-color-dot' + (currentColor === c.hex.toUpperCase() ? ' active' : '');
+      dot.style.background = c.hex;
+      dot.title = c.name;
+      dot.addEventListener('click', () => {
+        applyTextColor(c.hex, true);
+        renderTray();
+      });
+      container.appendChild(dot);
+    });
+
+    const pickerWrap = document.createElement('label');
+    pickerWrap.className = 'px-color-picker-btn';
+    pickerWrap.title = 'لون مخصص';
+    pickerWrap.innerHTML = '<i data-lucide="pipette" style="width:15px;height:15px;"></i>';
+    const inp = document.createElement('input');
+    inp.type = 'color';
+    inp.value = (elem.color && elem.color.startsWith('#') && elem.color.length === 7) ? elem.color : '#1B3A4B';
+    inp.addEventListener('input', (e) => applyTextColor(e.target.value, false));
+    inp.addEventListener('change', () => {
+      pushHistoryState('تغيير اللون');
+      renderTray();
+    });
+    pickerWrap.appendChild(inp);
+    container.appendChild(pickerWrap);
+  }
+
+  function bindHoldNudge(btn, dx, dy, key, elem, coordsBadge) {
+    let timer = null;
+    let holdTimeout = null;
+    let changed = false;
+
+    const step = () => {
+      if (elem.locked) return;
+      elem.x = Math.round(Math.max(3, Math.min(97, elem.x + dx)) * 10) / 10;
+      elem.y = Math.round(Math.max(3, Math.min(97, elem.y + dy)) * 10) / 10;
+      changed = true;
+      if (coordsBadge) coordsBadge.textContent = `${elem.x}%, ${elem.y}%`;
+      syncHandlePosition(key);
+      scheduleCanvasDraw();
+    };
+
+    const stop = () => {
+      if (holdTimeout) { clearTimeout(holdTimeout); holdTimeout = null; }
+      if (timer) { clearInterval(timer); timer = null; }
+      if (changed) {
+        changed = false;
+        renderCertificate();
+        pushHistoryState('تحريك دقيق');
+      }
+    };
+
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      step();
+      holdTimeout = setTimeout(() => {
+        timer = setInterval(step, 55);
+      }, 220);
+    });
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointercancel', stop);
+    btn.addEventListener('pointerleave', stop);
+  }
+
+  function buildPositionTray(container, key, elem) {
+    const dpad = document.createElement('div');
+    dpad.className = 'px-dpad-group';
+
+    const coordsBadge = document.createElement('span');
+    coordsBadge.className = 'px-val-badge';
+    coordsBadge.style.minWidth = '72px';
+    coordsBadge.textContent = `${elem.x}%, ${elem.y}%`;
+
+    const arrows = [
+      { icon: 'arrow-up', dx: 0, dy: -0.4, title: 'أعلى' },
+      { icon: 'arrow-down', dx: 0, dy: 0.4, title: 'أسفل' },
+      { icon: 'arrow-right', dx: 0.4, dy: 0, title: 'يمين' },
+      { icon: 'arrow-left', dx: -0.4, dy: 0, title: 'يسار' }
+    ];
+
+    arrows.forEach((a) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-dpad-btn';
+      btn.title = a.title;
+      btn.innerHTML = `<i data-lucide="${a.icon}" style="width:16px;height:16px;"></i>`;
+      bindHoldNudge(btn, a.dx, a.dy, key, elem, coordsBadge);
+      dpad.appendChild(btn);
+    });
+
+    container.appendChild(dpad);
+
+    const div = document.createElement('div');
+    div.className = 'px-tray-divider';
+    container.appendChild(div);
+
+    const centerH = document.createElement('button');
+    centerH.type = 'button';
+    centerH.className = 'px-tray-chip';
+    centerH.innerHTML = '<i data-lucide="align-center-horizontal" style="width:14px;height:14px;"></i><span>توسيط أفقي</span>';
+    centerH.addEventListener('click', () => {
+      elem.x = 50;
+      coordsBadge.textContent = `${elem.x}%, ${elem.y}%`;
+      updateSnapGuides(true, false);
+      setTimeout(() => updateSnapGuides(false, false), 650);
+      renderCertificate();
+      pushHistoryState('توسيط أفقي');
+    });
+
+    const centerV = document.createElement('button');
+    centerV.type = 'button';
+    centerV.className = 'px-tray-chip';
+    centerV.innerHTML = '<i data-lucide="align-center-vertical" style="width:14px;height:14px;"></i><span>توسيط رأسي</span>';
+    centerV.addEventListener('click', () => {
+      elem.y = 50;
+      coordsBadge.textContent = `${elem.x}%, ${elem.y}%`;
+      updateSnapGuides(false, true);
+      setTimeout(() => updateSnapGuides(false, false), 650);
+      renderCertificate();
+      pushHistoryState('توسيط رأسي');
+    });
+
+    container.appendChild(centerH);
+    container.appendChild(centerV);
+    container.appendChild(coordsBadge);
+  }
+
+  function buildFormatTray(container, key, elem) {
+    const aligns = [
+      { id: 'right', icon: 'align-right', title: 'يمين' },
+      { id: 'center', icon: 'align-center', title: 'وسط' },
+      { id: 'left', icon: 'align-left', title: 'يسار' }
+    ];
+    aligns.forEach((al) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-dpad-btn' + ((elem.align || 'center') === al.id ? ' active' : '');
+      if ((elem.align || 'center') === al.id) {
+        btn.style.borderColor = 'var(--cert-primary)';
+        btn.style.color = 'var(--cert-primary)';
+        btn.style.background = 'var(--cert-primary-light)';
+      }
+      btn.title = al.title;
+      btn.innerHTML = `<i data-lucide="${al.icon}" style="width:16px;height:16px;"></i>`;
+      btn.addEventListener('click', () => {
+        elem.align = al.id;
+        renderTray();
+        renderCertificate();
+        pushHistoryState('تغيير المحاذاة');
+      });
+      container.appendChild(btn);
+    });
+
+    const boldBtn = document.createElement('button');
+    boldBtn.type = 'button';
+    boldBtn.className = 'px-tray-chip' + (elem.isBold !== false && (elem.isBold || key === 'cert_title' || key === 'student_name') ? ' active' : '');
+    boldBtn.innerHTML = '<i data-lucide="bold" style="width:14px;height:14px;"></i><span>عريض</span>';
+    boldBtn.addEventListener('click', () => {
+      elem.isBold = !elem.isBold;
+      renderTray();
+      renderCertificate();
+      pushHistoryState('تبديل السماكة');
+    });
+    container.appendChild(boldBtn);
+
+    const div = document.createElement('div');
+    div.className = 'px-tray-divider';
+    container.appendChild(div);
+
+    const lhLabel = document.createElement('span');
+    lhLabel.style.cssText = 'font-size:0.72rem;font-weight:700;white-space:nowrap;';
+    lhLabel.textContent = 'تباعد الأسطر:';
+
+    const defaultLh = key === 'body_text' ? 1.65 : 1.3;
+    const lhVal = Number(elem.lineHeight || defaultLh);
+
+    const lhSlider = document.createElement('input');
+    lhSlider.type = 'range';
+    lhSlider.className = 'px-range';
+    lhSlider.style.minWidth = '85px';
+    lhSlider.min = '1.0';
+    lhSlider.max = '2.4';
+    lhSlider.step = '0.05';
+    lhSlider.value = lhVal;
+
+    const lhBadge = document.createElement('span');
+    lhBadge.className = 'px-val-badge';
+    lhBadge.textContent = lhVal.toFixed(2);
+
+    lhSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      elem.lineHeight = v;
+      lhBadge.textContent = v.toFixed(2);
+      syncHandlePosition(key);
+      scheduleCanvasDraw();
+    });
+    lhSlider.addEventListener('change', () => {
+      renderCertificate();
+      pushHistoryState('تعديل تباعد الأسطر');
+    });
+
+    container.appendChild(lhLabel);
+    container.appendChild(lhSlider);
+    container.appendChild(lhBadge);
+  }
+
+  function buildEffectsTray(container, key, elem) {
+    // 1. Stroke Toggle & Width + Color
+    const strokeBtn = document.createElement('button');
+    strokeBtn.type = 'button';
+    strokeBtn.className = 'px-tray-chip' + (elem.strokeEnabled ? ' active' : '');
+    strokeBtn.textContent = elem.strokeEnabled ? '✓ حد خارجي' : 'حد خارجي';
+    strokeBtn.addEventListener('click', () => {
+      elem.strokeEnabled = !elem.strokeEnabled;
+      if (elem.strokeEnabled && !elem.strokeWidth) elem.strokeWidth = 4;
+      renderTray();
+      renderCertificate();
+      pushHistoryState('تعديل الحد الخارجي');
+    });
+    container.appendChild(strokeBtn);
+
+    if (elem.strokeEnabled) {
+      const swSlider = document.createElement('input');
+      swSlider.type = 'range';
+      swSlider.className = 'px-range';
+      swSlider.style.minWidth = '65px';
+      swSlider.min = '1';
+      swSlider.max = '16';
+      swSlider.step = '1';
+      swSlider.value = elem.strokeWidth || 4;
+      swSlider.addEventListener('input', (e) => {
+        elem.strokeWidth = Number(e.target.value);
+        scheduleCanvasDraw();
+      });
+      swSlider.addEventListener('change', () => pushHistoryState('سمك الحد'));
+
+      const scPicker = document.createElement('label');
+      scPicker.className = 'px-color-picker-btn';
+      scPicker.style.background = elem.strokeColor || '#ffffff';
+      scPicker.title = 'لون الحد الخارجي';
+      const scInp = document.createElement('input');
+      scInp.type = 'color';
+      scInp.value = elem.strokeColor || '#ffffff';
+      scInp.addEventListener('input', (e) => {
+        elem.strokeColor = e.target.value;
+        scPicker.style.background = e.target.value;
+        scheduleCanvasDraw();
+      });
+      scInp.addEventListener('change', () => pushHistoryState('لون الحد'));
+      scPicker.appendChild(scInp);
+
+      container.appendChild(swSlider);
+      container.appendChild(scPicker);
+    }
+
+    const div1 = document.createElement('div');
+    div1.className = 'px-tray-divider';
+    container.appendChild(div1);
+
+    // 2. Shadow Toggle & Blur
+    const shadowBtn = document.createElement('button');
+    shadowBtn.type = 'button';
+    shadowBtn.className = 'px-tray-chip' + (elem.shadowEnabled ? ' active' : '');
+    shadowBtn.textContent = elem.shadowEnabled ? '✓ ظل النص' : 'ظل النص';
+    shadowBtn.addEventListener('click', () => {
+      elem.shadowEnabled = !elem.shadowEnabled;
+      if (elem.shadowEnabled && !elem.shadowBlur) elem.shadowBlur = 12;
+      renderTray();
+      renderCertificate();
+      pushHistoryState('تعديل ظل النص');
+    });
+    container.appendChild(shadowBtn);
+
+    if (elem.shadowEnabled) {
+      const shSlider = document.createElement('input');
+      shSlider.type = 'range';
+      shSlider.className = 'px-range';
+      shSlider.style.minWidth = '65px';
+      shSlider.min = '2';
+      shSlider.max = '32';
+      shSlider.step = '2';
+      shSlider.value = elem.shadowBlur || 12;
+      shSlider.addEventListener('input', (e) => {
+        elem.shadowBlur = Number(e.target.value);
+        scheduleCanvasDraw();
+      });
+      shSlider.addEventListener('change', () => pushHistoryState('حجم الظل'));
+      container.appendChild(shSlider);
+    }
+
+    const div2 = document.createElement('div');
+    div2.className = 'px-tray-divider';
+    container.appendChild(div2);
+
+    // 3. Opacity
+    buildOpacityTray(container, key, elem, true);
+  }
+
+  function buildRotateTray(container, elem) {
+    const rot = Math.round(elem.rotation || 0);
+
+    const left15 = document.createElement('button');
+    left15.type = 'button';
+    left15.className = 'px-step-btn';
+    left15.textContent = '↺';
+    left15.title = '-15°';
+    left15.addEventListener('click', () => {
+      rotateActiveElementTo((elem.rotation || 0) - 15, true);
+      renderTray();
+    });
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.className = 'px-range';
+    slider.min = '-180';
+    slider.max = '180';
+    slider.step = '1';
+    slider.value = rot;
+
+    const right15 = document.createElement('button');
+    right15.type = 'button';
+    right15.className = 'px-step-btn';
+    right15.textContent = '↻';
+    right15.title = '+15°';
+    right15.addEventListener('click', () => {
+      rotateActiveElementTo((elem.rotation || 0) + 15, true);
+      renderTray();
+    });
+
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'px-val-badge';
+    resetBtn.style.cssText = 'border:1px solid var(--cert-border);background:var(--cert-surface-alt);border-radius:6px;padding:4px 6px;cursor:pointer;';
+    resetBtn.textContent = `${rot}°`;
+    resetBtn.title = 'إعادة إلى 0°';
+    resetBtn.addEventListener('click', () => {
+      rotateActiveElementTo(0, true);
+      renderTray();
+    });
+
+    slider.addEventListener('input', (e) => {
+      const deg = Number(e.target.value);
+      rotateActiveElementTo(deg, false);
+      resetBtn.textContent = `${deg}°`;
+    });
+    slider.addEventListener('change', () => pushHistoryState('تعديل الدوران'));
+
+    container.appendChild(left15);
+    container.appendChild(slider);
+    container.appendChild(right15);
+    container.appendChild(resetBtn);
+  }
+
+  function buildOpacityTray(container, key, elem, compact = false) {
+    const opPct = Math.round((elem.opacity !== undefined ? elem.opacity : 1) * 100);
+    const label = document.createElement('span');
+    label.style.cssText = 'font-size:0.72rem;font-weight:700;white-space:nowrap;';
+    label.textContent = 'الشفافية:';
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.className = 'px-range';
+    if (compact) slider.style.minWidth = '75px';
+    slider.min = '10';
+    slider.max = '100';
+    slider.step = '5';
+    slider.value = opPct;
+
+    const badge = document.createElement('span');
+    badge.className = 'px-val-badge';
+    badge.textContent = `${opPct}%`;
+
+    slider.addEventListener('input', (e) => {
+      const pct = parseInt(e.target.value, 10);
+      elem.opacity = Math.max(0.1, Math.min(1, pct / 100));
+      badge.textContent = `${pct}%`;
+      scheduleCanvasDraw();
+    });
+    slider.addEventListener('change', () => pushHistoryState('تعديل الشفافية'));
+
+    container.appendChild(label);
+    container.appendChild(slider);
+    container.appendChild(badge);
+  }
+
+  function buildLayerTray(container) {
+    const upBtn = document.createElement('button');
+    upBtn.type = 'button';
+    upBtn.className = 'px-tray-chip';
+    upBtn.innerHTML = '<i data-lucide="arrow-up" style="width:15px;height:15px;"></i><span>تقديم للأمام</span>';
+    upBtn.addEventListener('click', () => moveActiveElementLayer(1));
+
+    const downBtn = document.createElement('button');
+    downBtn.type = 'button';
+    downBtn.className = 'px-tray-chip';
+    downBtn.innerHTML = '<i data-lucide="arrow-down" style="width:15px;height:15px;"></i><span>تأخير للخلف</span>';
+    downBtn.addEventListener('click', () => moveActiveElementLayer(-1));
+
+    const openDrawerBtn = document.createElement('button');
+    openDrawerBtn.type = 'button';
+    openDrawerBtn.className = 'px-tray-chip active';
+    openDrawerBtn.innerHTML = '<i data-lucide="layers" style="width:15px;height:15px;"></i><span>لوحة الطبقات</span>';
+    openDrawerBtn.addEventListener('click', () => toggleLayersDrawer(true));
+
+    container.appendChild(upBtn);
+    container.appendChild(downBtn);
+    container.appendChild(openDrawerBtn);
+  }
+
+  // =========================================================
+  // SLIDE-OVER LAYERS DRAWER (40% Width + Drag Reorder + Lock + Eye)
+  // =========================================================
+  function setupLayersDrawer() {
+    const btn = document.getElementById('layersDrawerBtn');
+    const closeBtn = document.getElementById('closeLayersDrawerBtn');
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleLayersDrawer();
+      });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => toggleLayersDrawer(false));
+    }
+  }
+
+  function toggleLayersDrawer(forceState) {
+    const drawer = document.getElementById('layersDrawer');
+    const btn = document.getElementById('layersDrawerBtn');
+    state.layersDrawerOpen = typeof forceState === 'boolean' ? forceState : !state.layersDrawerOpen;
+    if (drawer) drawer.classList.toggle('open', state.layersDrawerOpen);
+    if (btn) {
+      btn.classList.toggle('active', state.layersDrawerOpen);
+      btn.setAttribute('aria-expanded', String(state.layersDrawerOpen));
+    }
+  }
+
+  function renderLayersDrawer() {
+    const layersWrap = document.getElementById('layersListContainer');
+    const countBadge = document.getElementById('layersCountBadge');
+    if (!layersWrap) return;
+
+    const topFirstKeys = [...getSortedElementKeys()].reverse();
+    if (countBadge) countBadge.textContent = String(topFirstKeys.length);
+
+    layersWrap.innerHTML = '';
+    topFirstKeys.forEach((k) => {
+      const el = state.elements[k];
+      if (!el) return;
+
+      const row = document.createElement('div');
+      row.className = 'layer-row' +
+        (state.activeElementKey === k ? ' active' : '') +
+        (el.visible === false ? ' is-hidden' : '');
+      row.setAttribute('data-layer-key', k);
+
+      // 1. Drag Grip Handle for Z-Index Reorder
+      const grip = document.createElement('div');
+      grip.className = 'layer-drag-handle';
+      grip.title = 'اسحب لإعادة ترتيب الطبقة';
+      grip.innerHTML = '<i data-lucide="grip-vertical" style="width:14px;height:14px;"></i>';
+      attachLayerReorderDrag(grip, row, layersWrap);
+
+      // 2. Layer Name (Click to Select)
+      const nameBtn = document.createElement('button');
+      nameBtn.type = 'button';
+      nameBtn.className = 'layer-name-btn';
+      nameBtn.textContent = getElementLabel(k, el);
+      nameBtn.addEventListener('click', () => {
+        setSelectedElement(k);
+      });
+
+      // 3. Lock / Unlock Button
+      const lockBtn = document.createElement('button');
+      lockBtn.type = 'button';
+      lockBtn.className = 'layer-icon-action' + (el.locked ? ' locked' : '');
+      lockBtn.title = el.locked ? 'فتح قفل الطبقة' : 'قفل الطبقة لمنع التحريك بالخطأ';
+      lockBtn.innerHTML = el.locked
+        ? '<i data-lucide="lock" style="width:13px;height:13px;"></i>'
+        : '<i data-lucide="unlock" style="width:13px;height:13px;"></i>';
+      lockBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        el.locked = !el.locked;
+        if (el.locked && state.activeElementKey === k && el.type === 'border') {
+          state.activeElementKey = null;
+        }
+        buildDragOverlayHandles();
+        renderLayersDrawer();
+        renderBottomToolbar();
+        renderTray();
+        pushHistoryState(el.locked ? 'قفل طبقة' : 'فتح قفل طبقة');
+        showToast(el.locked ? `تم قفل ${getElementLabel(k, el)}` : `تم فتح قفل ${getElementLabel(k, el)}`);
+      });
+
+      // 4. Show / Hide Eye Button
+      const visBtn = document.createElement('button');
+      visBtn.type = 'button';
+      visBtn.className = 'layer-icon-action' + (el.visible !== false ? ' visible' : '');
+      visBtn.title = el.visible !== false ? 'إخفاء العنصر' : 'إظهار العنصر';
+      visBtn.innerHTML = el.visible !== false
+        ? '<i data-lucide="eye" style="width:14px;height:14px;"></i>'
+        : '<i data-lucide="eye-off" style="width:14px;height:14px;"></i>';
+      visBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        el.visible = el.visible === false;
+        syncElementVisibilityFlags();
+        if (!el.visible && state.activeElementKey === k) {
+          state.activeElementKey = null;
+        }
+        buildDragOverlayHandles();
+        renderLayersDrawer();
+        renderBottomToolbar();
+        renderTray();
+        renderCertificate();
+        pushHistoryState('تبديل ظهور الطبقة');
+      });
+
+      row.appendChild(grip);
+      row.appendChild(nameBtn);
+      row.appendChild(lockBtn);
+      row.appendChild(visBtn);
+      layersWrap.appendChild(row);
+    });
+
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+
+  function attachLayerReorderDrag(grip, row, listContainer) {
+    let dragging = false;
+    let moved = false;
+
+    grip.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragging = true;
+      moved = false;
+      row.classList.add('dragging-layer');
+      listContainer.style.overflowY = 'hidden';
+      try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+
+    grip.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      const rows = [...listContainer.querySelectorAll('.layer-row')];
+      for (const other of rows) {
+        if (other === row) continue;
+        const rect = other.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        if (e.clientY < midY && row.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_PRECEDING) {
+          listContainer.insertBefore(row, other);
+          moved = true;
+          break;
+        } else if (e.clientY > midY && row.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING) {
+          listContainer.insertBefore(row, other.nextSibling);
+          moved = true;
+          break;
+        }
+      }
+    });
+
+    const endDrag = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      row.classList.remove('dragging-layer');
+      listContainer.style.overflowY = 'auto';
+      try {
+        if (grip.hasPointerCapture(e.pointerId)) grip.releasePointerCapture(e.pointerId);
+      } catch (err) {}
+
+      if (moved) {
+        // Top row in list = highest zIndex
+        const orderedRows = [...listContainer.querySelectorAll('.layer-row')];
+        const total = orderedRows.length;
+        orderedRows.forEach((r, idx) => {
+          const key = r.getAttribute('data-layer-key');
+          if (state.elements[key]) {
+            state.elements[key].zIndex = (total - idx) * 10;
+          }
+        });
+        buildDragOverlayHandles();
+        renderCertificate();
+        pushHistoryState('إعادة ترتيب الطبقات');
+      }
+    };
+
+    grip.addEventListener('pointerup', endDrag);
+    grip.addEventListener('pointercancel', endDrag);
+  }
+
+  function moveActiveElementLayer(direction) {
+    const key = state.activeElementKey;
+    if (!key || !state.elements[key]) return;
+    const sorted = getSortedElementKeys();
+    const idx = sorted.indexOf(key);
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= sorted.length) {
+      showToast(direction > 0 ? 'العنصر في أعلى طبقة بالفعل' : 'العنصر في أسفل طبقة بالفعل');
+      return;
+    }
+    const tmp = sorted[idx];
+    sorted[idx] = sorted[targetIdx];
+    sorted[targetIdx] = tmp;
+    sorted.forEach((k, i) => {
+      if (state.elements[k]) state.elements[k].zIndex = (i + 1) * 10;
+    });
+    buildDragOverlayHandles();
+    renderLayersDrawer();
+    renderCertificate();
+    pushHistoryState('تغيير ترتيب الطبقات');
+  }
+
+  // --- File Inputs Setup ---
+  function setupFileInputs() {
+    const customBgInput = document.getElementById('customBgInput');
+    if (customBgInput) {
+      customBgInput.addEventListener('change', handleCustomBgUpload);
+    }
+
+    const customStickerInput = document.getElementById('customStickerInput');
+    if (customStickerInput) {
+      customStickerInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          addCustomImage(file);
+          customStickerInput.value = '';
+        }
+      });
+    }
+
+    const replaceImageInput = document.getElementById('replaceImageInput');
+    if (replaceImageInput) {
+      replaceImageInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          replaceActiveElementImage(file);
+          replaceImageInput.value = '';
+        }
+      });
+    }
+
+    const customFontInput = document.getElementById('customFontInput');
+    if (customFontInput) {
+      customFontInput.addEventListener('change', handleCustomFontUpload);
+    }
+  }
+
+  function handleCustomBgUpload(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      const img = new Image();
+      img.onload = () => {
+        state.customBgImage = img;
+        state.customBgDataUrl = dataUrl;
+        state.currentTemplate = 'custom';
+        renderTray();
+        renderCertificate();
+        pushHistoryState('رفع خلفية مخصصة');
+        showToast('تم تحميل الخلفية المخصصة بنجاح');
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  function replaceActiveElementImage(file) {
+    const key = state.activeElementKey;
+    const elem = key ? state.elements[key] : null;
+    if (!elem || getElementKind(key, elem) !== 'image') return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      const img = new Image();
+      img.onload = () => {
+        elem.img = img;
+        elem.imgElement = img;
+        elem.imgDataUrl = dataUrl;
+        if (img.width && img.height) {
+          const aspect = img.width / img.height;
+          const baseW = elem.width || elem.size || 240;
+          elem.width = baseW;
+          elem.height = Math.max(40, Math.round(baseW / aspect));
+          elem.size = Math.max(elem.width, elem.height);
+        }
+        buildDragOverlayHandles();
+        renderCertificate();
+        pushHistoryState('تغيير الصورة');
+        showToast('تم استبدال الصورة بنجاح');
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // --- Templates & Presets ---
   function applyTemplatePreset(tplKey) {
     state.currentTemplate = tplKey || 'academic';
     state.customBgImage = null;
@@ -497,7 +1703,6 @@
       if (state.elements.circle_info) state.elements.circle_info.color = '#93c5fd';
       if (state.elements.teacher_info) state.elements.teacher_info.color = '#93c5fd';
     } else {
-      // academic
       state.showOrnamentalBorder = true;
       state.showSchoolLogo = true;
       state.showOfficialStamp = true;
@@ -510,17 +1715,17 @@
       if (state.elements.teacher_info) state.elements.teacher_info.color = '#475569';
     }
 
+    if (state.elements.ornamental_border) state.elements.ornamental_border.visible = state.showOrnamentalBorder;
+    if (state.elements.school_logo) state.elements.school_logo.visible = state.showSchoolLogo;
+    if (state.elements.quran_emblem) state.elements.quran_emblem.visible = state.showQuranEmblem;
+    if (state.elements.school_stamp) state.elements.school_stamp.visible = state.showOfficialStamp;
+
     if (tplKey !== 'blank') {
       ['cert_title', 'student_name', 'grade_badge', 'body_text', 'circle_info', 'teacher_info', 'school_stamp'].forEach((k) => {
         if (state.elements[k]) state.elements[k].visible = true;
       });
-    } else if (state.elements.school_stamp) {
-      state.elements.school_stamp.visible = false;
     }
-    syncStudioControlsUI();
-    if (typeof buildDragOverlayHandles === 'function') {
-      buildDragOverlayHandles();
-    }
+    buildDragOverlayHandles();
   }
 
   function buildDesignSnapshotObj() {
@@ -554,10 +1759,7 @@
 
   function loadImageFromDataUrl(dataUrl) {
     return new Promise((resolve) => {
-      if (!dataUrl) {
-        resolve(null);
-        return;
-      }
+      if (!dataUrl) { resolve(null); return; }
       const img = new Image();
       img.onload = () => resolve(img);
       img.onerror = () => resolve(null);
@@ -587,8 +1789,17 @@
       if (snap.elements && typeof snap.elements === 'object') {
         const defaults = createDefaultElements();
         const rebuilt = {};
-        const keys = Object.keys(snap.elements);
-        for (const k of keys) {
+        // Ensure new structural layers exist even on older drafts
+        ['ornamental_border', 'school_logo', 'quran_emblem'].forEach((sysKey) => {
+          if (!snap.elements[sysKey] && defaults[sysKey]) {
+            rebuilt[sysKey] = { ...defaults[sysKey] };
+            if (sysKey === 'ornamental_border') rebuilt[sysKey].visible = state.showOrnamentalBorder;
+            if (sysKey === 'school_logo') rebuilt[sysKey].visible = state.showSchoolLogo;
+            if (sysKey === 'quran_emblem') rebuilt[sysKey].visible = state.showQuranEmblem;
+          }
+        });
+
+        for (const k of Object.keys(snap.elements)) {
           const item = snap.elements[k];
           if (!item) continue;
           const base = defaults[k] ? { ...defaults[k] } : {};
@@ -599,7 +1810,8 @@
             isBold: item.isBold !== undefined ? Boolean(item.isBold) : (k === 'cert_title' || k === 'student_name'),
             opacity: item.opacity !== undefined ? Number(item.opacity) : 1,
             rotation: item.rotation !== undefined ? Number(item.rotation) : 0,
-            zIndex: item.zIndex !== undefined ? Number(item.zIndex) : 50
+            zIndex: item.zIndex !== undefined ? Number(item.zIndex) : 50,
+            locked: item.locked !== undefined ? Boolean(item.locked) : (k === 'ornamental_border')
           };
           if (item.imgDataUrl) {
             const loadedImg = await loadImageFromDataUrl(item.imgDataUrl);
@@ -610,17 +1822,17 @@
         state.elements = rebuilt;
       }
 
-      if (typeof syncCustomElementIdCounter === 'function') {
-        syncCustomElementIdCounter();
-      }
-      if (!state.activeElementKey || !state.elements[state.activeElementKey]) {
-        state.activeElementKey = Object.keys(state.elements).find((k) => state.elements[k].visible !== false) || null;
+      syncElementVisibilityFlags();
+      syncCustomElementIdCounter();
+
+      if (state.activeElementKey && !state.elements[state.activeElementKey]) {
+        state.activeElementKey = null;
       }
 
-      syncStudioControlsUI();
-      if (typeof buildDragOverlayHandles === 'function') buildDragOverlayHandles();
-      if (typeof renderElementSelectorAndLayers === 'function') renderElementSelectorAndLayers();
-      if (typeof updateTypographyPanelActiveElement === 'function') updateTypographyPanelActiveElement();
+      buildDragOverlayHandles();
+      renderLayersDrawer();
+      renderBottomToolbar();
+      renderTray();
       renderCertificate();
     } finally {
       history.isApplying = false;
@@ -634,7 +1846,6 @@
     draftSaveTimer = setTimeout(() => {
       try {
         const snap = buildDesignSnapshotObj();
-        // Avoid blowing up localStorage quota if a huge image was uploaded (>2MB)
         const json = JSON.stringify(snap);
         if (json.length < 2500000) {
           localStorage.setItem(STUDIO_DRAFT_KEY, json);
@@ -662,204 +1873,62 @@
     }
   }
 
-  function saveNamedPreset() {
-    const name = window.prompt('أدخل اسماً لهذا القالب الجاهز:', 'تصميم مدرسة البيان ' + (getSavedPresets().length + 1));
-    if (!name || !name.trim()) return;
+  function saveNamedPreset(customName) {
+    const clean = String(customName || '').trim() || ('تصميم مدرسة البيان ' + (getSavedPresets().length + 1));
     const presets = getSavedPresets();
     const snapshot = buildDesignSnapshotObj();
     presets.unshift({
       id: 'preset_' + Date.now().toString(36),
-      name: name.trim(),
+      name: clean,
       savedAt: new Date().toISOString(),
       snapshot
     });
     try {
       localStorage.setItem(STUDIO_PRESETS_KEY, JSON.stringify(presets.slice(0, 12)));
-      renderSavedPresetsList();
+      renderTray();
       showToast('تم حفظ التصميم في القوالب الجاهزة');
     } catch (e) {
       showToast('تعذر حفظ القالب: مساحة التخزين ممتلئة');
     }
   }
 
-  function renderSavedPresetsList() {
-    const container = document.getElementById('savedPresetsList');
-    if (!container) return;
-    const presets = getSavedPresets();
-    if (!presets.length) {
-      container.innerHTML = '<span class="saved-presets-empty">لا توجد تصاميم محفوظة بعد. اضغط "حفظ" للاحتفاظ بتصميمك الحالي.</span>';
-      return;
-    }
-    container.innerHTML = '';
-    presets.forEach((preset) => {
-      const chip = document.createElement('div');
-      chip.className = 'preset-chip';
-
-      const loadBtn = document.createElement('span');
-      loadBtn.textContent = preset.name;
-      loadBtn.style.cursor = 'pointer';
-      loadBtn.addEventListener('click', async () => {
-        await applyDesignSnapshotObj(preset.snapshot);
-        pushHistoryState('استرجاع قالب: ' + preset.name);
-        showToast('تم تطبيق القالب: ' + preset.name);
-      });
-
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'preset-chip-delete';
-      delBtn.title = 'حذف القالب';
-      delBtn.textContent = '×';
-      delBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const next = getSavedPresets().filter((p) => p.id !== preset.id);
-        localStorage.setItem(STUDIO_PRESETS_KEY, JSON.stringify(next));
-        renderSavedPresetsList();
-        showToast('تم حذف القالب');
-      });
-
-      chip.appendChild(loadBtn);
-      chip.appendChild(delBtn);
-      container.appendChild(chip);
-    });
-  }
-
   async function resetStudioDesign() {
-    try {
-      localStorage.removeItem(STUDIO_DRAFT_KEY);
-    } catch (e) {}
+    try { localStorage.removeItem(STUDIO_DRAFT_KEY); } catch (e) {}
     state.elements = createDefaultElements();
     state.fontFamily = 'Amiri';
     state.title = 'شَهَادَةُ شُكْرٍ وَتَقْدِير';
     state.bodyText = 'تَسُرُّ إدارة مدرسة البيان لتعليم القرآن الكريم أن تمنح هذه الشهادة للطالب المبارك تقديراً لاجتهاده وتميزه ومواظبته على حفظ كتاب الله وسنة رسوله، سائلين الله تعالى أن يجعله من أهل القرآن الذين هم أهل الله وخاصته.';
     state.gradeSource = 'all_weighted';
-    state.activeElementKey = 'student_name';
+    state.activeElementKey = null;
     applyTemplatePreset('academic');
-    buildDragOverlayHandles();
-    renderElementSelectorAndLayers();
-    updateTypographyPanelActiveElement();
+    renderLayersDrawer();
+    renderBottomToolbar();
+    renderTray();
     renderCertificate();
     pushHistoryState('إعادة التصميم الافتراضي');
     showToast('تمت استعادة التصميم الافتراضي بنجاح');
   }
 
-  // --- Templates Setup ---
-  function setupTemplates() {
-    const templateCards = document.querySelectorAll('.template-card');
-    templateCards.forEach((card) => {
-      card.addEventListener('click', () => {
-        const tplKey = card.getAttribute('data-template');
-        applyTemplatePreset(tplKey);
-        renderElementSelectorAndLayers();
-        updateTypographyPanelActiveElement();
-        renderCertificate();
-        pushHistoryState('تغيير القالب');
-      });
-    });
-
-    const bgUploadZone = document.getElementById('bgUploadZone');
-    const customBgInput = document.getElementById('customBgInput');
-    const removeCustomBgBtn = document.getElementById('removeCustomBgBtn');
-
-    if (bgUploadZone && customBgInput) {
-      bgUploadZone.addEventListener('click', () => customBgInput.click());
-      customBgInput.addEventListener('change', handleCustomBgUpload);
-    }
-
-    if (removeCustomBgBtn) {
-      removeCustomBgBtn.addEventListener('click', () => {
-        applyTemplatePreset('academic');
-        renderElementSelectorAndLayers();
-        updateTypographyPanelActiveElement();
-        renderCertificate();
-        pushHistoryState('إزالة الخلفية المخصصة');
-        showToast('تمت استعادة القالب الأكاديمي الافتراضي');
-      });
-    }
-
-    ['showOrnamentalBorder', 'showQuranEmblem', 'showSchoolLogo', 'showOfficialStamp'].forEach((prop) => {
-      const el = document.getElementById(prop);
-      if (el) {
-        el.addEventListener('change', (e) => {
-          state[prop] = e.target.checked;
-          if (prop === 'showOfficialStamp' && state.elements.school_stamp) {
-            state.elements.school_stamp.visible = e.target.checked;
-            buildDragOverlayHandles();
-            renderElementSelectorAndLayers();
-          }
-          renderCertificate();
-          pushHistoryState('تعديل الزخارف');
-        });
-      }
-    });
-
-    const gradeSourceSelect = document.getElementById('gradeSourceSelect');
-    if (gradeSourceSelect) {
-      gradeSourceSelect.addEventListener('change', (e) => {
-        state.gradeSource = e.target.value;
-        renderCertificate();
-        pushHistoryState('تغيير مصدر التقدير');
-      });
-    }
-
-    const savePresetBtn = document.getElementById('saveDesignPresetBtn');
-    if (savePresetBtn) savePresetBtn.addEventListener('click', saveNamedPreset);
-
-    const resetStudioBtn = document.getElementById('resetStudioDesignBtn');
-    if (resetStudioBtn) resetStudioBtn.addEventListener('click', resetStudioDesign);
-  }
-
-  function handleCustomBgUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target.result;
-      const img = new Image();
-      img.onload = () => {
-        state.customBgImage = img;
-        state.customBgDataUrl = dataUrl;
-        state.currentTemplate = 'custom';
-        syncStudioControlsUI();
-        renderCertificate();
-        pushHistoryState('رفع خلفية مخصصة');
-        showToast('تم تحميل الخلفية المخصصة بنجاح');
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  }
-
-  // --- Smart Variables Engine (محرك المتغيرات الذكية الشامل) ---
+  // --- Smart Variables Engine ---
   function formatMentions(text, studentObj) {
     if (!text) return '';
     const student = studentObj || (state.students && state.students[state.currentStudentIndex]) || {};
 
     const today = new Date();
-    // Gregorian Arabic
     const gregDate = today.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
     const gregYear = today.getFullYear();
 
-    // Hijri Arabic
     let hijriDate = '';
     let hijriYearNum = 1447;
     try {
-      if (window.HijriDate && typeof window.HijriDate.formatDualDate === 'function') {
-        hijriDate = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }).format(today);
-        if (typeof window.HijriDate.getCurrentHijriYear === 'function') {
-          hijriYearNum = window.HijriDate.getCurrentHijriYear();
-        }
+      hijriDate = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }).format(today);
+      if (window.HijriDate && typeof window.HijriDate.getCurrentHijriYear === 'function') {
+        hijriYearNum = window.HijriDate.getCurrentHijriYear();
       } else {
-        hijriDate = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }).format(today);
         const yParts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { year: 'numeric' }).format(today);
         const parsedY = parseInt(String(yParts).replace(/[^0-9]/g, ''), 10);
         if (parsedY > 1400) hijriYearNum = parsedY;
@@ -885,7 +1954,6 @@
     const sCircle = student.circle_name || (student.isDemo ? 'حلقة البيان القرآنية' : '—');
     const sTeacher = student.teacher_name || (student.isDemo ? 'الشيخ عبد الرحمن' : '—');
 
-    // Resolve strict student-linked selected grade (never allow cross-student data)
     const activeStudentId = student.id !== undefined && student.id !== null ? String(student.id).trim() : '';
     let activeGrade = null;
     if (Array.isArray(student.linked_grades) && student.linked_grades.length > 0) {
@@ -946,10 +2014,8 @@
     const sSchool = 'مدرسة البيان لتعليم القرآن الكريم';
     const sYear = `${toArabicDigits(hijriYearNum)} هـ / ${toArabicDigits(gregYear)} م`;
 
-    // Universal Arabic-Aware Semantic Resolver
     function resolveKey(rawKey) {
       if (!rawKey) return '';
-      // Strip diacritics, harakat, tatweel, punctuation, underscores
       const clean = String(rawKey)
         .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
         .replace(/[_.\-:]/g, ' ')
@@ -961,114 +2027,43 @@
         .replace(/[ى]/g, 'ي')
         .toLowerCase();
 
-      // 1. Student code / number: {{رقم_الطالب}} / {{كود_الطالب}} / {{رقم_القيد}}
       if (norm.includes('رقم') || norm.includes('كود') || norm.includes('قيد') || norm.includes('code') || norm.includes('id')) return sCode;
-
-      // 2. Attendance: {{نسبة_الحضور}} / {{المواظبة}} / {{الحضور}}
       if (norm.includes('حضور') || norm.includes('مواظب') || norm.includes('غياب') || norm.includes('attendance')) return sAtt;
-
-      // 3. Term 1 & 2 & Month
       if ((norm.includes('فصل') || norm.includes('ترم') || norm.includes('term')) && (norm.includes('اول') || norm.includes('1') || norm.includes('الاول'))) return sTerm1;
       if ((norm.includes('فصل') || norm.includes('ترم') || norm.includes('term')) && (norm.includes('ثان') || norm.includes('2') || norm.includes('الثاني'))) return sTerm2;
       if (norm.includes('شهر') || norm.includes('month')) return sMonth;
-
-      // 4. Sard: {{أوجه_السرد}} / {{السرد}}
       if (norm.includes('سرد') || norm.includes('اوجه') || norm.includes('صفحات') || norm.includes('sard')) return sSard;
-
-      // 5. Memorization & Revision: {{درجة_الحفظ}} / {{الحفظ}} / {{درجة_المراجعة}}
       if (norm.includes('حفظ') || norm.includes('memo') || norm.includes('تسميع')) return sMemo;
       if (norm.includes('مراجع') || norm.includes('rev')) return sRev;
-
-      // 6. Achievement / Honoring statement: {{نص_التكريم}} / {{التكريم}} / {{نص_الإنجاز}}
       if (norm.includes('انجاز') || norm.includes('تكريم') || norm.includes('achievement') || norm.includes('honor')) return sAchievement;
-
-      // 7. Hijri date: {{التاريخ_الهجري}} / {{الهجري}}
       if (norm.includes('هجر') || norm.includes('hijri')) return hijriDate;
-
-      // 8. Gregorian date: {{التاريخ_الميلادي}} / {{الميلادي}} / {{التاريخ}}
       if (norm.includes('ميلاد') || norm.includes('تاريخ') || norm.includes('date') || norm.includes('gregorian')) return gregDate;
-
-      // 9. Academic year: {{العام_الدراسي}} / {{العام}} / {{السنة}}
       if (norm.includes('عام') || norm.includes('سنه') || norm.includes('دراسي') || norm.includes('year')) return sYear;
-
-      // 10. Circle: {{اسم_الحلقة}} / {{الحلقة}}
       if (norm.includes('حلق') || norm.includes('circle')) return sCircle;
-
-      // 11. Teacher: {{اسم_المعلم}} / {{المعلم}} / {{الشيخ}}
       if (norm.includes('معلم') || norm.includes('شيخ') || norm.includes('استاذ') || norm.includes('teacher')) return sTeacher;
-
-      // 12. Director: {{اسم_المدير}} / {{المدير}}
       if (norm.includes('مدير') || norm.includes('اداره') || norm.includes('director')) return sDirector;
-
-      // 13. School: {{اسم_المدرسة}} / {{المدرسة}}
       if (norm.includes('مدرس') || norm.includes('مركز') || norm.includes('school')) return sSchool;
-
-      // 14. Rating / Evaluation: {{التقدير}} / {{التقييم}} / {{المستوى}}
       if (norm.includes('تقدير') || norm.includes('تقييم') || norm.includes('مستوي') || norm.includes('rating') || norm.includes('level')) return sRating;
-
-      // 15. Student name: {{اسم_الطالب}} / {{اسم الطالب}} / {{الطالب}} / {student_name}
       if (norm.includes('طالب') || norm === 'اسم' || norm === 'الاسم' || norm === 'name' || norm === 'student' || norm === 'student name' || norm === 'student_name') return sName;
-
-      // 16. Final Grade / Score / Percentage: {{العلامة_النهائية}} / {{العلامة}} / {{الدرجة}} / {{النسبة}} / {{المعدل}}
       if (norm.includes('نهائي') || norm.includes('علام') || norm.includes('درج') || norm.includes('نسب') || norm.includes('معدل') || norm.includes('grade') || norm.includes('score') || norm.includes('percent') || norm.includes('نتيج')) return sFinal;
 
       return '';
     }
 
     let result = String(text);
-
-    // 1. Double Braces: {{ key }}
-    result = result.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (match, p1) => {
-      const val = resolveKey(p1);
-      return val !== '' ? val : match;
-    });
-
-    // 2. Square Brackets: [ key ]
-    result = result.replace(/\[\s*([^\[\]]+?)\s*\]/g, (match, p1) => {
-      const val = resolveKey(p1);
-      return val !== '' ? val : match;
-    });
-
-    // 3. Single Braces: { key }
-    result = result.replace(/\{([^{}]+?)\}/g, (match, p1) => {
-      const val = resolveKey(p1);
-      return val !== '' ? val : match;
-    });
-
-    // 4. Arabic Quotes: « key » or » key «
-    result = result.replace(/[«»]\s*([^«»]+?)\s*[«»]/g, (match, p1) => {
-      const val = resolveKey(p1);
-      return val !== '' ? val : match;
-    });
-
-    // 5. Chevron Tag: << key >>
-    result = result.replace(/<<\s*([^<>]+?)\s*>>/g, (match, p1) => {
-      const val = resolveKey(p1);
-      return val !== '' ? val : match;
-    });
-
-    // 6. Mention @key
-    result = result.replace(/@([\u0600-\u06FFa-zA-Z0-9_]+)/g, (match, p1) => {
-      const val = resolveKey(p1);
-      return val !== '' ? val : match;
-    });
-
-    // 7. Percent %key%
-    result = result.replace(/%([\u0600-\u06FFa-zA-Z0-9_]+)%/g, (match, p1) => {
-      const val = resolveKey(p1);
-      return val !== '' ? val : match;
-    });
-
-    // 8. Dollar $key
-    result = result.replace(/\$([\u0600-\u06FFa-zA-Z0-9_]+)/g, (match, p1) => {
-      const val = resolveKey(p1);
-      return val !== '' ? val : match;
-    });
+    result = result.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (m, p1) => { const v = resolveKey(p1); return v !== '' ? v : m; });
+    result = result.replace(/\[\s*([^\[\]]+?)\s*\]/g, (m, p1) => { const v = resolveKey(p1); return v !== '' ? v : m; });
+    result = result.replace(/\{([^{}]+?)\}/g, (m, p1) => { const v = resolveKey(p1); return v !== '' ? v : m; });
+    result = result.replace(/[«»]\s*([^«»]+?)\s*[«»]/g, (m, p1) => { const v = resolveKey(p1); return v !== '' ? v : m; });
+    result = result.replace(/<<\s*([^<>]+?)\s*>>/g, (m, p1) => { const v = resolveKey(p1); return v !== '' ? v : m; });
+    result = result.replace(/@([\u0600-\u06FFa-zA-Z0-9_]+)/g, (m, p1) => { const v = resolveKey(p1); return v !== '' ? v : m; });
+    result = result.replace(/%([\u0600-\u06FFa-zA-Z0-9_]+)%/g, (m, p1) => { const v = resolveKey(p1); return v !== '' ? v : m; });
+    result = result.replace(/\$([\u0600-\u06FFa-zA-Z0-9_]+)/g, (m, p1) => { const v = resolveKey(p1); return v !== '' ? v : m; });
 
     return result;
   }
 
-  // --- Text Editor & Smart Variables Modal Setup ---
+  // --- Text Editor Modal ---
   function setupTextEditModal() {
     const modal = document.getElementById('textEditModal');
     const closeBtn = document.getElementById('closeTextEditModalBtn');
@@ -1076,26 +2071,14 @@
     const saveBtn = document.getElementById('saveQuickEditTextBtn');
     const textarea = document.getElementById('quickEditTextInput');
 
-    if (closeBtn) {
-      closeBtn.addEventListener('click', closeQuickTextEditor);
-    }
-
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', closeQuickTextEditor);
-    }
-
-    if (saveBtn) {
-      saveBtn.addEventListener('click', saveQuickEditText);
-    }
-
+    if (closeBtn) closeBtn.addEventListener('click', closeQuickTextEditor);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeQuickTextEditor);
+    if (saveBtn) saveBtn.addEventListener('click', saveQuickEditText);
     if (modal) {
       modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-          closeQuickTextEditor();
-        }
+        if (e.target === modal) closeQuickTextEditor();
       });
     }
-
     if (textarea) {
       textarea.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -1108,7 +2091,6 @@
       });
     }
 
-    // Quick insert buttons in textEditModal
     const modalChips = document.querySelectorAll('#modalMentionsChips .mini-mention-pill');
     modalChips.forEach((chip) => {
       chip.addEventListener('click', (e) => {
@@ -1133,586 +2115,86 @@
     const start = textarea.selectionStart !== undefined ? textarea.selectionStart : textarea.value.length;
     const end = textarea.selectionEnd !== undefined ? textarea.selectionEnd : start;
     const val = textarea.value;
-
     const before = val.substring(0, start);
     const after = val.substring(end);
-
     const needLeadingSpace = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n');
     const needTrailingSpace = after.length > 0 && !after.startsWith(' ') && !after.startsWith('\n');
-
     const insertStr = (needLeadingSpace ? ' ' : '') + tag + (needTrailingSpace ? ' ' : '');
     textarea.value = before + insertStr + after;
-
     const newPos = start + insertStr.length;
     textarea.focus();
     textarea.setSelectionRange(newPos, newPos);
   }
 
-  // --- Unified Element Inspector & Typography Setup ---
-  function setupTypographyAndFonts() {
-    // 1. Direct Inline Text Editor
-    const directTextarea = document.getElementById('panelDirectTextarea');
-    if (directTextarea) {
-      directTextarea.addEventListener('input', (e) => {
-        const key = state.activeElementKey;
-        const elem = state.elements[key];
-        if (!elem) return;
-        elem.text = e.target.value;
-        if (key === 'cert_title') state.title = e.target.value;
-        if (key === 'body_text') state.bodyText = e.target.value;
-        scheduleCanvasDraw();
-        syncHandlePosition(key);
-      });
+  function openQuickTextEditor(targetKey) {
+    const key = targetKey || state.activeElementKey || 'student_name';
+    const elem = state.elements[key];
+    if (!elem || getElementKind(key, elem) !== 'text') return;
+    const modal = document.getElementById('textEditModal');
+    const input = document.getElementById('quickEditTextInput');
+    if (!modal || !input) return;
 
-      directTextarea.addEventListener('change', () => {
-        pushHistoryState('تعديل النص');
-        renderCertificate();
-      });
-    }
+    state.activeElementKey = key;
+    elem.visible = true;
 
-    // 2. Direct Variable Chips in Inspector
-    const inspectorChips = document.querySelectorAll('#panelVariablesScroll .mini-mention-pill');
-    inspectorChips.forEach((chip) => {
-      chip.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const tag = chip.getAttribute('data-insert');
-        if (!tag) return;
+    let currentText = '';
+    if (elem.isCustom && elem.type === 'text') currentText = elem.text || '';
+    else if (key === 'student_name') currentText = elem.text !== undefined ? elem.text : '{{اسم_الطالب}}';
+    else if (key === 'cert_title') currentText = elem.text !== undefined ? elem.text : (state.title || 'شَهَادَةُ شُكْرٍ وَتَقْدِير');
+    else if (key === 'body_text') currentText = elem.text !== undefined ? elem.text : (state.bodyText || '');
+    else if (key === 'grade_badge') currentText = elem.text !== undefined ? elem.text : '{{التقدير}}: {{العلامة_النهائية}}';
+    else if (key === 'circle_info') currentText = elem.text !== undefined ? elem.text : 'الحلقة: {{اسم_الحلقة}}';
+    else if (key === 'teacher_info') currentText = elem.text !== undefined ? elem.text : 'معلم الحلقة: {{اسم_المعلم}}';
+    else currentText = elem.text || '';
 
-        const key = state.activeElementKey;
-        const elem = key ? state.elements[key] : null;
-
-        // If no element is selected or active element is an image, add a new text element with this tag
-        if (!elem || elem.type === 'image') {
-          addCustomText(tag, { openEditor: false });
-          return;
-        }
-
-        const input = document.getElementById('panelDirectTextarea');
-        if (input) {
-          insertTagIntoTextarea(input, tag);
-          elem.text = input.value;
-          if (key === 'cert_title') state.title = input.value;
-          if (key === 'body_text') state.bodyText = input.value;
-          pushHistoryState('إدراج نص');
-          renderCertificate();
-          showToast(`تم إدراج ${tag}`);
-        }
-      });
-    });
-
-    // 3. Deselect Element Button
-    const deselectBtn = document.getElementById('deselectElemBtn');
-    if (deselectBtn) {
-      deselectBtn.addEventListener('click', () => {
-        state.activeElementKey = null;
-        highlightActiveHandle();
-        renderElementSelectorAndLayers();
-        updateTypographyPanelActiveElement();
-      });
-    }
-
-    // 4. Modal Text Editor Button (if user wants popup)
-    const panelEditTextBtn = document.getElementById('panelEditTextBtn');
-    if (panelEditTextBtn) {
-      panelEditTextBtn.addEventListener('click', () => {
-        openQuickTextEditor(state.activeElementKey || 'student_name');
-      });
-    }
-
-    // 5. Add Text & Add Image
-    const panelAddTextBtn = document.getElementById('panelAddTextBtn');
-    if (panelAddTextBtn) {
-      panelAddTextBtn.addEventListener('click', () => {
-        addCustomText('{{اسم_الطالب}}', { openEditor: false });
-      });
-    }
-
-    const panelAddTextQuickBtn = document.getElementById('panelAddTextQuickBtn');
-    if (panelAddTextQuickBtn) {
-      panelAddTextQuickBtn.addEventListener('click', () => {
-        addCustomText('{{اسم_الطالب}}', { openEditor: false });
-      });
-    }
-
-    const panelAddImageBtn = document.getElementById('panelAddImageBtn');
-    const customStickerInput = document.getElementById('customStickerInput');
-    if (panelAddImageBtn && customStickerInput) {
-      panelAddImageBtn.addEventListener('click', () => {
-        customStickerInput.click();
-      });
-    }
-
-    // 6. Action Buttons
-    const panelCenterElemBtn = document.getElementById('panelCenterElemBtn');
-    if (panelCenterElemBtn) {
-      panelCenterElemBtn.addEventListener('click', centerActiveElement);
-    }
-
-    const panelDuplicateElemBtn = document.getElementById('panelDuplicateElemBtn');
-    if (panelDuplicateElemBtn) {
-      panelDuplicateElemBtn.addEventListener('click', duplicateActiveElement);
-    }
-
-    const panelDeleteElemBtn = document.getElementById('panelDeleteElemBtn');
-    if (panelDeleteElemBtn) {
-      panelDeleteElemBtn.addEventListener('click', deleteOrHideActiveElement);
-    }
-
-    if (resetElemPosBtn) {
-      resetElemPosBtn.addEventListener('click', resetActiveElementToDefault);
-    }
-
-    // 7. Bold, Layer Order, Opacity, Rotation Controls
-    const btnToggleBold = document.getElementById('btnToggleBold');
-    if (btnToggleBold) {
-      btnToggleBold.addEventListener('click', () => {
-        const key = state.activeElementKey;
-        if (!key || !state.elements[key]) return;
-        state.elements[key].isBold = !state.elements[key].isBold;
-        updateTypographyPanelActiveElement();
-        renderCertificate();
-        pushHistoryState('تبديل سماكة الخط');
-      });
-    }
-
-    const btnLayerUp = document.getElementById('btnLayerUp');
-    if (btnLayerUp) {
-      btnLayerUp.addEventListener('click', () => moveActiveElementLayer(1));
-    }
-
-    const btnLayerDown = document.getElementById('btnLayerDown');
-    if (btnLayerDown) {
-      btnLayerDown.addEventListener('click', () => moveActiveElementLayer(-1));
-    }
-
-    const sliderOpacity = document.getElementById('sliderOpacity');
-    const valOpacityDisplay = document.getElementById('valOpacityDisplay');
-    if (sliderOpacity) {
-      sliderOpacity.addEventListener('input', (e) => {
-        const pct = parseInt(e.target.value, 10);
-        const key = state.activeElementKey;
-        if (key && state.elements[key]) {
-          state.elements[key].opacity = Math.max(0.1, Math.min(1, pct / 100));
-          if (valOpacityDisplay) valOpacityDisplay.textContent = `${pct}%`;
-          scheduleCanvasDraw();
-        }
-      });
-      sliderOpacity.addEventListener('change', () => pushHistoryState('تعديل الشفافية'));
-    }
-
-    const sliderRotation = document.getElementById('sliderRotation');
-    const valRotationDisplay = document.getElementById('valRotationDisplay');
-    if (sliderRotation) {
-      sliderRotation.addEventListener('input', (e) => {
-        const deg = parseInt(e.target.value, 10) || 0;
-        const key = state.activeElementKey;
-        if (key && state.elements[key]) {
-          state.elements[key].rotation = deg;
-          if (valRotationDisplay) valRotationDisplay.textContent = `${deg}°`;
-          syncHandlePosition(key);
-          updateElementContextBar();
-          scheduleCanvasDraw();
-        }
-      });
-      sliderRotation.addEventListener('change', () => pushHistoryState('تعديل الدوران'));
-    }
-
-    // 8. Per-Element Font Selector & Upload
-    const fontFamilySelect = document.getElementById('fontFamilySelect');
-    if (fontFamilySelect) {
-      fontFamilySelect.addEventListener('change', (e) => {
-        const chosenFont = e.target.value;
-        state.fontFamily = chosenFont;
-        if (state.activeElementKey && state.elements[state.activeElementKey]) {
-          state.elements[state.activeElementKey].fontFamily = chosenFont;
-        }
-        pushHistoryState('تغيير الخط');
-        renderCertificate();
-      });
-    }
-
-    const customFontInput = document.getElementById('customFontInput');
-    if (customFontInput) {
-      customFontInput.addEventListener('change', handleCustomFontUpload);
-    }
-
-    // 9. Colors & Pipette
-    const colorDots = document.querySelectorAll('.color-dot');
-    const customColorPicker = document.getElementById('customColorPicker');
-
-    colorDots.forEach((dot) => {
-      dot.addEventListener('click', () => {
-        colorDots.forEach((d) => d.classList.remove('active'));
-        dot.classList.add('active');
-        const color = dot.getAttribute('data-color');
-        applyTextColor(color);
-      });
-    });
-
-    if (customColorPicker) {
-      customColorPicker.addEventListener('input', (e) => {
-        applyTextColor(e.target.value, false);
-      });
-      customColorPicker.addEventListener('change', () => {
-        pushHistoryState('تغيير اللون');
-      });
-    }
-
-    // 10. Position & Size Sliders
-    if (sliderX) {
-      sliderX.addEventListener('input', (e) => {
-        const val = parseFloat(e.target.value);
-        if (state.activeElementKey && state.elements[state.activeElementKey]) {
-          state.elements[state.activeElementKey].x = val;
-          if (valXDisplay) valXDisplay.textContent = `${val}%`;
-          syncHandlePosition(state.activeElementKey);
-          scheduleCanvasDraw();
-        }
-      });
-      sliderX.addEventListener('change', () => pushHistoryState('تعديل موضع X'));
-    }
-
-    if (sliderY) {
-      sliderY.addEventListener('input', (e) => {
-        const val = parseFloat(e.target.value);
-        if (state.activeElementKey && state.elements[state.activeElementKey]) {
-          state.elements[state.activeElementKey].y = val;
-          if (valYDisplay) valYDisplay.textContent = `${val}%`;
-          syncHandlePosition(state.activeElementKey);
-          scheduleCanvasDraw();
-        }
-      });
-      sliderY.addEventListener('change', () => pushHistoryState('تعديل موضع Y'));
-    }
-
-    if (sliderSize) {
-      sliderSize.addEventListener('input', (e) => {
-        const val = parseInt(e.target.value, 10);
-        if (state.activeElementKey && state.elements[state.activeElementKey]) {
-          state.elements[state.activeElementKey].size = val;
-          if (valSizeDisplay) valSizeDisplay.textContent = `${val}px`;
-          syncHandlePosition(state.activeElementKey);
-          scheduleCanvasDraw();
-        }
-      });
-      sliderSize.addEventListener('change', () => {
-        pushHistoryState('تعديل الحجم');
-        renderCertificate();
-      });
-    }
-
-    const alignBtns = document.querySelectorAll('.seg-btn[data-align]');
-    alignBtns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        alignBtns.forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        const align = btn.getAttribute('data-align');
-        if (state.activeElementKey && state.elements[state.activeElementKey]) {
-          state.elements[state.activeElementKey].align = align;
-          pushHistoryState('تغيير المحاذاة');
-          renderCertificate();
-        }
-      });
-    });
-
-    renderElementSelectorAndLayers();
-    updateTypographyPanelActiveElement();
+    input.value = currentText;
+    modal.style.display = 'flex';
+    modal.scrollTop = 0;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 30);
   }
 
-  function getElementLabel(key, elem) {
-    const labels = {
-      student_name: 'اسم الطالب',
-      cert_title: 'عنوان الشهادة',
-      grade_badge: 'العلامة والتقدير',
-      body_text: 'نص التكريم',
-      circle_info: 'بيانات الحلقة',
-      teacher_info: 'بيانات المعلم',
-      school_stamp: 'الختم والاعتماد'
-    };
-    if (labels[key]) return labels[key];
-    if (elem && elem.isCustom) {
-      if (elem.type === 'text') {
-        const t = (elem.text || '').trim();
-        return t ? (t.length > 18 ? t.substring(0, 16) + '...' : t) : 'نص إضافي';
-      }
-      return 'صورة / ملصق';
-    }
-    return key;
-  }
+  function saveQuickEditText() {
+    const key = state.activeElementKey || 'student_name';
+    const elem = state.elements[key];
+    const modal = document.getElementById('textEditModal');
+    const input = document.getElementById('quickEditTextInput');
+    if (!elem || !modal || !input) return;
 
-  function getSortedElementKeys() {
-    return Object.keys(state.elements).sort((a, b) => {
-      const za = state.elements[a]?.zIndex ?? 50;
-      const zb = state.elements[b]?.zIndex ?? 50;
-      return za - zb;
-    });
-  }
+    const newText = input.value;
+    elem.text = newText;
+    elem.visible = true;
+    if (key === 'cert_title') state.title = newText;
+    else if (key === 'body_text') state.bodyText = newText;
 
-  function renderElementSelectorAndLayers() {
-    const pillsWrap = document.getElementById('panelElementSelectorPills');
-    const layersWrap = document.getElementById('layersListContainer');
-    const keys = getSortedElementKeys();
-
-    if (pillsWrap) {
-      pillsWrap.innerHTML = '';
-      keys.forEach((k) => {
-        const el = state.elements[k];
-        if (!el) return;
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'elem-pill-btn' + (state.activeElementKey === k ? ' active' : '') + (el.visible === false ? ' is-hidden-elem' : '');
-        btn.setAttribute('data-element', k);
-        btn.textContent = getElementLabel(k, el);
-        btn.addEventListener('click', () => {
-          el.visible = true;
-          state.activeElementKey = k;
-          buildDragOverlayHandles();
-          highlightActiveHandle();
-          renderElementSelectorAndLayers();
-          updateTypographyPanelActiveElement();
-          renderCertificate();
-        });
-        pillsWrap.appendChild(btn);
-      });
-    }
-
-    if (layersWrap) {
-      layersWrap.innerHTML = '';
-      // Show top layers first in layer stack
-      [...keys].reverse().forEach((k) => {
-        const el = state.elements[k];
-        if (!el) return;
-        const row = document.createElement('div');
-        row.className = 'layer-row' + (state.activeElementKey === k ? ' active' : '') + (el.visible === false ? ' is-hidden' : '');
-
-        const nameBtn = document.createElement('button');
-        nameBtn.type = 'button';
-        nameBtn.className = 'layer-name-btn';
-        nameBtn.textContent = getElementLabel(k, el);
-        nameBtn.addEventListener('click', () => {
-          state.activeElementKey = k;
-          highlightActiveHandle();
-          renderElementSelectorAndLayers();
-          updateTypographyPanelActiveElement();
-        });
-
-        const visBtn = document.createElement('button');
-        visBtn.type = 'button';
-        visBtn.className = 'layer-vis-btn' + (el.visible !== false ? ' visible' : '');
-        visBtn.title = el.visible !== false ? 'إخفاء العنصر' : 'إظهار العنصر';
-        visBtn.innerHTML = el.visible !== false
-          ? '<i data-lucide="eye" style="width:14px;height:14px;"></i>'
-          : '<i data-lucide="eye-off" style="width:14px;height:14px;"></i>';
-        visBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          el.visible = el.visible === false;
-          if (k === 'school_stamp') {
-            state.showOfficialStamp = el.visible;
-            syncStudioControlsUI();
-          }
-          if (el.visible) state.activeElementKey = k;
-          buildDragOverlayHandles();
-          renderElementSelectorAndLayers();
-          updateTypographyPanelActiveElement();
-          renderCertificate();
-          pushHistoryState('تبديل ظهور العنصر');
-        });
-
-        row.appendChild(nameBtn);
-        row.appendChild(visBtn);
-        layersWrap.appendChild(row);
-      });
-      if (typeof lucide !== 'undefined') lucide.createIcons();
-    }
-  }
-
-  function moveActiveElementLayer(direction) {
-    const key = state.activeElementKey;
-    if (!key || !state.elements[key]) return;
-    const sorted = getSortedElementKeys();
-    const idx = sorted.indexOf(key);
-    const targetIdx = idx + direction;
-    if (targetIdx < 0 || targetIdx >= sorted.length) {
-      showToast(direction > 0 ? 'العنصر في أعلى طبقة بالفعل' : 'العنصر في أسفل طبقة بالفعل');
-      return;
-    }
-    const swapKey = sorted[targetIdx];
-    const tmp = sorted[idx];
-    sorted[idx] = sorted[targetIdx];
-    sorted[targetIdx] = tmp;
-    sorted.forEach((k, i) => {
-      if (state.elements[k]) state.elements[k].zIndex = (i + 1) * 10;
-    });
-    renderElementSelectorAndLayers();
+    modal.style.display = 'none';
+    renderLayersDrawer();
     renderCertificate();
-    pushHistoryState('تغيير ترتيب الطبقات');
-  }
-
-  function updateTypographyPanelActiveElement() {
-    const key = state.activeElementKey;
-    const elem = key ? state.elements[key] : null;
-    const badge = document.getElementById('panelActiveElemBadge');
-    const directTextarea = document.getElementById('panelDirectTextarea');
-    const textControls = document.getElementById('inspectorTextControls');
-    const typoSection = document.getElementById('inspectorTypographySection');
-    const activeContainer = document.getElementById('inspectorActiveContainer');
-    const noSelectionContainer = document.getElementById('inspectorNoSelectionContainer');
-    const placementSection = document.getElementById('inspectorPlacementSection');
-
-    if (!key || !elem) {
-      if (activeContainer) activeContainer.style.display = 'none';
-      if (typoSection) typoSection.style.display = 'none';
-      if (placementSection) placementSection.style.display = 'none';
-      if (noSelectionContainer) noSelectionContainer.style.display = 'block';
-      if (badge) badge.textContent = 'إعدادات النص';
-      if (directTextarea) {
-        directTextarea.value = '';
-        directTextarea.placeholder = 'انقر على أي نص في الشهادة لتعديل خياراته...';
-      }
-      return;
-    }
-
-    if (activeContainer) activeContainer.style.display = 'block';
-    if (typoSection) typoSection.style.display = 'block';
-    if (placementSection) placementSection.style.display = 'block';
-    if (noSelectionContainer) noSelectionContainer.style.display = 'none';
-
-    if (directTextarea) directTextarea.disabled = false;
-    if (textControls) textControls.style.opacity = '1';
-
-    if (badge) {
-      badge.textContent = getElementLabel(key, elem);
-    }
-
-    // Update pills/layers active state
-    document.querySelectorAll('#panelElementSelectorPills .elem-pill-btn').forEach((pill) => {
-      pill.classList.toggle('active', pill.getAttribute('data-element') === key);
-    });
-    document.querySelectorAll('#layersListContainer .layer-row').forEach((row, idx) => {
-      // active state already managed by renderElementSelectorAndLayers when selection changes
-    });
-
-    // Populate direct textarea
-    if (directTextarea) {
-      let raw = '';
-      if (elem.isCustom && elem.type === 'text') raw = elem.text || '';
-      else if (key === 'student_name') raw = elem.text !== undefined ? elem.text : '{{اسم_الطالب}}';
-      else if (key === 'cert_title') raw = elem.text !== undefined ? elem.text : (state.title || 'شَهَادَةُ شُكْرٍ وَتَقْدِير');
-      else if (key === 'body_text') raw = elem.text !== undefined ? elem.text : (state.bodyText || '');
-      else if (key === 'grade_badge') raw = elem.text !== undefined ? elem.text : '{{التقدير}}: {{العلامة_النهائية}}';
-      else if (key === 'circle_info') raw = elem.text !== undefined ? elem.text : 'الحلقة: {{اسم_الحلقة}}';
-      else if (key === 'teacher_info') raw = elem.text !== undefined ? elem.text : 'معلم الحلقة: {{اسم_المعلم}}';
-      else raw = elem.text || '';
-
-      directTextarea.value = raw;
-    }
-
-    // Toggle text controls visibility if element is image or stamp
-    const isText = (!elem.type || elem.type === 'text') && key !== 'school_stamp';
-    if (textControls) {
-      textControls.style.display = isText ? 'block' : 'none';
-    }
-
-    // Update sliders
-    if (sliderX) {
-      sliderX.value = elem.x;
-      if (valXDisplay) valXDisplay.textContent = `${elem.x}%`;
-    }
-    if (sliderY) {
-      sliderY.value = elem.y;
-      if (valYDisplay) valYDisplay.textContent = `${elem.y}%`;
-    }
-    if (sliderSize) {
-      sliderSize.value = elem.size || 60;
-      if (valSizeDisplay) valSizeDisplay.textContent = `${elem.size || 60}px`;
-    }
-
-    const sliderOpacity = document.getElementById('sliderOpacity');
-    const valOpacityDisplay = document.getElementById('valOpacityDisplay');
-    const opPct = Math.round((elem.opacity !== undefined ? elem.opacity : 1) * 100);
-    if (sliderOpacity) sliderOpacity.value = opPct;
-    if (valOpacityDisplay) valOpacityDisplay.textContent = `${opPct}%`;
-
-    const sliderRotation = document.getElementById('sliderRotation');
-    const valRotationDisplay = document.getElementById('valRotationDisplay');
-    const rotDeg = elem.rotation || 0;
-    if (sliderRotation) sliderRotation.value = rotDeg;
-    if (valRotationDisplay) valRotationDisplay.textContent = `${rotDeg}°`;
-
-    const btnToggleBold = document.getElementById('btnToggleBold');
-    if (btnToggleBold) {
-      btnToggleBold.classList.toggle('active', Boolean(elem.isBold));
-    }
-
-    // Alignment buttons
-    document.querySelectorAll('.seg-btn[data-align]').forEach((btn) => {
-      btn.classList.toggle('active', btn.getAttribute('data-align') === (elem.align || 'center'));
-    });
-
-    // Font Family dropdown
-    const fontFamilySelect = document.getElementById('fontFamilySelect');
-    const activeFont = elem.fontFamily || state.fontFamily || 'Amiri';
-    if (fontFamilySelect) {
-      if (![...fontFamilySelect.options].some((o) => o.value === activeFont)) {
-        const opt = document.createElement('option');
-        opt.value = activeFont;
-        opt.textContent = activeFont;
-        fontFamilySelect.appendChild(opt);
-      }
-      fontFamilySelect.value = activeFont;
-    }
-
-    // Color picker
-    if (elem.color) {
-      const customColorPicker = document.getElementById('customColorPicker');
-      if (customColorPicker && elem.color.startsWith('#') && elem.color.length === 7) {
-        customColorPicker.value = elem.color;
-      }
-      document.querySelectorAll('.color-dot').forEach((dot) => {
-        dot.classList.toggle('active', dot.getAttribute('data-color') === elem.color);
-      });
-    }
+    pushHistoryState('تعديل النص');
+    showToast('تم حفظ النص والمتغيرات بنجاح');
   }
 
   function applyTextColor(color, recordHistory = true) {
     if (!color) return;
     state.primaryColor = color;
-
-    let targetKey = state.activeElementKey;
-    if (!targetKey || !state.elements[targetKey]) {
-      const keys = Object.keys(state.elements);
-      const visibleTextKey = keys.find(k => state.elements[k] && state.elements[k].visible !== false && state.elements[k].type !== 'image');
-      targetKey = visibleTextKey || 'student_name';
-      state.activeElementKey = targetKey;
-      highlightActiveHandle();
-    }
-
-    if (state.elements[targetKey]) {
+    const targetKey = state.activeElementKey;
+    if (targetKey && state.elements[targetKey]) {
       state.elements[targetKey].color = color;
       if (recordHistory) pushHistoryState('تغيير اللون');
     }
-
-    const customColorPicker = document.getElementById('customColorPicker');
-    if (customColorPicker && color.startsWith('#') && color.length === 7) {
-      customColorPicker.value = color;
-    }
-
-    document.querySelectorAll('.color-dot').forEach((dot) => {
-      dot.classList.toggle('active', dot.getAttribute('data-color') === color);
-    });
-
-    drawCertificateCanvas();
     scheduleCanvasDraw();
     saveDraftToStorage();
   }
 
   async function handleCustomFontUpload(e) {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
-
     const fontName = 'CustomFont_' + Date.now().toString(36);
     try {
-      showToast('جاري تثبيت وتفعيل الخط على الشهادة...');
+      showToast('جاري تثبيت الخط على الشهادة...');
       const arrayBuffer = await file.arrayBuffer();
       const fontFace = new FontFace(fontName, arrayBuffer);
       await fontFace.load();
@@ -1722,59 +2204,20 @@
       if (state.activeElementKey && state.elements[state.activeElementKey]) {
         state.elements[state.activeElementKey].fontFamily = fontName;
       }
-      state.customFonts.push({ name: fontName, label: file.name.replace(/\.[^/.]+$/, '') });
-
-      const container = document.getElementById('loadedCustomFontsList');
-      if (container) {
-        const pill = document.createElement('button');
-        pill.type = 'button';
-        pill.className = 'preset-chip';
-        pill.textContent = 'خط: ' + file.name.substring(0, 14);
-        pill.style.fontFamily = fontName;
-        pill.onclick = () => {
-          state.fontFamily = fontName;
-          if (state.activeElementKey && state.elements[state.activeElementKey]) {
-            state.elements[state.activeElementKey].fontFamily = fontName;
-          }
-          pushHistoryState('تغيير الخط المخصص');
-          updateTypographyPanelActiveElement();
-          renderCertificate();
-        };
-        container.appendChild(pill);
-      }
+      state.customFonts.push({ name: fontName, label: file.name.replace(/\.[^/.]+$/, '').substring(0, 14) });
 
       pushHistoryState('رفع خط مخصص');
-      updateTypographyPanelActiveElement();
+      renderTray();
       renderCertificate();
-      showToast('تم تحميل الخط بنجاح وتطبيقه على الشهادة!');
+      showToast('تم تحميل الخط بنجاح!');
     } catch (err) {
       console.error('Error loading custom font:', err);
-      showToast('تعذر تحميل الخط، يرجى التأكد من اختيار ملف .ttf أو .otf صالح');
+      showToast('تعذر تحميل الخط، تأكد من اختيار ملف .ttf أو .otf صالح');
     }
+    e.target.value = '';
   }
 
-  // --- Element Positioning & Coordinate Sliders ---
-  function setupPositioningSliders() {
-    // Sliders are fully bound inside setupTypographyAndFonts above for the unified inspector!
-  }
-
-  function updateSliderValuesFromActiveElement() {
-    updateTypographyPanelActiveElement();
-  }
-
-  function resetActiveElementToDefault() {
-    const defaults = createDefaultElements();
-    if (defaults[state.activeElementKey]) {
-      Object.assign(state.elements[state.activeElementKey], defaults[state.activeElementKey]);
-      updateTypographyPanelActiveElement();
-      renderElementSelectorAndLayers();
-      syncHandlePosition(state.activeElementKey);
-      renderCertificate();
-      pushHistoryState('إعادة ضبط موضع العنصر');
-      showToast('تمت إعادة موضع العنصر للافتراضي');
-    }
-  }
-
+  // --- Filtering & Student Data (Firebase + LocalDB + Strict 1-to-1 Grade Linking) ---
   const HIJRI_MONTHS_LIST = [
     'محرم', 'صفر', 'ربيع الأول', 'ربيع الآخر',
     'جمادى الأولى', 'جمادى الآخرة', 'رجب', 'شعبان',
@@ -1829,7 +2272,6 @@
     }
   }
 
-  // --- Filtering & Student Data API (Server + Firebase + Offline LocalDB) ---
   async function fetchFilterOptions() {
     if (!window.IS_CAPACITOR_APP) {
       try {
@@ -1842,31 +2284,22 @@
             return;
           }
         }
-      } catch (err) {
-        console.warn('Server certificate options unavailable, falling back to Cloud/LocalDB');
-      }
+      } catch (err) {}
     }
 
-    // Cloud Firebase -> Local IndexedDB fallback
     let loadedCircles = [];
     if (window.CirclesService && typeof window.CirclesService.fetchCircles === 'function') {
       try {
         const res = await window.CirclesService.fetchCircles();
-        if (res && Array.isArray(res.circles) && res.circles.length > 0) {
-          loadedCircles = res.circles;
-        }
+        if (res && Array.isArray(res.circles) && res.circles.length > 0) loadedCircles = res.circles;
       } catch (e) {}
     }
-
     if (loadedCircles.length === 0 && window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalCircles === 'function') {
       try {
         const localCircles = await window.AlbayanLocalDB.getLocalCircles();
-        if (Array.isArray(localCircles) && localCircles.length > 0) {
-          loadedCircles = localCircles;
-        }
+        if (Array.isArray(localCircles) && localCircles.length > 0) loadedCircles = localCircles;
       } catch (e) {}
     }
-
     state.circles = loadedCircles;
     populateFilterDropdowns(state.circles, HIJRI_MONTHS_LIST, null, null);
   }
@@ -1904,7 +2337,6 @@
       infoEl.textContent = sCode ? `${circleTxt} • رقم القيد: ${sCode}` : circleTxt;
     }
 
-    // Strict guard: only display grade records whose sourceStudentId matches the active student
     const verifiedGrades = Array.isArray(student.linked_grades)
       ? student.linked_grades.filter((g) => String(g.sourceStudentId) === activeSid)
       : [];
@@ -2054,25 +2486,21 @@
         modeIconBtns.forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         state.filterMode = btn.getAttribute('data-mode');
-
-        if (modeSelectedLabel) {
-          modeSelectedLabel.textContent = modeLabels[state.filterMode] || '';
-        }
+        if (modeSelectedLabel) modeSelectedLabel.textContent = modeLabels[state.filterMode] || '';
 
         if (state.filterMode === 'circle') {
-          if (circleSelectRow) circleSelectRow.style.display = 'block';
+          if (circleSelectRow) circleSelectRow.style.display = 'flex';
           if (singleStudentSelectRow) singleStudentSelectRow.style.display = 'none';
           if (achieversSubpanel) achieversSubpanel.style.display = 'none';
         } else if (state.filterMode === 'single') {
-          if (circleSelectRow) circleSelectRow.style.display = 'block';
-          if (singleStudentSelectRow) singleStudentSelectRow.style.display = 'block';
+          if (circleSelectRow) circleSelectRow.style.display = 'flex';
+          if (singleStudentSelectRow) singleStudentSelectRow.style.display = 'flex';
           if (achieversSubpanel) achieversSubpanel.style.display = 'none';
         } else if (state.filterMode === 'top_achievers') {
-          if (circleSelectRow) circleSelectRow.style.display = 'block';
+          if (circleSelectRow) circleSelectRow.style.display = 'flex';
           if (singleStudentSelectRow) singleStudentSelectRow.style.display = 'none';
-          if (achieversSubpanel) achieversSubpanel.style.display = 'block';
+          if (achieversSubpanel) achieversSubpanel.style.display = 'flex';
         } else {
-          // all
           state.selectedCircleId = 'all';
           const circleSelectEl = document.getElementById('circleSelect');
           if (circleSelectEl) circleSelectEl.value = 'all';
@@ -2080,7 +2508,6 @@
           if (singleStudentSelectRow) singleStudentSelectRow.style.display = 'none';
           if (achieversSubpanel) achieversSubpanel.style.display = 'none';
         }
-
         fetchStudentsList();
       });
     });
@@ -2098,9 +2525,7 @@
       studentSelect.addEventListener('change', (e) => {
         state.selectedStudentId = e.target.value;
         const idx = state.students.findIndex((s) => String(s.id) === String(state.selectedStudentId));
-        if (idx !== -1) {
-          selectStudentAtIndex(idx);
-        }
+        if (idx !== -1) selectStudentAtIndex(idx);
       });
     }
 
@@ -2138,17 +2563,11 @@
     });
 
     const timeframeSelect = document.getElementById('timeframeSelect');
-    if (timeframeSelect) {
-      timeframeSelect.addEventListener('change', (e) => {
-        state.timeframe = e.target.value;
-        fetchStudentsList();
-      });
-    }
+    if (timeframeSelect) timeframeSelect.addEventListener('change', (e) => { state.timeframe = e.target.value; fetchStudentsList(); });
 
     const monthSelect = document.getElementById('monthSelect');
     const yearSelect = document.getElementById('yearSelect');
     const limitSelect = document.getElementById('limitSelect');
-
     if (monthSelect) monthSelect.addEventListener('change', (e) => { state.selectedMonth = e.target.value; fetchStudentsList(); });
     if (yearSelect) yearSelect.addEventListener('change', (e) => { state.selectedYear = e.target.value; fetchStudentsList(); });
     if (limitSelect) limitSelect.addEventListener('change', (e) => { state.limit = parseInt(e.target.value, 10) || 20; fetchStudentsList(); });
@@ -2164,17 +2583,13 @@
 
     if (prevStudentBtn) {
       prevStudentBtn.addEventListener('click', () => {
-        if (state.currentStudentIndex > 0) {
-          selectStudentAtIndex(state.currentStudentIndex - 1);
-        }
+        if (state.currentStudentIndex > 0) selectStudentAtIndex(state.currentStudentIndex - 1);
       });
     }
 
     if (nextStudentBtn) {
       nextStudentBtn.addEventListener('click', () => {
-        if (state.currentStudentIndex < state.students.length - 1) {
-          selectStudentAtIndex(state.currentStudentIndex + 1);
-        }
+        if (state.currentStudentIndex < state.students.length - 1) selectStudentAtIndex(state.currentStudentIndex + 1);
       });
     }
   }
@@ -2206,7 +2621,6 @@
     return 'مشارك';
   }
 
-  // Strict 1-to-1 grade resolver: links ONLY records & results strictly matching sid (and cid when present)
   function buildLinkedGradesForStudent(student, allRecords, allResults, examsMap) {
     const sid = normStudentIdStr(student.id !== undefined ? student.id : student.student_id);
     const cid = normCircleIdStr(student.circle_id);
@@ -2235,7 +2649,6 @@
 
     const linkedGrades = [];
 
-    // 1. Add each exam result strictly for this student
     stuResults.forEach((res, idx) => {
       let pct = null;
       if (res.percentage !== undefined && res.percentage !== null && res.percentage !== '' && !Number.isNaN(Number(res.percentage))) {
@@ -2259,17 +2672,14 @@
       });
     });
 
-    // 2. Add monthly / sard records strictly for this student
     const sardTotal = stuRecords.reduce((acc, r) => acc + (Number(r.sard_pages) || Number(r.pages) || 0), 0);
     stuRecords.forEach((rec, idx) => {
       const mLabel = rec.month || `سجل شهر ${idx + 1}`;
       const rPages = rec.sard_pages !== undefined ? Number(rec.sard_pages) : (rec.pages !== undefined ? Number(rec.pages) : null);
       const rExam = (rec.exam_score !== undefined && rec.exam_score !== '' && !Number.isNaN(Number(rec.exam_score)))
-        ? Math.round(Number(rec.exam_score))
-        : null;
+        ? Math.round(Number(rec.exam_score)) : null;
       const rAtt = (rec.attendance_days !== undefined && rec.attendance_days !== '' && !Number.isNaN(Number(rec.attendance_days)))
-        ? Math.min(100, Math.round((Number(rec.attendance_days) / 20) * 100))
-        : null;
+        ? Math.min(100, Math.round((Number(rec.attendance_days) / 20) * 100)) : null;
       const rMemo = rec.memo_grade || '';
       const rRev = rec.rev_grade || '';
       const parts = [];
@@ -2302,9 +2712,7 @@
           return NaN;
         })
         .filter((v) => !Number.isNaN(v));
-      if (validPcts.length > 0) {
-        examAvg = Math.round(validPcts.reduce((a, b) => a + b, 0) / validPcts.length);
-      }
+      if (validPcts.length > 0) examAvg = Math.round(validPcts.reduce((a, b) => a + b, 0) / validPcts.length);
     } else if (student.percentage !== undefined && student.percentage !== null && student.percentage !== '' && !Number.isNaN(Number(student.percentage))) {
       examAvg = Math.round(Number(student.percentage));
     } else if (stuRecords.length > 0) {
@@ -2320,7 +2728,6 @@
     const memoVal = latestRec.memo_grade || student.memo_grade || '';
     const revVal = latestRec.rev_grade || student.rev_grade || '';
 
-    // 3. Add computed overall summary entry at top ONLY if the student actually has recorded grade/sard data
     const hasSummaryData = examAvg !== null || sardVal > 0 || memoVal !== '' || stuRecords.length > 0;
     if (hasSummaryData) {
       const sumBadge = examAvg !== null ? `${examAvg}%` : (sardVal > 0 ? `${Math.round(sardVal)} وجهاً` : memoVal);
@@ -2343,11 +2750,7 @@
     return { stuRecords, stuResults, linkedGrades, examAvg, sardVal, attRate, memoVal, revVal };
   }
 
-  // Expose strict grade linker for verification tests
-  window.AlbayanCertGradeEngine = {
-    buildLinkedGradesForStudent,
-    computeGradeRating
-  };
+  window.AlbayanCertGradeEngine = { buildLinkedGradesForStudent, computeGradeRating };
 
   async function loadStudentsOfflineOrCloud() {
     const circleMap = new Map();
@@ -2361,7 +2764,6 @@
     let allResults = [];
     const examsMap = new Map();
 
-    // 1. Try Firebase cloud via AlbayanFirebaseDAL for complete multi-circle + records + exams view
     if (window.AlbayanFirebaseDAL && typeof window.AlbayanFirebaseDAL.get === 'function') {
       try {
         const [stuRes, recRes, resRes, exRes] = await Promise.all([
@@ -2388,13 +2790,11 @@
       } catch (e) {}
     }
 
-    // 2. Fallback to IndexedDB (AlbayanLocalDB) across all circles or selected circle
     if (rawStudents.length === 0 && window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalStudents === 'function') {
       try {
         const targetCircles = state.selectedCircleId !== 'all'
           ? [{ id: state.selectedCircleId }]
           : (state.circles && state.circles.length ? state.circles : []);
-
         for (const c of targetCircles) {
           const list = await window.AlbayanLocalDB.getLocalStudents(c.id);
           if (Array.isArray(list)) {
@@ -2406,11 +2806,7 @@
 
     if (rawStudents.length === 0) return [];
 
-    // Filter by circle if selected
-    const wantCircleId = state.selectedCircleId !== 'all'
-      ? normCircleIdStr(state.selectedCircleId)
-      : null;
-
+    const wantCircleId = state.selectedCircleId !== 'all' ? normCircleIdStr(state.selectedCircleId) : null;
     const normalizedStudents = [];
     const seenIds = new Set();
 
@@ -2430,12 +2826,8 @@
       const memoVal = resolved.memoVal;
       const revVal = resolved.revVal;
 
-      const computedBadge = examAvg !== null
-        ? `${examAvg}%`
-        : (sardVal > 0 ? `${Math.round(sardVal)} وجهاً` : (memoVal || 'غير مرصود'));
-      const computedLabel = examAvg !== null
-        ? computeGradeRating(examAvg)
-        : (memoVal || 'غير مرصود');
+      const computedBadge = examAvg !== null ? `${examAvg}%` : (sardVal > 0 ? `${Math.round(sardVal)} وجهاً` : (memoVal || 'غير مرصود'));
+      const computedLabel = examAvg !== null ? computeGradeRating(examAvg) : (memoVal || 'غير مرصود');
 
       normalizedStudents.push({
         id: s.id !== undefined ? s.id : sid,
@@ -2461,14 +2853,13 @@
       });
     }
 
-    // Apply Top Achievers sorting & limit if selected
     if (state.filterMode === 'top_achievers') {
       const crit = state.achieverCriteria || 'top_sard';
       normalizedStudents.sort((a, b) => {
         if (crit === 'top_exams') return (Number(b.exam_percent) || 0) - (Number(a.exam_percent) || 0);
         if (crit === 'top_attendance') return (Number(b.attendance_rate) || 0) - (Number(a.attendance_rate) || 0);
         if (crit === 'top_memo') {
-          const rank = (g) => String(g || '').includes('ممتاز') ? 4 : String(g || '').includes('جيد جدا') || String(g || '').includes('جيد جداً') ? 3 : 2;
+          const rank = (g) => String(g || '').includes('ممتاز') ? 4 : (String(g || '').includes('جيد جداً') || String(g || '').includes('جيد جدا')) ? 3 : 2;
           return rank(b.memo_grade) - rank(a.memo_grade);
         }
         return (Number(b.sard_pages) || 0) - (Number(a.sard_pages) || 0);
@@ -2481,14 +2872,11 @@
 
   async function fetchStudentsList() {
     let loaded = null;
-
     if (!window.IS_CAPACITOR_APP) {
       try {
         const params = new URLSearchParams();
         params.append('circle_id', state.selectedCircleId);
-        if (state.filterMode === 'single' && state.selectedStudentId) {
-          params.append('student_id', state.selectedStudentId);
-        }
+        if (state.filterMode === 'single' && state.selectedStudentId) params.append('student_id', state.selectedStudentId);
         params.append('category', state.filterMode === 'top_achievers' ? state.achieverCriteria : 'all');
         params.append('timeframe', state.timeframe);
         params.append('month', state.selectedMonth);
@@ -2499,13 +2887,9 @@
         const res = await fetch(`/api/certificates/students-filter?${params.toString()}`);
         if (res.ok) {
           const data = await res.json();
-          if (data && data.success) {
-            loaded = data.students || [];
-          }
+          if (data && data.success) loaded = data.students || [];
         }
-      } catch (err) {
-        console.warn('Server students filter unavailable, using Cloud/LocalDB fallback');
-      }
+      } catch (err) {}
     }
 
     if (loaded === null) {
@@ -2541,24 +2925,19 @@
     const student = state.students[state.currentStudentIndex] || {};
 
     if (currentStudentNameEl) {
-      currentStudentNameEl.textContent = total > 0 ? (student.name || 'طالب البيان') : 'لا توجد نتائج مطابقة';
+      currentStudentNameEl.textContent = total > 0 ? (student.name || 'طالب البيان') : 'لا توجد نتائج';
     }
     if (studentCounterEl) {
-      studentCounterEl.textContent = `(${current} / ${total})`;
+      studentCounterEl.textContent = `(${current}/${total})`;
     }
-
     if (prevStudentBtn) prevStudentBtn.disabled = state.currentStudentIndex <= 0;
     if (nextStudentBtn) nextStudentBtn.disabled = state.currentStudentIndex >= total - 1;
 
     const countBadge = document.getElementById('studentsCountBadge');
-    if (countBadge) {
-      countBadge.textContent = `${total} طالب محدد`;
-    }
+    if (countBadge) countBadge.textContent = `${total} طلاب محددين`;
 
     const batchHint = document.getElementById('batchCountHint');
-    if (batchHint) {
-      batchHint.textContent = `تحميل شهادات ${total} طالب دفعة واحدة`;
-    }
+    if (batchHint) batchHint.textContent = `تنزيل شهادات ${total} طالب`;
   }
 
   function renderStudentsPillPreview() {
@@ -2567,7 +2946,7 @@
     container.innerHTML = '';
 
     if (state.students.length === 0) {
-      container.innerHTML = '<span class="saved-presets-empty">لا يوجد طلاب مطابقون للبحث الحالي.</span>';
+      container.innerHTML = '<span class="saved-presets-empty" style="font-size:0.76rem;color:var(--cert-text-muted);">لا يوجد طلاب مطابقون للبحث الحالي.</span>';
       return;
     }
 
@@ -2575,9 +2954,7 @@
       const pill = document.createElement('span');
       pill.className = `student-tag-pill ${idx === state.currentStudentIndex ? 'active' : ''}`;
       pill.textContent = s.name;
-      pill.onclick = () => {
-        selectStudentAtIndex(idx);
-      };
+      pill.onclick = () => selectStudentAtIndex(idx);
       container.appendChild(pill);
     });
 
@@ -2590,13 +2967,8 @@
   }
 
   // =========================================================
-  // SMOOTH INTERACTIVE DRAG OVERLAY SYSTEM
+  // INTERACTIVE CANVAS DRAG, RESIZE, ROTATE & SNAP GUIDES
   // =========================================================
-
-  // =========================================================
-  // SMOOTH INTERACTIVE FIGMA/CANVA DRAG & RESIZE SYSTEM
-  // =========================================================
-
   function measureWrappedLines(context, text, maxWidth) {
     const paragraphs = String(text || '').split('\n');
     const lines = [];
@@ -2630,13 +3002,11 @@
     let pixelWidth = 200;
     let pixelHeight = 100;
 
-    if (key === 'school_stamp') {
-      const size = elem.size || 180;
-      pixelWidth = size + 24;
-      pixelHeight = size + 24;
-    } else if (elem.type === 'image') {
-      pixelWidth = elem.width || 250;
-      pixelHeight = elem.height || 250;
+    if (elem.type === 'border') {
+      return { widthPct: 92, heightPct: 90, centerXPct: 50, pixelWidth: 3200, pixelHeight: 2200 };
+    } else if (elem.type === 'image' || key === 'school_stamp') {
+      pixelWidth = elem.width || elem.size || 200;
+      pixelHeight = elem.height || elem.size || 200;
     } else if (key === 'grade_badge') {
       const rawText = elem.text !== undefined ? elem.text : '{{التقدير}}: {{العلامة_النهائية}}';
       const badgeText = formatMentions(rawText, student);
@@ -2651,9 +3021,8 @@
       ctx.save();
       ctx.font = `${boldWeight} ${elem.size || 48}px '${elemFont}', 'Amiri', serif`;
       const maxWidth = elem.maxWidth || 2600;
-      const lh = (elem.size || 48) * 1.65;
+      const lh = (elem.size || 48) * (elem.lineHeight || 1.65);
       const lines = measureWrappedLines(ctx, renderedText, maxWidth);
-
       let maxLineW = 0;
       lines.forEach((l) => {
         const w = ctx.measureText(l).width;
@@ -2679,10 +3048,9 @@
         defaultSize = 44;
       } else {
         text = formatMentions(elem.text || '', student);
-        defaultSize = 60;
       }
       const sz = elem.size || defaultSize;
-      const lh = sz * 1.3;
+      const lh = sz * (elem.lineHeight || 1.3);
       const weight = (key === 'student_name' || key === 'cert_title') ? (elem.isBold !== false ? '700' : '500') : (elem.isBold ? '700' : '600');
       ctx.save();
       ctx.font = `${weight} ${sz}px '${elemFont}', 'Cairo', serif`;
@@ -2704,7 +3072,7 @@
     const heightPct = Math.min(96, Math.max(1.8, (pixelHeight / CANVAS_HEIGHT) * 100));
 
     let centerXPct = elem.x;
-    if (key !== 'school_stamp' && key !== 'grade_badge' && elem.type !== 'image') {
+    if (key !== 'school_stamp' && key !== 'grade_badge' && elem.type !== 'image' && elem.type !== 'border') {
       if (elem.align === 'left') centerXPct = elem.x + widthPct / 2;
       else if (elem.align === 'right') centerXPct = elem.x - widthPct / 2;
     }
@@ -2719,11 +3087,12 @@
     getSortedElementKeys().forEach((key) => {
       const elem = state.elements[key];
       if (!elem || elem.visible === false) return;
+      if (elem.type === 'border') return; // Frame/border is managed from Layers Drawer so it never steals canvas clicks
       if (key === 'school_stamp' && !state.showOfficialStamp) return;
       if (key === 'grade_badge' && state.gradeSource === 'none') return;
 
       const handle = document.createElement('div');
-      handle.className = `drag-box-handle ${key === state.activeElementKey ? 'active' : ''}`;
+      handle.className = `drag-box-handle ${key === state.activeElementKey ? 'active' : ''} ${elem.locked ? 'is-locked' : ''}`;
       handle.setAttribute('data-key', key);
       handle.id = `handle_${key}`;
 
@@ -2738,55 +3107,41 @@
       let lastTapTime = 0;
 
       function triggerSingleTap() {
-        state.activeElementKey = key;
-        highlightActiveHandle();
-        renderElementSelectorAndLayers();
-        updateTypographyPanelActiveElement();
-        if (window.innerWidth >= 1100) {
-          switchSectionTab('Typography');
-        }
+        if (elem.locked) return;
+        setSelectedElement(key);
       }
 
       function triggerDoubleTap() {
-        if (tapTimeout) {
-          clearTimeout(tapTimeout);
-          tapTimeout = null;
+        if (elem.locked) return;
+        if (tapTimeout) { clearTimeout(tapTimeout); tapTimeout = null; }
+        setSelectedElement(key);
+        if (getElementKind(key, elem) === 'text') {
+          openQuickTextEditor(key);
         }
-        state.activeElementKey = key;
-        highlightActiveHandle();
-        updateTypographyPanelActiveElement();
-        closeBottomSheet();
-        openQuickTextEditor(key);
       }
 
       handle.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (dragState.hasMoved) return;
-
+        if (dragState.hasMoved || elem.locked) return;
         const now = Date.now();
         if (now - lastTapTime < 320) {
-          // Double Tap / Double Click detected
           triggerDoubleTap();
         } else {
-          // Potential Single Tap
           if (tapTimeout) clearTimeout(tapTimeout);
           tapTimeout = setTimeout(() => {
             triggerSingleTap();
             tapTimeout = null;
-          }, 240);
+          }, 220);
         }
         lastTapTime = now;
       });
 
-      // Double-click for mouse desktop
       handle.addEventListener('dblclick', (e) => {
         e.stopPropagation();
         triggerDoubleTap();
       });
 
-      // Pointer event listeners (unified mouse + touch + stylus)
       attachPointerDrag(handle, key);
-
       dragOverlay.appendChild(handle);
     });
 
@@ -2802,16 +3157,13 @@
 
   function attachPointerDrag(handle, key) {
     handle.addEventListener('pointerdown', (e) => {
-      // Do not initiate drag if user clicked a resize dot or rotation handle
-      if (e.target.closest('.corner-scale-dot') || e.target.closest('.edge-scale-dot') || e.target.closest('.rotate-handle-dot')) {
-        return;
-      }
+      if (e.isPrimary === false) return;
+      const elem = state.elements[key];
+      if (!elem || elem.locked) return;
+      if (e.target.closest('.corner-scale-dot') || e.target.closest('.edge-scale-dot') || e.target.closest('.rotate-handle-dot')) return;
 
       e.stopPropagation();
-
-      try {
-        handle.setPointerCapture(e.pointerId);
-      } catch (err) {}
+      try { handle.setPointerCapture(e.pointerId); } catch (err) {}
 
       dragState.isDragging = true;
       dragState.hasMoved = false;
@@ -2819,16 +3171,16 @@
       dragState.pointerId = e.pointerId;
       dragState.startX = e.clientX;
       dragState.startY = e.clientY;
-      dragState.elemStartX = state.elements[key].x;
-      dragState.elemStartY = state.elements[key].y;
+      dragState.elemStartX = elem.x;
+      dragState.elemStartY = elem.y;
 
-      state.activeElementKey = key;
-      highlightActiveHandle();
-      updateTypographyPanelActiveElement();
+      setSelectedElement(key);
     });
 
     handle.addEventListener('pointermove', (e) => {
       if (!dragState.isDragging || dragState.key !== key) return;
+      const elem = state.elements[key];
+      if (!elem || elem.locked) return;
 
       const dx = Math.abs(e.clientX - dragState.startX);
       const dy = Math.abs(e.clientY - dragState.startY);
@@ -2836,7 +3188,6 @@
         dragState.hasMoved = true;
         handle.classList.add('dragging');
       }
-
       if (!dragState.hasMoved) return;
       e.preventDefault();
 
@@ -2849,37 +3200,20 @@
       let newX = Math.max(3, Math.min(97, dragState.elemStartX + deltaXPct));
       let newY = Math.max(3, Math.min(97, dragState.elemStartY + deltaYPct));
 
-      // Magnetic snap to center axes (within 1.2%)
       let snappedX = false;
       let snappedY = false;
-      if (Math.abs(newX - 50) <= 1.2) {
-        newX = 50;
-        snappedX = true;
-      }
-      if (Math.abs(newY - 50) <= 1.2) {
-        newY = 50;
-        snappedY = true;
+      if (state.snapGridEnabled) {
+        if (Math.abs(newX - 50) <= 1.5) { newX = 50; snappedX = true; }
+        if (Math.abs(newY - 50) <= 1.5) { newY = 50; snappedY = true; }
       }
       updateSnapGuides(snappedX, snappedY);
 
       newX = Math.round(newX * 10) / 10;
       newY = Math.round(newY * 10) / 10;
 
-      state.elements[key].x = newX;
-      state.elements[key].y = newY;
-
-      handle.style.left = `${newX}%`;
-      handle.style.top = `${newY}%`;
-
-      if (sliderX && state.activeElementKey === key) {
-        sliderX.value = newX;
-        if (valXDisplay) valXDisplay.textContent = `${newX}%`;
-      }
-      if (sliderY && state.activeElementKey === key) {
-        sliderY.value = newY;
-        if (valYDisplay) valYDisplay.textContent = `${newY}%`;
-      }
-
+      elem.x = newX;
+      elem.y = newY;
+      syncHandlePosition(key);
       scheduleCanvasDraw();
     });
 
@@ -2887,9 +3221,7 @@
       updateSnapGuides(false, false);
       if (dragState.isDragging && dragState.key === key) {
         try {
-          if (handle.hasPointerCapture(e.pointerId)) {
-            handle.releasePointerCapture(e.pointerId);
-          }
+          if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
         } catch (err) {}
 
         dragState.isDragging = false;
@@ -2899,7 +3231,6 @@
         if (dragState.hasMoved && (dragState.elemStartX !== state.elements[key].x || dragState.elemStartY !== state.elements[key].y)) {
           pushHistoryState(`move_${key}`);
         }
-
         renderCertificate();
       }
     };
@@ -2908,18 +3239,14 @@
     handle.addEventListener('pointercancel', endDrag);
   }
 
-  // --- Professional Figma/Canva Corner Scale Dots Drag ---
   function attachCornerScaleDrag(dot, key, corner) {
     dot.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
-
       const elem = state.elements[key];
-      if (!elem) return;
+      if (!elem || elem.locked) return;
 
-      try {
-        dot.setPointerCapture(e.pointerId);
-      } catch (err) {}
+      try { dot.setPointerCapture(e.pointerId); } catch (err) {}
 
       scaleDragState.isScaling = true;
       scaleDragState.key = key;
@@ -2939,27 +3266,21 @@
       e.stopPropagation();
 
       const elem = state.elements[key];
-      if (!elem) return;
+      if (!elem || elem.locked) return;
 
       const deltaX = e.clientX - scaleDragState.startX;
       const deltaY = e.clientY - scaleDragState.startY;
-
       let scaleDelta = 0;
-      if (corner === 'se') {
-        scaleDelta = (deltaX + deltaY) / 2;
-      } else if (corner === 'nw') {
-        scaleDelta = (-deltaX - deltaY) / 2;
-      } else if (corner === 'ne') {
-        scaleDelta = (deltaX - deltaY) / 2;
-      } else if (corner === 'sw') {
-        scaleDelta = (-deltaX + deltaY) / 2;
-      }
+      if (corner === 'se') scaleDelta = (deltaX + deltaY) / 2;
+      else if (corner === 'nw') scaleDelta = (-deltaX - deltaY) / 2;
+      else if (corner === 'ne') scaleDelta = (deltaX - deltaY) / 2;
+      else if (corner === 'sw') scaleDelta = (-deltaX + deltaY) / 2;
 
       const rect = canvasFrame.getBoundingClientRect();
       const ratio = rect.width ? CANVAS_WIDTH / rect.width : 3;
       const canvasDelta = scaleDelta * ratio;
 
-      if (elem.type === 'image') {
+      if (elem.type === 'image' && key !== 'school_stamp') {
         const aspect = (scaleDragState.startWidth && scaleDragState.startHeight) ? scaleDragState.startWidth / scaleDragState.startHeight : 1;
         const newWidth = Math.max(60, Math.min(2800, Math.round(scaleDragState.startWidth + canvasDelta)));
         const newHeight = Math.max(60, Math.min(2800, Math.round(newWidth / aspect)));
@@ -2972,25 +3293,17 @@
         elem.width = newSize;
         elem.height = newSize;
       } else {
-        const newSize = Math.max(18, Math.min(260, Math.round(scaleDragState.startSize + canvasDelta * 0.35)));
-        elem.size = newSize;
-        if (sliderSize && state.activeElementKey === key) {
-          sliderSize.value = newSize;
-          if (valSizeDisplay) valSizeDisplay.textContent = `${newSize}px`;
-        }
+        elem.size = Math.max(18, Math.min(260, Math.round(scaleDragState.startSize + canvasDelta * 0.35)));
       }
 
       syncHandlePosition(key);
+      if (state.activeTool === 'size') renderTray();
       scheduleCanvasDraw();
     });
 
     const endScale = (e) => {
       if (scaleDragState.isScaling && scaleDragState.key === key) {
-        try {
-          if (dot.hasPointerCapture(e.pointerId)) {
-            dot.releasePointerCapture(e.pointerId);
-          }
-        } catch (err) {}
+        try { if (dot.hasPointerCapture(e.pointerId)) dot.releasePointerCapture(e.pointerId); } catch (err) {}
         scaleDragState.isScaling = false;
         scaleDragState.key = null;
         pushHistoryState(`scale_${key}`);
@@ -3002,19 +3315,14 @@
     dot.addEventListener('pointercancel', endScale);
   }
 
-  // --- Professional Edge Midpoint Scale Dots Drag ---
   function attachEdgeScaleDrag(dot, key, edge) {
     dot.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
-
       const elem = state.elements[key];
-      if (!elem) return;
+      if (!elem || elem.locked) return;
 
-      try {
-        dot.setPointerCapture(e.pointerId);
-      } catch (err) {}
-
+      try { dot.setPointerCapture(e.pointerId); } catch (err) {}
       scaleDragState.isScaling = true;
       scaleDragState.key = key;
       scaleDragState.edge = edge;
@@ -3033,11 +3341,10 @@
       e.stopPropagation();
 
       const elem = state.elements[key];
-      if (!elem) return;
+      if (!elem || elem.locked) return;
 
       const deltaX = e.clientX - scaleDragState.startX;
       const deltaY = e.clientY - scaleDragState.startY;
-
       const rect = canvasFrame.getBoundingClientRect();
       const ratio = rect.width ? CANVAS_WIDTH / rect.width : 3;
 
@@ -3046,28 +3353,18 @@
         const deltaPx = deltaX * dir * ratio;
         if (key === 'body_text') {
           elem.maxWidth = Math.max(600, Math.min(3200, Math.round(scaleDragState.startMaxWidth + deltaPx * 2)));
-        } else if (elem.type === 'image') {
+        } else if (elem.type === 'image' && key !== 'school_stamp') {
           elem.width = Math.max(60, Math.min(2800, Math.round(scaleDragState.startWidth + deltaPx * 2)));
         } else {
-          const newSize = Math.max(18, Math.min(260, Math.round(scaleDragState.startSize + deltaPx * 0.25)));
-          elem.size = newSize;
-          if (sliderSize && state.activeElementKey === key) {
-            sliderSize.value = newSize;
-            if (valSizeDisplay) valSizeDisplay.textContent = `${newSize}px`;
-          }
+          elem.size = Math.max(18, Math.min(260, Math.round(scaleDragState.startSize + deltaPx * 0.25)));
         }
       } else if (edge === 'n' || edge === 's') {
         const dir = edge === 's' ? 1 : -1;
         const deltaPx = deltaY * dir * ratio;
-        if (elem.type === 'image') {
+        if (elem.type === 'image' && key !== 'school_stamp') {
           elem.height = Math.max(60, Math.min(2800, Math.round(scaleDragState.startHeight + deltaPx * 2)));
         } else {
-          const newSize = Math.max(18, Math.min(260, Math.round(scaleDragState.startSize + deltaPx * 0.25)));
-          elem.size = newSize;
-          if (sliderSize && state.activeElementKey === key) {
-            sliderSize.value = newSize;
-            if (valSizeDisplay) valSizeDisplay.textContent = `${newSize}px`;
-          }
+          elem.size = Math.max(18, Math.min(260, Math.round(scaleDragState.startSize + deltaPx * 0.25)));
         }
       }
 
@@ -3077,11 +3374,7 @@
 
     const endEdgeScale = (e) => {
       if (scaleDragState.isScaling && scaleDragState.key === key) {
-        try {
-          if (dot.hasPointerCapture(e.pointerId)) {
-            dot.releasePointerCapture(e.pointerId);
-          }
-        } catch (err) {}
+        try { if (dot.hasPointerCapture(e.pointerId)) dot.releasePointerCapture(e.pointerId); } catch (err) {}
         scaleDragState.isScaling = false;
         scaleDragState.key = null;
         pushHistoryState(`edge_scale_${key}`);
@@ -3093,83 +3386,126 @@
     dot.addEventListener('pointercancel', endEdgeScale);
   }
 
-  // --- Pro Action Toolbar: Removed from floating over canvas; controls are in Typography Panel ---
-  function attachProActionToolbar() {
-    // Intentionally no-op: edit button and actions are placed inside the typography panel as requested
+  function attachPointerRotate(rotDot, key) {
+    let isRotating = false;
+    let centerX = 0;
+    let centerY = 0;
+    let startAngle = 0;
+    let origRotation = 0;
+
+    rotDot.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const handle = document.getElementById(`handle_${key}`);
+      const elem = state.elements[key];
+      if (!handle || !elem || elem.locked) return;
+
+      const box = handle.getBoundingClientRect();
+      centerX = box.left + box.width / 2;
+      centerY = box.top + box.height / 2;
+      startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+      origRotation = elem.rotation || 0;
+      isRotating = true;
+      try { rotDot.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+
+    rotDot.addEventListener('pointermove', (e) => {
+      if (!isRotating) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const currAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+      let nextDeg = Math.round(origRotation + (currAngle - startAngle));
+      if (Math.abs(nextDeg) <= 3) nextDeg = 0;
+      else if (Math.abs(nextDeg - 90) <= 3) nextDeg = 90;
+      else if (Math.abs(nextDeg + 90) <= 3) nextDeg = -90;
+      rotateActiveElementTo(nextDeg, false);
+    });
+
+    const endRotate = (e) => {
+      if (!isRotating) return;
+      isRotating = false;
+      try { if (rotDot.hasPointerCapture(e.pointerId)) rotDot.releasePointerCapture(e.pointerId); } catch (err) {}
+      pushHistoryState(`rotate_${key}`);
+      renderCertificate();
+    };
+
+    rotDot.addEventListener('pointerup', endRotate);
+    rotDot.addEventListener('pointercancel', endRotate);
   }
 
-  // --- Inline Quick Text Editor Modal ---
-  function openQuickTextEditor(targetKey) {
-    const key = targetKey || state.activeElementKey || 'student_name';
+  function highlightActiveHandle() {
+    document.querySelectorAll('.drag-box-handle').forEach((h) => {
+      const key = h.getAttribute('data-key');
+      const isActive = key === state.activeElementKey;
+      h.classList.toggle('active', isActive);
+      h.querySelectorAll('.corner-scale-dot, .edge-scale-dot, .rotate-handle-dot, .rotate-handle-stem').forEach((d) => d.remove());
+    });
+
+    if (!state.activeElementKey) return;
+    const activeHandle = document.getElementById(`handle_${state.activeElementKey}`);
+    const elem = state.elements[state.activeElementKey];
+    if (!activeHandle || !elem || elem.visible === false || elem.locked) return;
+
+    const rotStem = document.createElement('div');
+    rotStem.className = 'rotate-handle-stem';
+    activeHandle.appendChild(rotStem);
+
+    const rotDot = document.createElement('div');
+    rotDot.className = 'rotate-handle-dot';
+    rotDot.title = 'اسحب لتدوير العنصر';
+    rotDot.innerHTML = '↻';
+    attachPointerRotate(rotDot, state.activeElementKey);
+    activeHandle.appendChild(rotDot);
+
+    ['nw', 'ne', 'sw', 'se'].forEach((pos) => {
+      const dot = document.createElement('div');
+      dot.className = `corner-scale-dot ${pos}`;
+      attachCornerScaleDrag(dot, state.activeElementKey, pos);
+      activeHandle.appendChild(dot);
+    });
+
+    ['n', 's', 'e', 'w'].forEach((edge) => {
+      const dot = document.createElement('div');
+      dot.className = `edge-scale-dot ${edge}`;
+      attachEdgeScaleDrag(dot, state.activeElementKey, edge);
+      activeHandle.appendChild(dot);
+    });
+  }
+
+  function syncHandlePosition(key) {
+    const handle = document.getElementById(`handle_${key}`);
+    if (!handle) return;
     const elem = state.elements[key];
     if (!elem) return;
-    const modal = document.getElementById('textEditModal');
-    const input = document.getElementById('quickEditTextInput');
-    if (!modal || !input) return;
 
-    state.activeElementKey = key;
-    elem.visible = true; // Ensure element is visible on certificate
+    let isVisible = elem.visible !== false;
+    if (key === 'school_stamp' && !state.showOfficialStamp) isVisible = false;
+    if (key === 'grade_badge' && state.gradeSource === 'none') isVisible = false;
 
-    let currentText = '';
-    if (elem.isCustom && elem.type === 'text') {
-      currentText = elem.text || '';
-    } else if (key === 'student_name') {
-      currentText = elem.text !== undefined ? elem.text : '{{اسم_الطالب}}';
-    } else if (key === 'cert_title') {
-      currentText = elem.text !== undefined ? elem.text : (state.title || 'شَهَادَةُ شُكْرٍ وَتَقْدِير');
-    } else if (key === 'body_text') {
-      currentText = elem.text !== undefined ? elem.text : (state.bodyText || '');
-    } else if (key === 'grade_badge') {
-      currentText = elem.text !== undefined ? elem.text : '{{التقدير}}: {{العلامة_النهائية}}';
-    } else if (key === 'circle_info') {
-      currentText = elem.text !== undefined ? elem.text : 'الحلقة: {{اسم_الحلقة}}';
-    } else if (key === 'teacher_info') {
-      currentText = elem.text !== undefined ? elem.text : 'معلم الحلقة: {{اسم_المعلم}}';
-    } else {
-      currentText = elem.text || '';
-    }
+    handle.style.display = isVisible ? 'flex' : 'none';
+    handle.classList.toggle('is-locked', Boolean(elem.locked));
+    if (!isVisible) return;
 
-    input.value = currentText;
-    modal.style.display = 'flex';
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
-    input.focus();
-    input.select();
+    const bounds = computeElementExactBounds(key);
+    handle.style.left = `${bounds.centerXPct}%`;
+    handle.style.top = `${elem.y}%`;
+    handle.style.width = `${bounds.widthPct}%`;
+    handle.style.height = `${bounds.heightPct}%`;
+    handle.style.setProperty('--elem-rotate', `${elem.rotation || 0}deg`);
   }
 
-  function saveQuickEditText() {
-    const key = state.activeElementKey || 'student_name';
-    const elem = state.elements[key];
-    const modal = document.getElementById('textEditModal');
-    const input = document.getElementById('quickEditTextInput');
-    if (!elem || !modal || !input) return;
-
-    const newText = input.value;
-    elem.text = newText;
-    elem.visible = true;
-
-    if (key === 'cert_title') {
-      state.title = newText;
-    } else if (key === 'body_text') {
-      state.bodyText = newText;
-    }
-
-    modal.style.display = 'none';
-    updateTypographyPanelActiveElement();
-    renderCertificate();
-    pushHistoryState('save_text');
-    showToast('تم حفظ النص والمتغيرات بنجاح');
-  }
-
-  function openColorPickerForActiveElement() {
-    const picker = document.getElementById('proColorPicker');
-    if (!picker) return;
-    const elem = state.elements[state.activeElementKey];
-    if (elem && elem.color) {
-      picker.value = elem.color.startsWith('#') && elem.color.length === 7 ? elem.color : '#dfbc55';
-    }
-    picker.click();
+  function rotateActiveElementTo(deg, recordHistory = true) {
+    const key = state.activeElementKey;
+    const elem = key ? state.elements[key] : null;
+    if (!elem || elem.locked) return;
+    let normalized = Math.round(deg);
+    while (normalized > 180) normalized -= 360;
+    while (normalized < -180) normalized += 360;
+    elem.rotation = normalized;
+    syncHandlePosition(key);
+    scheduleCanvasDraw();
+    if (recordHistory) pushHistoryState('تعديل الدوران');
   }
 
   function syncCustomElementIdCounter() {
@@ -3195,23 +3531,26 @@
   function duplicateActiveElement() {
     const key = state.activeElementKey;
     const elem = state.elements[key];
-    if (!elem) return;
+    if (!elem || elem.type === 'border') return;
 
     syncCustomElementIdCounter();
     const newKey = 'custom_' + (elem.type || 'text') + '_' + (customElementIdCounter++);
     let newElem = {};
 
-    if (elem.isCustom) {
+    if (elem.isCustom || elem.type === 'image') {
+      const imgObj = elem.imgElement || elem.img ||
+        (elem.subType === 'school_logo' ? schoolLogoImg : (elem.subType === 'quran_emblem' ? quranEmblemImg : null));
       newElem = {
         ...elem,
-        imgElement: undefined,
-        img: undefined
+        isCustom: true,
+        locked: false,
+        imgElement: imgObj || undefined,
+        img: imgObj || undefined,
+        imgDataUrl: elem.imgDataUrl || null
       };
-      if (elem.type === 'image') {
-        const imgObj = elem.imgElement || elem.img;
-        newElem.imgElement = imgObj;
-        newElem.img = imgObj;
-        newElem.imgDataUrl = elem.imgDataUrl || null;
+      if (key === 'school_stamp' && !imgObj) {
+        newElem.type = 'text';
+        newElem.text = 'معتمد';
       }
     } else {
       let textVal = '';
@@ -3221,21 +3560,14 @@
       else if (key === 'grade_badge') textVal = elem.text !== undefined ? elem.text : '{{التقدير}}: {{العلامة_النهائية}}';
       else if (key === 'circle_info') textVal = elem.text !== undefined ? elem.text : 'الحلقة: {{اسم_الحلقة}}';
       else if (key === 'teacher_info') textVal = elem.text !== undefined ? elem.text : 'معلم الحلقة: {{اسم_المعلم}}';
-      else textVal = 'عنصر مكرر';
+      else textVal = elem.text || 'عنصر مكرر';
 
       newElem = {
+        ...elem,
         isCustom: true,
         type: 'text',
         text: textVal,
-        size: elem.size || 60,
-        align: elem.align || 'center',
-        color: elem.color || '#dfbc55',
-        fontFamily: elem.fontFamily || state.fontFamily || 'Amiri',
-        isBold: Boolean(elem.isBold),
-        opacity: elem.opacity !== undefined ? elem.opacity : 1,
-        rotation: elem.rotation || 0,
-        width: elem.width || 400,
-        height: elem.height || 100
+        locked: false
       };
     }
 
@@ -3245,24 +3577,11 @@
     newElem.visible = true;
 
     state.elements[newKey] = newElem;
-    state.activeElementKey = newKey;
     buildDragOverlayHandles();
-    renderElementSelectorAndLayers();
-    updateTypographyPanelActiveElement();
+    setSelectedElement(newKey);
     renderCertificate();
-    pushHistoryState('duplicate_element');
+    pushHistoryState('تكرار العنصر');
     showToast('تم تكرار العنصر بنجاح');
-  }
-
-  function centerActiveElement() {
-    const elem = state.elements[state.activeElementKey];
-    if (!elem) return;
-    elem.x = 50;
-    syncHandlePosition(state.activeElementKey);
-    updateSliderValuesFromActiveElement();
-    drawCertificateCanvas();
-    pushHistoryState('center_element');
-    showToast('تمت محاذاة العنصر في المنتصف');
   }
 
   function deleteOrHideActiveElement() {
@@ -3272,30 +3591,23 @@
 
     if (elem.isCustom) {
       delete state.elements[key];
-      state.activeElementKey = null;
-      buildDragOverlayHandles();
-      renderElementSelectorAndLayers();
-      renderCertificate();
-      updateTypographyPanelActiveElement();
-      pushHistoryState('delete_custom_element');
       showToast('تم حذف العنصر');
     } else {
       elem.visible = false;
-      if (key === 'school_stamp') {
-        state.showOfficialStamp = false;
-        syncStudioControlsUI();
-      }
-      state.activeElementKey = null;
-      buildDragOverlayHandles();
-      renderElementSelectorAndLayers();
-      renderCertificate();
-      updateTypographyPanelActiveElement();
-      pushHistoryState('hide_element');
+      syncElementVisibilityFlags();
       showToast('تم إخفاء العنصر');
     }
+
+    state.activeElementKey = null;
+    state.activeTool = null;
+    buildDragOverlayHandles();
+    renderLayersDrawer();
+    renderBottomToolbar();
+    renderTray();
+    renderCertificate();
+    pushHistoryState('حذف/إخفاء العنصر');
   }
 
-  // --- Add Custom Text & Images ---
   function addCustomText(initialText, options = {}) {
     syncCustomElementIdCounter();
     const id = 'custom_text_' + (customElementIdCounter++);
@@ -3304,7 +3616,7 @@
     state.elements[id] = {
       isCustom: true,
       type: 'text',
-      text: text,
+      text,
       x: options.x !== undefined ? options.x : 50,
       y: options.y !== undefined ? options.y : 50,
       size: options.size || 68,
@@ -3312,24 +3624,27 @@
       color: options.color || (isLightBg ? '#1B3A4B' : '#dfbc55'),
       fontFamily: state.fontFamily || 'Amiri',
       isBold: true,
+      lineHeight: 1.35,
+      strokeEnabled: false,
+      strokeWidth: 4,
+      strokeColor: '#ffffff',
+      shadowEnabled: false,
+      shadowBlur: 12,
+      shadowColor: 'rgba(0,0,0,0.45)',
       opacity: 1,
       rotation: 0,
       zIndex: getNextZIndex(),
       visible: true,
+      locked: false,
       width: 450,
       height: 90
     };
-    state.activeElementKey = id;
     buildDragOverlayHandles();
-    renderElementSelectorAndLayers();
+    setSelectedElement(id);
     renderCertificate();
-    pushHistoryState('add_custom_text');
+    pushHistoryState('إضافة نص');
     showToast(options.toast || 'تمت إضافة النص بنجاح');
-    updateTypographyPanelActiveElement();
-    switchSectionTab('Typography');
-    if (options.openEditor) {
-      openQuickTextEditor(id);
-    }
+    if (options.openEditor) openQuickTextEditor(id);
   }
 
   function addCustomImage(file) {
@@ -3345,18 +3660,13 @@
         let h = 300;
         if (img.width && img.height) {
           const aspect = img.width / img.height;
-          if (aspect >= 1) {
-            w = 350;
-            h = Math.round(350 / aspect);
-          } else {
-            h = 350;
-            w = Math.round(350 * aspect);
-          }
+          if (aspect >= 1) { w = 350; h = Math.round(350 / aspect); }
+          else { h = 350; w = Math.round(350 * aspect); }
         }
         state.elements[id] = {
           isCustom: true,
           type: 'image',
-          img: img,
+          img,
           imgElement: img,
           imgDataUrl: dataUrl,
           x: 50,
@@ -3367,244 +3677,23 @@
           opacity: 1,
           rotation: 0,
           zIndex: getNextZIndex(),
-          visible: true
+          visible: true,
+          locked: false
         };
-        state.activeElementKey = id;
         buildDragOverlayHandles();
-        renderElementSelectorAndLayers();
-        updateTypographyPanelActiveElement();
+        setSelectedElement(id);
         renderCertificate();
-        pushHistoryState('add_custom_image');
-        showToast('تمت إضافة الصورة/الملصق بنجاح');
+        pushHistoryState('إضافة صورة');
+        showToast('تمت إضافة الصورة بنجاح');
       };
       img.src = dataUrl;
     };
     reader.readAsDataURL(file);
   }
 
-  function syncHandlePosition(key) {
-    const handle = document.getElementById(`handle_${key}`);
-    if (!handle) return;
-    const elem = state.elements[key];
-    if (!elem) return;
-
-    let isVisible = elem.visible !== false;
-    if (key === 'school_stamp' && !state.showOfficialStamp) isVisible = false;
-    if (key === 'grade_badge' && state.gradeSource === 'none') isVisible = false;
-
-    handle.style.display = isVisible ? 'flex' : 'none';
-    if (!isVisible) return;
-
-    const bounds = computeElementExactBounds(key);
-    handle.style.left = `${bounds.centerXPct}%`;
-    handle.style.top = `${elem.y}%`;
-    handle.style.width = `${bounds.widthPct}%`;
-    handle.style.height = `${bounds.heightPct}%`;
-    handle.style.setProperty('--elem-rotate', `${elem.rotation || 0}deg`);
-  }
-
-  function rotateActiveElementTo(deg, recordHistory = true) {
-    const key = state.activeElementKey;
-    const elem = key ? state.elements[key] : null;
-    if (!elem) return;
-    let normalized = Math.round(deg);
-    while (normalized > 180) normalized -= 360;
-    while (normalized < -180) normalized += 360;
-    elem.rotation = normalized;
-    const sliderRotation = document.getElementById('sliderRotation');
-    const valRotationDisplay = document.getElementById('valRotationDisplay');
-    if (sliderRotation) sliderRotation.value = normalized;
-    if (valRotationDisplay) valRotationDisplay.textContent = `${normalized}°`;
-    syncHandlePosition(key);
-    updateElementContextBar();
-    scheduleCanvasDraw();
-    if (recordHistory) pushHistoryState('تعديل الدوران');
-  }
-
-  function setupElementContextBar() {
-    const bindBtn = (id, fn) => {
-      const btn = document.getElementById(id);
-      if (btn) {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          fn();
-        });
-      }
-    };
-    bindBtn('ctxEditBtn', () => {
-      const key = state.activeElementKey;
-      const elem = key ? state.elements[key] : null;
-      if (elem && elem.type !== 'image' && key !== 'school_stamp') {
-        openQuickTextEditor(key);
-      }
-    });
-    bindBtn('ctxRotateLeftBtn', () => {
-      const elem = state.activeElementKey ? state.elements[state.activeElementKey] : null;
-      if (elem) rotateActiveElementTo((elem.rotation || 0) - 15, true);
-    });
-    bindBtn('ctxRotateRightBtn', () => {
-      const elem = state.activeElementKey ? state.elements[state.activeElementKey] : null;
-      if (elem) rotateActiveElementTo((elem.rotation || 0) + 15, true);
-    });
-    bindBtn('ctxResetRotateBtn', () => rotateActiveElementTo(0, true));
-    bindBtn('ctxCenterBtn', centerActiveElement);
-    bindBtn('ctxDuplicateBtn', duplicateActiveElement);
-    bindBtn('ctxLayerUpBtn', () => moveActiveElementLayer(1));
-    bindBtn('ctxDeleteBtn', deleteOrHideActiveElement);
-    bindBtn('ctxDeselectBtn', () => {
-      state.activeElementKey = null;
-      highlightActiveHandle();
-      renderElementSelectorAndLayers();
-      updateTypographyPanelActiveElement();
-    });
-  }
-
-  function updateElementContextBar() {
-    const bar = document.getElementById('elementContextBar');
-    if (!bar) return;
-
-    const key = state.activeElementKey;
-    const elem = key ? state.elements[key] : null;
-    const isHidden = !elem || elem.visible === false ||
-      (key === 'school_stamp' && !state.showOfficialStamp) ||
-      (key === 'grade_badge' && state.gradeSource === 'none');
-
-    if (isHidden) {
-      bar.style.display = 'none';
-      return;
-    }
-
-    bar.style.display = 'flex';
-    const labelEl = document.getElementById('ctxElemLabel');
-    if (labelEl) labelEl.textContent = getElementLabel(key, elem);
-
-    const angleBtn = document.getElementById('ctxResetRotateBtn');
-    if (angleBtn) angleBtn.textContent = `${Math.round(elem.rotation || 0)}°`;
-
-    const editBtn = document.getElementById('ctxEditBtn');
-    const isText = (!elem.type || elem.type === 'text') && key !== 'school_stamp';
-    if (editBtn) editBtn.style.display = isText ? 'inline-flex' : 'none';
-
-    const dupBtn = document.getElementById('ctxDuplicateBtn');
-    if (dupBtn) dupBtn.style.display = key === 'school_stamp' ? 'none' : 'inline-flex';
-  }
-
-  function attachPointerRotate(rotDot, key) {
-    let isRotating = false;
-    let centerX = 0;
-    let centerY = 0;
-    let startAngle = 0;
-    let origRotation = 0;
-
-    rotDot.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const handle = document.getElementById(`handle_${key}`);
-      const elem = state.elements[key];
-      if (!handle || !elem) return;
-
-      const box = handle.getBoundingClientRect();
-      centerX = box.left + box.width / 2;
-      centerY = box.top + box.height / 2;
-      startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
-      origRotation = elem.rotation || 0;
-      isRotating = true;
-
-      try { rotDot.setPointerCapture(e.pointerId); } catch (err) {}
-    });
-
-    rotDot.addEventListener('pointermove', (e) => {
-      if (!isRotating) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      const currAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
-      let nextDeg = Math.round(origRotation + (currAngle - startAngle));
-      // Gentle magnetic snap near 0, ±90, ±180
-      if (Math.abs(nextDeg) <= 3) nextDeg = 0;
-      else if (Math.abs(nextDeg - 90) <= 3) nextDeg = 90;
-      else if (Math.abs(nextDeg + 90) <= 3) nextDeg = -90;
-
-      rotateActiveElementTo(nextDeg, false);
-    });
-
-    const endRotate = (e) => {
-      if (!isRotating) return;
-      isRotating = false;
-      try {
-        if (rotDot.hasPointerCapture(e.pointerId)) rotDot.releasePointerCapture(e.pointerId);
-      } catch (err) {}
-      pushHistoryState(`rotate_${key}`);
-      renderCertificate();
-    };
-
-    rotDot.addEventListener('pointerup', endRotate);
-    rotDot.addEventListener('pointercancel', endRotate);
-  }
-
-  function highlightActiveHandle() {
-    document.querySelectorAll('.drag-box-handle').forEach((h) => {
-      const key = h.getAttribute('data-key');
-      const isActive = key === state.activeElementKey;
-      h.classList.toggle('active', isActive);
-
-      const dots = h.querySelectorAll('.corner-scale-dot, .edge-scale-dot, .rotate-handle-dot, .rotate-handle-stem');
-      dots.forEach((d) => d.remove());
-      const tb = h.querySelector('.pro-action-toolbar');
-      if (tb) tb.remove();
-    });
-
-    if (!state.activeElementKey) {
-      updateElementContextBar();
-      updateTypographyPanelActiveElement();
-      return;
-    }
-
-    const activeHandle = document.getElementById(`handle_${state.activeElementKey}`);
-    if (!activeHandle) {
-      updateElementContextBar();
-      return;
-    }
-
-    const elem = state.elements[state.activeElementKey];
-    if (!elem || elem.visible === false) {
-      updateElementContextBar();
-      return;
-    }
-
-    // Attach direct canvas rotation stem + handle
-    const rotStem = document.createElement('div');
-    rotStem.className = 'rotate-handle-stem';
-    activeHandle.appendChild(rotStem);
-
-    const rotDot = document.createElement('div');
-    rotDot.className = 'rotate-handle-dot';
-    rotDot.title = 'اسحب لتدوير العنصر';
-    rotDot.innerHTML = '↻';
-    attachPointerRotate(rotDot, state.activeElementKey);
-    activeHandle.appendChild(rotDot);
-
-    // Attach 4 corner scale handles
-    ['nw', 'ne', 'sw', 'se'].forEach((pos) => {
-      const dot = document.createElement('div');
-      dot.className = `corner-scale-dot ${pos}`;
-      attachCornerScaleDrag(dot, state.activeElementKey, pos);
-      activeHandle.appendChild(dot);
-    });
-
-    // Attach 4 edge midpoint scale handles
-    ['n', 's', 'e', 'w'].forEach((edge) => {
-      const dot = document.createElement('div');
-      dot.className = `edge-scale-dot ${edge}`;
-      attachEdgeScaleDrag(dot, state.activeElementKey, edge);
-      activeHandle.appendChild(dot);
-    });
-
-    updateElementContextBar();
-    updateTypographyPanelActiveElement();
-  }
-
-  // --- Canvas Rendering Core (300 DPI A4 Landscape: 3508 x 2480) ---
+  // =========================================================
+  // CANVAS RENDERING CORE (300 DPI A4 Landscape: 3508 x 2480)
+  // =========================================================
   function renderCertificate() {
     drawCertificateCanvas();
     Object.keys(state.elements).forEach(syncHandlePosition);
@@ -3613,36 +3702,19 @@
 
   function drawCertificateCanvas() {
     if (!ctx) return;
-
-    // 1. Clear Canvas
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // 2. Background
-    if (state.currentTemplate === 'custom' && state.customBgImage) {
-      drawCustomBackground();
-    } else if (state.currentTemplate === 'blank') {
-      drawBlankTemplate();
-    } else if (state.currentTemplate === 'gold') {
-      drawRoyalGoldTemplate();
-    } else if (state.currentTemplate === 'emerald') {
-      drawQuranicEmeraldTemplate();
-    } else if (state.currentTemplate === 'navy') {
-      drawSapphireNavyTemplate();
-    } else {
-      drawAcademicIvoryTemplate();
-    }
+    if (state.currentTemplate === 'custom' && state.customBgImage) drawCustomBackground();
+    else if (state.currentTemplate === 'blank') drawBlankTemplate();
+    else if (state.currentTemplate === 'gold') drawRoyalGoldTemplate();
+    else if (state.currentTemplate === 'emerald') drawQuranicEmeraldTemplate();
+    else if (state.currentTemplate === 'navy') drawSapphireNavyTemplate();
+    else drawAcademicIvoryTemplate();
 
-    // 3. Borders
-    if (state.showOrnamentalBorder) {
-      drawOrnamentalBorders();
-    }
-
-    // 4. Header & Quran Emblem (drawn when template is not blank, or when logo/emblem explicitly enabled)
-    if (state.currentTemplate !== 'blank' || state.showSchoolLogo || state.showQuranEmblem) {
+    if (state.currentTemplate !== 'blank') {
       drawHeaderElements();
     }
 
-    // 5. Render all elements (built-in + custom + stamp) in zIndex layer order
     drawAllOrderedElements();
   }
 
@@ -3651,20 +3723,55 @@
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
   }
 
-  function drawMultilineOrSingle(context, text, x, y, lineHeight) {
+  function applyTextEffects(context, elem) {
+    if (elem && elem.shadowEnabled) {
+      const blur = Number(elem.shadowBlur || 12);
+      context.shadowColor = elem.shadowColor || 'rgba(0, 0, 0, 0.48)';
+      context.shadowBlur = blur * 2;
+      context.shadowOffsetX = 0;
+      context.shadowOffsetY = Math.round(blur * 0.55);
+    }
+  }
+
+  function drawStyledTextLine(context, elem, line, x, y) {
+    if (elem && elem.strokeEnabled) {
+      context.save();
+      context.shadowColor = 'transparent';
+      context.shadowBlur = 0;
+      context.lineJoin = 'round';
+      context.miterLimit = 2;
+      context.lineWidth = Math.max(2, Number(elem.strokeWidth || 4) * 2.2);
+      context.strokeStyle = elem.strokeColor || '#ffffff';
+      context.strokeText(line, x, y);
+      context.restore();
+    }
+    context.fillText(line, x, y);
+  }
+
+  function drawMultilineOrSingle(context, text, x, y, lineHeight, elem) {
     if (!text) return;
     const str = String(text);
     const lines = str.split('\n');
+    applyTextEffects(context, elem);
     if (lines.length === 1) {
-      context.fillText(str, x, y);
+      drawStyledTextLine(context, elem, str, x, y);
       return;
     }
     const lh = lineHeight || 60;
     const totalH = (lines.length - 1) * lh;
     const startY = y - totalH / 2;
     lines.forEach((line, idx) => {
-      context.fillText(line, x, startY + idx * lh);
+      drawStyledTextLine(context, elem, line, x, startY + idx * lh);
     });
+  }
+
+  function drawWrappedText(context, text, x, y, maxWidth, lineHeight, elem) {
+    const lines = measureWrappedLines(context, text, maxWidth);
+    const startY = y - (((lines.length - 1) * lineHeight) / 2);
+    applyTextEffects(context, elem);
+    for (let i = 0; i < lines.length; i++) {
+      drawStyledTextLine(context, elem, lines[i], x, startY + (i * lineHeight));
+    }
   }
 
   function drawAllOrderedElements() {
@@ -3680,8 +3787,24 @@
     getSortedElementKeys().forEach((key) => {
       const elem = state.elements[key];
       if (!elem || elem.visible === false) return;
+
+      if (elem.type === 'border' || key === 'ornamental_border') {
+        if (state.showOrnamentalBorder) drawOrnamentalBorders(elem);
+        return;
+      }
+      if (key === 'school_logo') {
+        if (state.showSchoolLogo) drawElementImage(elem, schoolLogoImg);
+        return;
+      }
+      if (key === 'quran_emblem') {
+        if (state.showQuranEmblem) drawElementImage(elem, quranEmblemImg);
+        return;
+      }
       if (key === 'school_stamp') {
-        if (state.showOfficialStamp) drawSchoolStamp(elem);
+        if (state.showOfficialStamp) {
+          if (elem.imgElement || elem.img) drawElementImage(elem, elem.imgElement || elem.img);
+          else drawSchoolStamp(elem);
+        }
         return;
       }
       if (elem.isCustom) {
@@ -3692,35 +3815,45 @@
     });
   }
 
+  function drawElementImage(elem, fallbackImg) {
+    const imgObj = elem.imgElement || elem.img || fallbackImg;
+    if (!imgObj) return;
+    ctx.save();
+    const x = (elem.x / 100) * CANVAS_WIDTH;
+    const y = (elem.y / 100) * CANVAS_HEIGHT;
+    const w = elem.width || elem.size || 180;
+    const h = elem.height || elem.size || 180;
+    ctx.globalAlpha = elem.opacity !== undefined ? elem.opacity : 1;
+    ctx.translate(x, y);
+    if (elem.rotation) ctx.rotate((elem.rotation * Math.PI) / 180);
+    try {
+      ctx.drawImage(imgObj, -w / 2, -h / 2, w, h);
+    } catch (e) {}
+    ctx.restore();
+  }
+
   function drawSingleCustomElement(elem, student) {
+    if (elem.type === 'image') {
+      drawElementImage(elem, null);
+      return;
+    }
     ctx.save();
     const x = (elem.x / 100) * CANVAS_WIDTH;
     const y = (elem.y / 100) * CANVAS_HEIGHT;
     ctx.globalAlpha = elem.opacity !== undefined ? elem.opacity : 1;
     ctx.translate(x, y);
-    if (elem.rotation) {
-      ctx.rotate((elem.rotation * Math.PI) / 180);
-    }
+    if (elem.rotation) ctx.rotate((elem.rotation * Math.PI) / 180);
 
-    if (elem.type === 'text') {
-      const font = elem.fontFamily || state.fontFamily || 'Cairo';
-      const weight = elem.isBold ? '700' : '600';
-      ctx.textAlign = elem.align || 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = `${weight} ${elem.size || 64}px '${font}', 'Cairo', sans-serif`;
-      ctx.fillStyle = elem.color || state.primaryColor || '#1B3A4B';
+    const font = elem.fontFamily || state.fontFamily || 'Cairo';
+    const weight = elem.isBold ? '700' : '600';
+    ctx.textAlign = elem.align || 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${weight} ${elem.size || 64}px '${font}', 'Cairo', sans-serif`;
+    ctx.fillStyle = elem.color || state.primaryColor || '#1B3A4B';
 
-      const textToDraw = formatMentions(elem.text || '', student);
-      const lh = (elem.size || 64) * 1.35;
-      drawMultilineOrSingle(ctx, textToDraw, 0, 0, lh);
-    } else if (elem.type === 'image') {
-      const imgObj = elem.imgElement || elem.img;
-      if (imgObj) {
-        const w = elem.width || 250;
-        const h = elem.height || 250;
-        ctx.drawImage(imgObj, -w / 2, -h / 2, w, h);
-      }
-    }
+    const textToDraw = formatMentions(elem.text || '', student);
+    const lh = (elem.size || 64) * (elem.lineHeight || 1.35);
+    drawMultilineOrSingle(ctx, textToDraw, 0, 0, lh, elem);
     ctx.restore();
   }
 
@@ -3732,7 +3865,6 @@
     bgGrad.addColorStop(1, '#0f172a');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
     const radial = ctx.createRadialGradient(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 200, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 1400);
     radial.addColorStop(0, 'rgba(197, 155, 39, 0.12)');
     radial.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -3747,7 +3879,6 @@
     bgGrad.addColorStop(1, '#022c22');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
     const radial = ctx.createRadialGradient(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 200, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 1400);
     radial.addColorStop(0, 'rgba(52, 211, 153, 0.14)');
     radial.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -3762,7 +3893,6 @@
     bgGrad.addColorStop(1, '#091e3a');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
     const radial = ctx.createRadialGradient(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 200, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 1400);
     radial.addColorStop(0, 'rgba(96, 165, 250, 0.14)');
     radial.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -3777,7 +3907,6 @@
     bgGrad.addColorStop(1, '#ebe3d5');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
     const radial = ctx.createRadialGradient(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 200, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 1200);
     radial.addColorStop(0, 'rgba(197, 155, 39, 0.08)');
     radial.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -3793,9 +3922,11 @@
     }
   }
 
-  // --- Islamic Borders ---
-  function drawOrnamentalBorders() {
+  function drawOrnamentalBorders(borderElem) {
     ctx.save();
+    if (borderElem && borderElem.opacity !== undefined) {
+      ctx.globalAlpha = borderElem.opacity;
+    }
     const goldPrimary = '#dfbc55';
     const goldDark = '#9a7212';
     const outerMargin = 100;
@@ -3817,7 +3948,6 @@
     drawCornerFiligree(CANVAS_WIDTH - innerMargin, innerMargin, Math.PI / 2);
     drawCornerFiligree(CANVAS_WIDTH - innerMargin, CANVAS_HEIGHT - innerMargin, Math.PI);
     drawCornerFiligree(innerMargin, CANVAS_HEIGHT - innerMargin, -Math.PI / 2);
-
     ctx.restore();
   }
 
@@ -3825,11 +3955,9 @@
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
-
     ctx.fillStyle = '#dfbc55';
     ctx.strokeStyle = '#c59b27';
     ctx.lineWidth = 4;
-
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(80, 0);
@@ -3838,66 +3966,40 @@
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
     ctx.beginPath();
     ctx.arc(80, 80, 50, Math.PI, 1.5 * Math.PI, false);
     ctx.stroke();
-
     ctx.beginPath();
     ctx.arc(40, 40, 16, 0, 2 * Math.PI);
     ctx.fillStyle = '#9a7212';
     ctx.fill();
-
     ctx.restore();
   }
 
-  // --- Header, Title & Emblem ---
   function drawHeaderElements() {
     ctx.save();
     const isDark = state.currentTemplate !== 'academic';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
 
-    // School Logo (Top Right)
-    if (state.showSchoolLogo && schoolLogoImg) {
-      try {
-        const logoSize = 170;
-        ctx.drawImage(schoolLogoImg, CANVAS_WIDTH - 360, 160, logoSize, logoSize);
-      } catch (e) {}
-    }
+    ctx.font = `600 52px '${state.fontFamily}', 'Amiri', serif`;
+    ctx.fillStyle = '#dfbc55';
+    ctx.fillText('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ', CANVAS_WIDTH / 2, 170);
 
-    // Quran 3D Emblem (Top Left)
-    if (state.showQuranEmblem && quranEmblemImg) {
-      try {
-        const emblemSize = 160;
-        ctx.drawImage(quranEmblemImg, 200, 165, emblemSize, emblemSize);
-      } catch (e) {}
-    }
+    ctx.font = `700 48px '${state.fontFamily}', 'Cairo', sans-serif`;
+    ctx.fillStyle = isDark ? '#ffffff' : '#1e293b';
+    ctx.fillText('مَدْرَسَةُ البَيَانِ لِتَعْلِيمِ القُرْآنِ الكَرِيمِ', CANVAS_WIDTH / 2, 240);
 
-    // Header Title & Basmala (only when template is not blank)
-    if (state.currentTemplate !== 'blank') {
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
+    const barGrad = ctx.createLinearGradient(CANVAS_WIDTH / 2 - 400, 0, CANVAS_WIDTH / 2 + 400, 0);
+    barGrad.addColorStop(0, 'rgba(223, 188, 85, 0)');
+    barGrad.addColorStop(0.5, 'rgba(223, 188, 85, 1)');
+    barGrad.addColorStop(1, 'rgba(223, 188, 85, 0)');
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(CANVAS_WIDTH / 2 - 400, 310, 800, 4);
 
-      ctx.font = `600 52px '${state.fontFamily}', 'Amiri', serif`;
-      ctx.fillStyle = '#dfbc55';
-      ctx.fillText('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ', CANVAS_WIDTH / 2, 170);
-
-      ctx.font = `700 48px '${state.fontFamily}', 'Cairo', sans-serif`;
-      ctx.fillStyle = isDark ? '#ffffff' : '#1e293b';
-      ctx.fillText('مَدْرَسَةُ البَيَانِ لِتَعْلِيمِ القُرْآنِ الكَرِيمِ', CANVAS_WIDTH / 2, 240);
-
-      // Divider
-      const barGrad = ctx.createLinearGradient(CANVAS_WIDTH / 2 - 400, 0, CANVAS_WIDTH / 2 + 400, 0);
-      barGrad.addColorStop(0, 'rgba(223, 188, 85, 0)');
-      barGrad.addColorStop(0.5, 'rgba(223, 188, 85, 1)');
-      barGrad.addColorStop(1, 'rgba(223, 188, 85, 0)');
-      ctx.fillStyle = barGrad;
-      ctx.fillRect(CANVAS_WIDTH / 2 - 400, 310, 800, 4);
-
-      ctx.fillStyle = '#dfbc55';
-      ctx.font = '24px serif';
-      ctx.fillText('✦ ۞ ✦', CANVAS_WIDTH / 2, 298);
-    }
-
+    ctx.fillStyle = '#dfbc55';
+    ctx.font = '24px serif';
+    ctx.fillText('✦ ۞ ✦', CANVAS_WIDTH / 2, 298);
     ctx.restore();
   }
 
@@ -3911,9 +4013,7 @@
     ctx.save();
     ctx.globalAlpha = elem.opacity !== undefined ? elem.opacity : 1;
     ctx.translate(x, y);
-    if (elem.rotation) {
-      ctx.rotate((elem.rotation * Math.PI) / 180);
-    }
+    if (elem.rotation) ctx.rotate((elem.rotation * Math.PI) / 180);
 
     if (key === 'cert_title') {
       const weight = elem.isBold !== false ? '700' : '500';
@@ -3921,9 +4021,8 @@
       ctx.textBaseline = 'middle';
       ctx.font = `${weight} ${elem.size}px '${elemFont}', 'Amiri', serif`;
       ctx.fillStyle = elem.color || (state.currentTemplate === 'blank' ? '#1B3A4B' : (isDark ? '#dfbc55' : '#8B1E0F'));
-
       const rawText = elem.text !== undefined ? elem.text : (state.title || 'شَهَادَةُ شُكْرٍ وَتَقْدِير');
-      drawMultilineOrSingle(ctx, formatMentions(rawText, student), 0, 0, elem.size * 1.3);
+      drawMultilineOrSingle(ctx, formatMentions(rawText, student), 0, 0, elem.size * (elem.lineHeight || 1.3), elem);
     } else if (key === 'student_name') {
       const weight = elem.isBold !== false ? '700' : '500';
       const align = elem.align || 'center';
@@ -3967,7 +4066,7 @@
       }
 
       ctx.fillStyle = elem.color || (state.currentTemplate === 'blank' ? '#1B3A4B' : (isDark ? '#FFFFFF' : '#1e293b'));
-      drawMultilineOrSingle(ctx, nameText, 0, 0, elem.size * 1.3);
+      drawMultilineOrSingle(ctx, nameText, 0, 0, elem.size * (elem.lineHeight || 1.3), elem);
     } else if (key === 'grade_badge') {
       const weight = elem.isBold !== false ? '700' : '500';
       const rawText = elem.text !== undefined ? elem.text : '{{التقدير}}: {{العلامة_النهائية}}';
@@ -3978,11 +4077,8 @@
       const badgeHeight = elem.size + 22;
 
       ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight, 24);
-      } else {
-        ctx.rect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight);
-      }
+      if (ctx.roundRect) ctx.roundRect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight, 24);
+      else ctx.rect(-badgeWidth / 2, -badgeHeight / 2, badgeWidth, badgeHeight);
       ctx.fillStyle = elem.color || '#C59B27';
       ctx.fill();
       ctx.lineWidth = 3;
@@ -3994,7 +4090,8 @@
       const lightBadgeBg = ['#dfbc55', '#fbbf24', '#c59b27', '#6ee7b7', '#93c5fd', '#a7f3d0'];
       const isLightFill = lightBadgeBg.includes(String(elem.color || '').toLowerCase());
       ctx.fillStyle = isLightFill ? '#0f172a' : '#ffffff';
-      ctx.fillText(badgeText, 0, 0);
+      applyTextEffects(ctx, elem);
+      drawStyledTextLine(ctx, elem, badgeText, 0, 0);
     } else if (key === 'body_text') {
       const weight = elem.isBold ? '700' : '500';
       const rawText = elem.text !== undefined ? elem.text : state.bodyText;
@@ -4004,32 +4101,28 @@
       ctx.textBaseline = 'middle';
       ctx.font = `${weight} ${elem.size}px '${elemFont}', 'Amiri', serif`;
       ctx.fillStyle = elem.color || (state.currentTemplate === 'blank' ? '#334155' : (isDark ? '#e2e8f0' : '#334155'));
-
-      drawWrappedText(ctx, renderedText, 0, 0, elem.maxWidth || 2600, elem.size * 1.65);
+      drawWrappedText(ctx, renderedText, 0, 0, elem.maxWidth || 2600, elem.size * (elem.lineHeight || 1.65), elem);
     } else if (key === 'circle_info') {
       const weight = elem.isBold !== false ? '700' : '500';
       ctx.textAlign = elem.align || 'center';
       ctx.textBaseline = 'middle';
       ctx.font = `${weight} ${elem.size}px '${elemFont}', 'Cairo', sans-serif`;
       ctx.fillStyle = elem.color || (state.currentTemplate === 'blank' ? '#475569' : '#dfbc55');
-
       const rawText = elem.text !== undefined ? elem.text : 'الحلقة: {{اسم_الحلقة}}';
-      drawMultilineOrSingle(ctx, formatMentions(rawText, student), 0, 0, elem.size * 1.3);
+      drawMultilineOrSingle(ctx, formatMentions(rawText, student), 0, 0, elem.size * (elem.lineHeight || 1.3), elem);
     } else if (key === 'teacher_info') {
       const weight = elem.isBold !== false ? '700' : '500';
       ctx.textAlign = elem.align || 'center';
       ctx.textBaseline = 'middle';
       ctx.font = `${weight} ${elem.size}px '${elemFont}', 'Cairo', sans-serif`;
       ctx.fillStyle = elem.color || (state.currentTemplate === 'blank' ? '#475569' : '#dfbc55');
-
       const rawText = elem.text !== undefined ? elem.text : 'معلم الحلقة: {{اسم_المعلم}}';
-      drawMultilineOrSingle(ctx, formatMentions(rawText, student), 0, 0, elem.size * 1.3);
+      drawMultilineOrSingle(ctx, formatMentions(rawText, student), 0, 0, elem.size * (elem.lineHeight || 1.3), elem);
     }
 
     ctx.restore();
   }
 
-  // --- Official Golden Stamp ---
   function drawSchoolStamp(stampElemArg) {
     const stampElem = stampElemArg || state.elements.school_stamp;
     if (!stampElem || stampElem.visible === false || !state.showOfficialStamp) return;
@@ -4043,9 +4136,7 @@
 
     ctx.globalAlpha = stampElem.opacity !== undefined ? stampElem.opacity : 1;
     ctx.translate(sx, sy);
-    if (stampElem.rotation) {
-      ctx.rotate((stampElem.rotation * Math.PI) / 180);
-    }
+    if (stampElem.rotation) ctx.rotate((stampElem.rotation * Math.PI) / 180);
 
     ctx.lineWidth = Math.max(3, 6 * k);
     ctx.strokeStyle = stampColor;
@@ -4079,141 +4170,62 @@
 
     ctx.font = `600 ${Math.round(16 * k)}px 'Cairo', sans-serif`;
     ctx.fillText('Al-Bayan Certified', 0, 36 * k);
-
     ctx.restore();
   }
 
-  // --- Text Wrapping Helper ---
-  function drawWrappedText(context, text, x, y, maxWidth, lineHeight) {
-    const lines = measureWrappedLines(context, text, maxWidth);
-    const startY = y - (((lines.length - 1) * lineHeight) / 2);
-
-    for (let i = 0; i < lines.length; i++) {
-      context.fillText(lines[i], x, startY + (i * lineHeight));
-    }
-  }
-
-  // --- Zoom & Pan Stage Controls ---
-  function setupStageControls() {
-    const zoomInBtn = document.getElementById('zoomInBtn');
-    const zoomOutBtn = document.getElementById('zoomOutBtn');
-    const zoomFitBtn = document.getElementById('zoomFitBtn');
-    const toggleOverlayBtn = document.getElementById('toggleOverlayBtn');
-
-    if (zoomInBtn) {
-      zoomInBtn.addEventListener('click', () => {
-        state.scale = Math.min(2.5, Math.round((state.scale + 0.15) * 100) / 100);
-        applyCanvasTransform();
-      });
-    }
-
-    if (zoomOutBtn) {
-      zoomOutBtn.addEventListener('click', () => {
-        state.scale = Math.max(0.4, Math.round((state.scale - 0.15) * 100) / 100);
-        applyCanvasTransform();
-      });
-    }
-
-    if (zoomFitBtn) {
-      zoomFitBtn.addEventListener('click', () => {
-        state.scale = 1;
-        state.panX = 0;
-        state.panY = 0;
-        applyCanvasTransform();
-      });
-    }
-
-    if (toggleOverlayBtn) {
-      toggleOverlayBtn.addEventListener('click', () => {
-        const isHidden = dragOverlay.style.display === 'none';
-        dragOverlay.style.display = isHidden ? 'block' : 'none';
-        showToast(isHidden ? 'تم إظهار مقابض السحب' : 'تم إخفاء مقابض السحب');
-      });
-    }
-
-    // Floating Stage Controls (Direct Add Text, Add Image)
-    const addTextBtn = document.getElementById('addTextBtn');
-    const addImageBtn = document.getElementById('addImageBtn');
-    const customStickerInput = document.getElementById('customStickerInput');
-    const proColorPicker = document.getElementById('proColorPicker');
-
-    if (addTextBtn) {
-      addTextBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        addCustomText('{{اسم_الطالب}}', { openEditor: false });
-      });
-    }
-
-    if (addImageBtn && customStickerInput) {
-      addImageBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        customStickerInput.click();
-      });
-    }
-
-    if (customStickerInput) {
-      customStickerInput.addEventListener('change', (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (file) {
-          addCustomImage(file);
-          customStickerInput.value = '';
-        }
-      });
-    }
-
-    if (proColorPicker) {
-      proColorPicker.addEventListener('input', (e) => {
-        applyTextColor(e.target.value, false);
-      });
-      proColorPicker.addEventListener('change', () => {
-        pushHistoryState('color_change');
-      });
-    }
-
-    window.addEventListener('resize', () => {
-      // Handles are percentage based, so they automatically adjust on resize!
-    });
-  }
-
+  // =========================================================
+  // PINCH-TO-ZOOM & WORKSPACE PAN GESTURES
+  // =========================================================
   function applyCanvasTransform() {
     if (!canvasFrame) return;
     canvasFrame.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.scale})`;
     const zoomBadge = document.getElementById('zoomLevelBadge');
-    if (zoomBadge) {
-      zoomBadge.textContent = `${Math.round(state.scale * 100)}%`;
-    }
+    const zoomFitBtn = document.getElementById('zoomFitBtn');
+    const isModified = Math.abs(state.scale - 1) > 0.02 || Math.abs(state.panX) > 2 || Math.abs(state.panY) > 2;
+    if (zoomBadge) zoomBadge.textContent = `${Math.round(state.scale * 100)}%`;
+    if (zoomFitBtn) zoomFitBtn.style.display = isModified ? 'inline-flex' : 'none';
   }
 
-  function applyCanvasScale() {
-    applyCanvasTransform();
-  }
-
-  // --- Pan, Zoom & Touch Viewport Gestures ---
   function setupPanAndGestures() {
-    const viewport = document.getElementById('certStageContainer') || document.getElementById('certStageViewport');
+    const viewport = document.getElementById('certStageContainer');
     if (!viewport) return;
 
     let isPanning = false;
+    let panHasMoved = false;
+    let panPointerId = null;
     let panStartX = 0;
     let panStartY = 0;
+    let panOriginClientX = 0;
+    let panOriginClientY = 0;
     let initialPinchDistance = 0;
     let initialScale = 1;
+    let touchPanStartX = 0;
+    let touchPanStartY = 0;
+    let twoFingerActive = false;
 
-    // Deselect active element when clicking empty canvas/stage area
+    const clampPan = (nx, ny) => {
+      const rect = viewport.getBoundingClientRect();
+      const maxX = Math.max(240, rect.width * state.scale * 0.85);
+      const maxY = Math.max(200, rect.height * state.scale * 0.85);
+      return {
+        x: Math.max(-maxX, Math.min(maxX, nx)),
+        y: Math.max(-maxY, Math.min(maxY, ny))
+      };
+    };
+
     viewport.addEventListener('pointerdown', (e) => {
+      if (e.isPrimary === false) return;
       const isDirectEmptyTarget = e.target === viewport || e.target === canvas || e.target === canvasFrame || e.target === dragOverlay;
-      if (isDirectEmptyTarget && !e.target.closest('.drag-box-handle')) {
-        if (state.activeElementKey) {
-          state.activeElementKey = null;
-          highlightActiveHandle();
-          updateTypographyPanelActiveElement();
-        }
-      }
+      if (!isDirectEmptyTarget || e.target.closest('.drag-box-handle')) return;
 
-      // Middle-mouse drag or space+left click or Alt+click for pan
-      if (e.button === 1 || (e.button === 0 && e.altKey)) {
-        e.preventDefault();
+      // Single-finger pan on empty area / locked layer, or mouse middle/Alt drag
+      const allowPan = e.button === 1 || (e.button === 0 && e.altKey) || e.pointerType === 'touch' || (e.button === 0 && state.scale > 1.02);
+      if (allowPan && e.button !== 2) {
         isPanning = true;
+        panHasMoved = false;
+        panPointerId = e.pointerId;
+        panOriginClientX = e.clientX;
+        panOriginClientY = e.clientY;
         panStartX = e.clientX - state.panX;
         panStartY = e.clientY - state.panY;
         viewport.style.cursor = 'grabbing';
@@ -4221,47 +4233,74 @@
     });
 
     window.addEventListener('pointermove', (e) => {
-      if (isPanning) {
-        e.preventDefault();
-        state.panX = e.clientX - panStartX;
-        state.panY = e.clientY - panStartY;
-        applyCanvasTransform();
+      if (isPanning && e.pointerId === panPointerId && !twoFingerActive) {
+        if (Math.abs(e.clientX - panOriginClientX) > 4 || Math.abs(e.clientY - panOriginClientY) > 4) {
+          panHasMoved = true;
+        }
+        if (panHasMoved) {
+          const clamped = clampPan(e.clientX - panStartX, e.clientY - panStartY);
+          state.panX = clamped.x;
+          state.panY = clamped.y;
+          applyCanvasTransform();
+        }
       }
     });
 
-    window.addEventListener('pointerup', () => {
-      if (isPanning) {
+    const endMousePan = (e) => {
+      if (isPanning && (!e || e.pointerId === panPointerId)) {
+        const wasTap = !panHasMoved && !twoFingerActive;
         isPanning = false;
+        panPointerId = null;
         viewport.style.cursor = '';
+        if (wasTap) {
+          if (state.activeElementKey) setSelectedElement(null);
+          if (state.layersDrawerOpen) toggleLayersDrawer(false);
+        }
       }
-    });
+    };
+    window.addEventListener('pointerup', endMousePan);
+    window.addEventListener('pointercancel', endMousePan);
 
-    // Touch pinch-to-zoom and two-finger pan
+    // Touch Pinch-to-Zoom & 2-Finger Pan
     viewport.addEventListener('touchstart', (e) => {
       if (e.touches.length === 2) {
         e.preventDefault();
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        initialPinchDistance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+        twoFingerActive = true;
+        isPanning = false;
+        // Cancel any single-finger element drag/scale if user puts 2nd finger down to zoom
+        if (dragState.isDragging) {
+          dragState.isDragging = false;
+          dragState.key = null;
+          updateSnapGuides(false, false);
+          document.querySelectorAll('.drag-box-handle.dragging').forEach((h) => h.classList.remove('dragging'));
+        }
+        if (scaleDragState.isScaling) {
+          scaleDragState.isScaling = false;
+          scaleDragState.key = null;
+        }
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        initialPinchDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         initialScale = state.scale;
-        panStartX = ((touch1.clientX + touch2.clientX) / 2) - state.panX;
-        panStartY = ((touch1.clientY + touch2.clientY) / 2) - state.panY;
+        touchPanStartX = ((t1.clientX + t2.clientX) / 2) - state.panX;
+        touchPanStartY = ((t1.clientY + t2.clientY) / 2) - state.panY;
       }
     }, { passive: false });
 
     viewport.addEventListener('touchmove', (e) => {
       if (e.touches.length === 2) {
         e.preventDefault();
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        const currentDist = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         if (initialPinchDistance > 0) {
           const ratio = currentDist / initialPinchDistance;
-          state.scale = Math.min(2.5, Math.max(0.35, Math.round(initialScale * ratio * 100) / 100));
-          const currentCenterX = (touch1.clientX + touch2.clientX) / 2;
-          const currentCenterY = (touch1.clientY + touch2.clientY) / 2;
-          state.panX = currentCenterX - panStartX;
-          state.panY = currentCenterY - panStartY;
+          state.scale = Math.min(3.0, Math.max(0.4, Math.round(initialScale * ratio * 100) / 100));
+          const cx = (t1.clientX + t2.clientX) / 2;
+          const cy = (t1.clientY + t2.clientY) / 2;
+          const clamped = clampPan(cx - touchPanStartX, cy - touchPanStartY);
+          state.panX = clamped.x;
+          state.panY = clamped.y;
           applyCanvasTransform();
         }
       }
@@ -4270,52 +4309,37 @@
     viewport.addEventListener('touchend', (e) => {
       if (e.touches.length < 2) {
         initialPinchDistance = 0;
+        twoFingerActive = false;
       }
     });
 
-    // Ctrl + Mouse Wheel Zoom
     viewport.addEventListener('wheel', (e) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        state.scale = Math.min(2.5, Math.max(0.4, Math.round((state.scale + delta) * 100) / 100));
+        state.scale = Math.min(3.0, Math.max(0.4, Math.round((state.scale + delta) * 100) / 100));
         applyCanvasTransform();
       }
     }, { passive: false });
   }
 
-  // --- Professional Undo / Redo History Stack ---
+  // =========================================================
+  // UNDO / REDO HISTORY STACK
+  // =========================================================
   function setupHistoryManager() {
     const undoBtn = document.getElementById('undoBtn');
     const redoBtn = document.getElementById('redoBtn');
 
-    if (undoBtn) {
-      undoBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        undo();
-      });
-    }
-
-    if (redoBtn) {
-      redoBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        redo();
-      });
-    }
+    if (undoBtn) undoBtn.addEventListener('click', (e) => { e.stopPropagation(); undo(); });
+    if (redoBtn) redoBtn.addEventListener('click', (e) => { e.stopPropagation(); redo(); });
 
     window.addEventListener('keydown', (e) => {
       const target = e.target;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-        return;
-      }
-
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
         e.preventDefault();
-        if (e.shiftKey) {
-          redo();
-        } else {
-          undo();
-        }
+        if (e.shiftKey) redo();
+        else undo();
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
         e.preventDefault();
         redo();
@@ -4337,10 +4361,8 @@
 
   function pushHistoryState(actionName = 'action') {
     if (history.isApplying) return;
-
     const snapshot = getSerializedStudioSnapshot();
 
-    // If snapshot is identical to current top, don't duplicate
     if (history.stack.length > 0 && history.index >= 0 && history.index < history.stack.length) {
       if (history.stack[history.index].data === snapshot) {
         saveDraftToStorage();
@@ -4348,17 +4370,12 @@
       }
     }
 
-    // Cut forward redo history if new action taken
     if (history.index < history.stack.length - 1) {
       history.stack = history.stack.slice(0, history.index + 1);
     }
 
     history.stack.push({ name: actionName, data: snapshot });
-
-    if (history.stack.length > (history.maxSize || 35)) {
-      history.stack.shift();
-    }
-
+    if (history.stack.length > (history.maxSize || 35)) history.stack.shift();
     history.index = history.stack.length - 1;
     updateHistoryButtons();
     saveDraftToStorage();
@@ -4370,10 +4387,7 @@
       const parsed = JSON.parse(snapshotStr);
       await applyDesignSnapshotObj(parsed);
       if (parsed.activeElementKey !== undefined) {
-        state.activeElementKey = parsed.activeElementKey;
-        highlightActiveHandle();
-        renderElementSelectorAndLayers();
-        updateTypographyPanelActiveElement();
+        setSelectedElement(parsed.activeElementKey);
       }
       updateHistoryButtons();
       saveDraftToStorage();
@@ -4401,26 +4415,15 @@
   function updateHistoryButtons() {
     const undoBtn = document.getElementById('undoBtn');
     const redoBtn = document.getElementById('redoBtn');
-
     const canUndo = history.index > 0;
     const canRedo = history.index < history.stack.length - 1;
-
-    if (undoBtn) {
-      undoBtn.disabled = !canUndo;
-      undoBtn.classList.toggle('disabled', !canUndo);
-      undoBtn.style.opacity = canUndo ? '1' : '0.4';
-      undoBtn.style.pointerEvents = canUndo ? 'auto' : 'none';
-    }
-
-    if (redoBtn) {
-      redoBtn.disabled = !canRedo;
-      redoBtn.classList.toggle('disabled', !canRedo);
-      redoBtn.style.opacity = canRedo ? '1' : '0.4';
-      redoBtn.style.pointerEvents = canRedo ? 'auto' : 'none';
-    }
+    if (undoBtn) undoBtn.disabled = !canUndo;
+    if (redoBtn) redoBtn.disabled = !canRedo;
   }
 
-  // --- Pure Export Handlers (Browser + Capacitor Native Support) ---
+  // =========================================================
+  // EXPORT & NATIVE ANDROID SHARE BRIDGE
+  // =========================================================
   function setupExportHandlers() {
     const btnDownloadSinglePng = document.getElementById('btnDownloadSinglePng');
     const btnDownloadSinglePdf = document.getElementById('btnDownloadSinglePdf');
@@ -4439,12 +4442,10 @@
     }
 
     if (btnDownloadSinglePng) btnDownloadSinglePng.addEventListener('click', downloadCurrentCertificatePng);
-    if (quickExportBtn) quickExportBtn.addEventListener('click', downloadCurrentCertificatePng);
     if (btnDownloadSinglePdf) btnDownloadSinglePdf.addEventListener('click', downloadCurrentCertificatePdf);
     if (btnDownloadBatchZip) btnDownloadBatchZip.addEventListener('click', downloadBatchZip);
     if (btnDownloadBatchPdf) btnDownloadBatchPdf.addEventListener('click', downloadBatchPdf);
     if (btnShareMobile) btnShareMobile.addEventListener('click', shareCurrentCertificate);
-    if (quickShareBtn) quickShareBtn.addEventListener('click', shareCurrentCertificate);
     if (btnPrintDirect) btnPrintDirect.addEventListener('click', printCurrentCertificate);
     if (cancelBatchBtn) {
       cancelBatchBtn.addEventListener('click', () => {
@@ -4520,26 +4521,18 @@
     }
 
     const blob = await new Promise((resolve) => targetCanvas.toBlob(resolve, cfg.mime, cfg.quality));
-    if (tempCanvas) {
-      tempCanvas.width = 0;
-      tempCanvas.height = 0;
-    }
-    if (!blob || blob.size <= 0) {
-      throw new Error('تعذر توليد بيانات الصورة (0 بايت)');
-    }
+    if (tempCanvas) { tempCanvas.width = 0; tempCanvas.height = 0; }
+    if (!blob || blob.size <= 0) throw new Error('تعذر توليد بيانات الصورة (0 بايت)');
     return { blob, cfg };
   }
 
   async function saveBlobOnDevice(blob, filename, options = {}) {
-    if (!blob || blob.size <= 0) {
-      throw new Error('الملف الناتج فارغ (0 بايت)');
-    }
+    if (!blob || blob.size <= 0) throw new Error('الملف الناتج فارغ (0 بايت)');
 
-    const target = options.target || 'downloads'; // 'gallery' | 'downloads'
+    const target = options.target || 'downloads';
     const mimeType = options.mimeType || blob.type || 'application/octet-stream';
     const capPlugins = window.Capacitor && window.Capacitor.Plugins;
 
-    // 1. Primary Native Android Path via AlbayanExport Capacitor Plugin (MediaStore + MediaScanner + Verified Read)
     if (capPlugins && capPlugins.AlbayanExport) {
       const base64Data = await blobToBase64(blob);
       const pluginFn = target === 'gallery'
@@ -4547,25 +4540,14 @@
         : capPlugins.AlbayanExport.saveFileToDownloads;
 
       if (typeof pluginFn === 'function') {
-        const res = await pluginFn.call(capPlugins.AlbayanExport, {
-          base64Data,
-          fileName: filename,
-          mimeType
-        });
-
+        const res = await pluginFn.call(capPlugins.AlbayanExport, { base64Data, fileName: filename, mimeType });
         if (!res || res.verified !== true || !(Number(res.bytes) > 0)) {
           throw new Error('تعذر التحقق من كتابة الملف على وحدة التخزين');
         }
-        return {
-          verified: true,
-          path: res.path || filename,
-          uri: res.uri || '',
-          bytes: Number(res.bytes)
-        };
+        return { verified: true, path: res.path || filename, uri: res.uri || '', bytes: Number(res.bytes) };
       }
     }
 
-    // 2. Fallback ONLY if running in regular web browser (NOT Capacitor APK WebView)
     if (window.IS_CAPACITOR_APP || (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform())) {
       throw new Error('إضافة الحفظ الأصلية AlbayanExport غير متاحة في هذه النسخة');
     }
@@ -4578,11 +4560,7 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1500);
-    return {
-      verified: true,
-      path: filename,
-      bytes: blob.size
-    };
+    return { verified: true, path: filename, bytes: blob.size };
   }
 
   function updateBatchModal(visible, title = '', done = 0, total = 0, studentName = '') {
@@ -4595,7 +4573,6 @@
     if (!modal) return;
     modal.style.display = visible ? 'flex' : 'none';
     if (!visible) return;
-
     if (titleEl && title) titleEl.textContent = title;
     if (countEl) countEl.textContent = `${done} / ${total}`;
     const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
@@ -4603,12 +4580,10 @@
     if (subEl) subEl.textContent = studentName ? `الطالب الحالي: ${studentName}` : 'يرجى الانتظار وعدم إغلاق الصفحة';
   }
 
-  // 1. Single Image Export (Gallery + Pictures/AlbayanCertificates)
   async function downloadCurrentCertificatePng() {
     const student = state.students[state.currentStudentIndex] || {};
     const formatKey = state.exportFormat || 'png_uhd';
     showToast('جاري تجهيز وحفظ الشهادة في المعرض...');
-
     try {
       drawCertificateCanvas();
       const { blob, cfg } = await renderExportCanvasBlob(canvas, formatKey);
@@ -4624,7 +4599,6 @@
     }
   }
 
-  // 2. Single PDF Export (Downloads/AlbayanCertificates)
   async function downloadCurrentCertificatePdf() {
     const student = state.students[state.currentStudentIndex] || {};
     if (!window.jspdf || !window.jspdf.jsPDF) {
@@ -4632,17 +4606,12 @@
       printCurrentCertificate();
       return;
     }
-
     showToast('جاري إنشاء ملف PDF وحفظه في التنزيلات...');
     try {
       drawCertificateCanvas();
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'pt',
-        format: 'a4'
-      });
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
       doc.addImage(imgData, 'JPEG', 0, 0, 841.89, 595.28);
       const pdfBlob = doc.output('blob');
       const filename = getCleanFileName(student.name, 'pdf');
@@ -4657,13 +4626,11 @@
     }
   }
 
-  // 3A. Batch ZIP Export (with progress, cancel, & verified Downloads write)
   async function downloadBatchZip() {
     if (!window.JSZip) {
       showToast('مكتبة ضغط ZIP غير محملة، يمكنك استخدام PDF المجمع');
       return;
     }
-
     if (state.students.length === 0) {
       showToast('لا يوجد طلاب محددون للتصدير');
       return;
@@ -4679,19 +4646,15 @@
     try {
       let packedCount = 0;
       for (let i = 0; i < total; i++) {
-        if (state.isBatchCancelled) {
-          throw new Error('BATCH_CANCELLED');
-        }
+        if (state.isBatchCancelled) throw new Error('BATCH_CANCELLED');
         const st = state.students[i];
         state.currentStudentIndex = i;
         drawCertificateCanvas();
         updateBatchModal(true, 'جاري تجهيز حزمة الشهادات (ZIP)...', i + 1, total, st.name);
 
         const { blob, cfg } = await renderExportCanvasBlob(canvas, formatKey);
-        const fileName = `${i + 1}_${getCleanFileName(st.name, cfg.ext)}`;
-        zip.file(fileName, blob);
+        zip.file(`${i + 1}_${getCleanFileName(st.name, cfg.ext)}`, blob);
         packedCount += 1;
-
         await new Promise((r) => setTimeout(r, 15));
       }
 
@@ -4700,9 +4663,7 @@
 
       updateBatchModal(true, 'جاري ضغط وحفظ ملف ZIP...', total, total, `${packedCount} شهادة`);
       const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 5 } });
-      if (!content || content.size <= 0) {
-        throw new Error('ملف ZIP الناتج فارغ');
-      }
+      if (!content || content.size <= 0) throw new Error('ملف ZIP الناتج فارغ');
 
       const zipName = `شهادات_مدرسة_البيان_${new Date().toISOString().slice(0, 10)}.zip`;
       const saved = await saveBlobOnDevice(content, zipName, { target: 'downloads', mimeType: 'application/zip' });
@@ -4724,13 +4685,11 @@
     }
   }
 
-  // 3B. Batch Multi-Page PDF Export (with progress, cancel, & verified Downloads write)
   async function downloadBatchPdf() {
     if (state.students.length === 0) {
       showToast('لا يوجد طلاب محددون للتصدير');
       return;
     }
-
     if (!window.jspdf || !window.jspdf.jsPDF) {
       showToast('مكتبة PDF غير متاحة حالياً، جاري الفتح للطباعة...');
       printCurrentCertificate();
@@ -4741,28 +4700,19 @@
     const total = state.students.length;
     const initialIndex = state.currentStudentIndex;
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-      orientation: 'landscape',
-      unit: 'pt',
-      format: 'a4'
-    });
-
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     updateBatchModal(true, 'جاري إنشاء ملف PDF مجمع...', 0, total, '');
 
     try {
       for (let i = 0; i < total; i++) {
-        if (state.isBatchCancelled) {
-          throw new Error('BATCH_CANCELLED');
-        }
+        if (state.isBatchCancelled) throw new Error('BATCH_CANCELLED');
         const st = state.students[i];
         state.currentStudentIndex = i;
         drawCertificateCanvas();
         updateBatchModal(true, 'جاري إنشاء ملف PDF مجمع...', i + 1, total, st.name);
-
         if (i > 0) doc.addPage('a4', 'landscape');
         const imgData = canvas.toDataURL('image/jpeg', 0.90);
         doc.addImage(imgData, 'JPEG', 0, 0, 841.89, 595.28);
-
         await new Promise((r) => setTimeout(r, 15));
       }
 
@@ -4790,12 +4740,10 @@
     }
   }
 
-  // 4. Mobile Native Share API + Capacitor AlbayanExport.shareFile
   async function shareCurrentCertificate() {
     const student = state.students[state.currentStudentIndex] || {};
     const formatKey = state.exportFormat === 'jpg_hd' ? 'jpg_hd' : 'png_uhd';
     showToast('جاري إعداد الشهادة للمشاركة...');
-
     try {
       drawCertificateCanvas();
       const { blob, cfg } = await renderExportCanvasBlob(canvas, formatKey);
@@ -4843,7 +4791,6 @@
     }
   }
 
-  // 5. Direct Print (WebView-Safe In-DOM #printContainer + CSS @media print)
   function printCurrentCertificate() {
     const dataUrl = canvas.toDataURL('image/png');
     const printContainer = document.getElementById('printContainer');
@@ -4852,30 +4799,19 @@
       const img = document.createElement('img');
       img.src = dataUrl;
       img.alt = 'شهادة التقدير';
-      img.onload = () => {
-        window.print();
-      };
+      img.onload = () => window.print();
       printContainer.appendChild(img);
       return;
     }
-
-    // Fallback if printContainer was removed
     const win = window.open('', '_blank');
     if (win) {
-      win.document.write(`
-        <!DOCTYPE html>
-        <html dir="rtl">
-        <head><title>طباعة الشهادة</title></head>
-        <body onload="window.print();" style="margin:0;"><img src="${dataUrl}" style="width:100vw;height:100vh;object-fit:contain;" alt="شهادة"></body>
-        </html>
-      `);
+      win.document.write(`<!DOCTYPE html><html dir="rtl"><head><title>طباعة الشهادة</title></head><body onload="window.print();" style="margin:0;"><img src="${dataUrl}" style="width:100vw;height:100vh;object-fit:contain;" alt="شهادة"></body></html>`);
       win.document.close();
     } else {
       showToast('يرجى استخدام خيار حفظ PDF أو PNG للطباعة من الهاتف');
     }
   }
 
-  // --- Run on DOM Ready ---
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initStudio);
   } else {
