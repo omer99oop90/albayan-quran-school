@@ -233,13 +233,25 @@ function normalizeStudentId(id) {
 
 let lastRenderedPeriodSignature = "";
 
+function formatArabicStudentsCount(count) {
+  const n = Math.max(0, parseInt(count, 10) || 0);
+  if (n === 0) return "لا يوجد طلاب";
+  if (n === 1) return "طالب واحد";
+  if (n === 2) return "طالبان";
+  if (n >= 3 && n <= 10) return `${n} طلاب`;
+  return `${n} طالباً`;
+}
+
 function renderRosterPeriodSelector(configInput = null, reloadIfChanged = false) {
   const selectEl = document.getElementById("filterMonth");
   const eng = window.AlbayanCycleEngine;
   if (!selectEl || !eng || typeof eng.buildPeriodOptionsList !== "function") return;
 
-  const { config, options } = eng.buildPeriodOptionsList(configInput);
+  const { config, options, subtitle } = eng.buildPeriodOptionsList(configInput);
   currentPeriodType = config.mode || config.periodType || "monthly";
+  if (subtitle) {
+    selectEl.dataset.sheetSubtitle = subtitle;
+  }
 
   const signature = `${currentPeriodType}|${config.termMonths}|${config.startDate}|${config.yearNumber || 1}`;
   if (signature === lastRenderedPeriodSignature && selectEl.options.length === options.length) {
@@ -575,9 +587,10 @@ function populateCircleSelect(circles) {
 
   selectElem.innerHTML = sorted.map(c => {
     const isSelected = String(normalizeCircleId(activeCircleId)) === String(normalizeCircleId(c.id));
+    const countLabel = formatArabicStudentsCount(c.student_count || 0);
     return `
       <option value="${c.id}" ${isSelected ? 'selected' : ''}>
-        ${c.name} (${c.student_count || 0} طلاب) - الأستاذ: ${c.teacher_name || 'إدارة عامة'}
+        ${c.name} (${countLabel}) - الأستاذ: ${c.teacher_name || 'إدارة عامة'}
       </option>
     `;
   }).join("");

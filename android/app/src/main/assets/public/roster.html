@@ -174,20 +174,24 @@
     }
 
     .btn-text-action {
-      background: rgba(37, 99, 235, 0.08);
-      border: 1px solid rgba(37, 99, 235, 0.2);
+      background: #2563EB !important;
+      background-image: none !important;
+      border: none !important;
       box-shadow: none !important;
-      padding: 8px 14px;
+      height: 38px;
+      min-height: 38px !important;
+      padding: 0 14px;
       border-radius: 12px;
-      color: var(--primary, #2563eb);
+      color: #FFFFFF !important;
       font-weight: 800;
       font-size: 13.5px;
       font-family: inherit;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background-color 0.16s ease, transform 0.14s ease;
       user-select: none;
       text-decoration: none;
       white-space: nowrap;
@@ -195,13 +199,18 @@
     }
 
     .btn-text-action:hover {
-      background: rgba(37, 99, 235, 0.15);
-      color: #1d4ed8;
-      transform: translateY(-1px);
+      background: #1D4ED8 !important;
+      color: #FFFFFF !important;
+      transform: none;
     }
 
     .btn-text-action:active {
-      transform: translateY(0);
+      transform: scale(0.97);
+    }
+
+    .btn-text-action svg,
+    .btn-text-action .lucide {
+      margin: 0 !important;
     }
 
     /* Enhanced Desktop Scrollbar for Roster */
@@ -260,8 +269,15 @@
       position: sticky;
       top: 0;
       z-index: 10;
-      background: #1f2937;
-      color: #ffffff;
+      background: #F1F5F9 !important;
+      color: #334155 !important;
+      border-bottom: 1px solid #E2E8F0 !important;
+      padding: 12px 14px !important;
+      font-weight: 800;
+    }
+
+    .table-scroll-container {
+      padding-inline: 2px;
     }
 
     html[data-theme="dark"] .period-badge-group {
@@ -274,14 +290,14 @@
     }
 
     html[data-theme="dark"] .btn-text-action {
-      color: #60a5fa;
-      background: rgba(96, 165, 250, 0.08);
-      border-color: rgba(96, 165, 250, 0.2);
+      color: #FFFFFF !important;
+      background: #2563EB !important;
+      border: none !important;
     }
 
     html[data-theme="dark"] .btn-text-action:hover {
-      background: rgba(96, 165, 250, 0.16);
-      color: #93c5fd;
+      background: #1D4ED8 !important;
+      color: #FFFFFF !important;
     }
 
     html[data-theme="dark"] .table-scroll-container {
@@ -302,7 +318,9 @@
     }
 
     html[data-theme="dark"] .roster-table thead th {
-      background: #0f172a;
+      background: #1E293B !important;
+      color: #E2E8F0 !important;
+      border-bottom: 1px solid #334155 !important;
     }
 
     @media (max-width: 768px) {
@@ -490,7 +508,7 @@
           <div class="period-badge-group">
             <i data-lucide="graduation-cap" class="period-badge-icon"></i>
             <span class="period-badge-label">الحلقة:</span>
-            <select id="rosterCircleSelect" onchange="switchCircleFromSelect(this.value)" style="cursor:pointer; font-weight:700; max-width:180px;">
+            <select id="rosterCircleSelect" onchange="switchCircleFromSelect(this.value)" style="cursor:pointer; font-weight:700; min-width:0; max-width:100%;">
               <option value="">جارٍ تحميل الحلقات...</option>
             </select>
           </div>

@@ -555,23 +555,22 @@
       <div class="cv-viewer-header">
         <div class="cv-viewer-title-box">
           <div class="cv-viewer-badge-icon">
-            <i data-lucide="award" style="width:20px; height:20px;"></i>
+            <i data-lucide="award" style="width:19px; height:19px;"></i>
           </div>
-          <div>
+          <div class="cv-viewer-title-meta">
             <h3 class="cv-viewer-title" id="cvViewerTitle">معاينة وثيقة الإنجاز</h3>
             <p class="cv-viewer-filename" id="cvViewerFilename">شهادة_إتمام_الجزء.pdf</p>
           </div>
         </div>
         <div class="cv-viewer-actions">
-          <a id="cvViewerOpenTabBtn" href="#" target="_blank" class="cv-viewer-btn open-tab" title="فتح في نافذة مستقلة">
-            <i data-lucide="external-link" style="width:15px; height:15px;"></i>
-            <span>فتح في نافذة جديدة</span>
-          </a>
-          <a id="cvViewerDownloadBtn" href="#" download class="cv-viewer-btn download" title="تحميل الملف">
-            <i data-lucide="download" style="width:15px; height:15px;"></i>
-          </a>
-          <button type="button" class="cv-viewer-close-btn" onclick="closeFloatingFileViewer()" title="إغلاق">
-            <i data-lucide="x" style="width:22px; height:22px;"></i>
+          <button type="button" id="cvViewerOpenTabBtn" class="cv-viewer-icon-btn open-tab" title="فتح خارجياً" aria-label="فتح خارجياً">
+            <i data-lucide="external-link" style="width:18px; height:18px;"></i>
+          </button>
+          <button type="button" id="cvViewerDownloadBtn" class="cv-viewer-icon-btn download" title="تحميل الملف" aria-label="تحميل الملف">
+            <i data-lucide="download" style="width:18px; height:18px;"></i>
+          </button>
+          <button type="button" class="cv-viewer-close-btn" onclick="closeFloatingFileViewer()" title="إغلاق" aria-label="إغلاق">
+            <i data-lucide="x" style="width:18px; height:18px;"></i>
           </button>
         </div>
       </div>

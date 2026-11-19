@@ -3315,10 +3315,12 @@ function openCustomPeriodPicker(event) {
     }
   }
 
+  const headerSubtitle = (built && built.subtitle) ? `<div style="font-size:12px; font-weight:600; color:#2563EB; text-align:center; margin-top:2px;">${built.subtitle}</div>` : "";
   const content = `
     <div class="quran-picker-card" onclick="event.stopPropagation()" style="width: 100%; border: none; padding: 16px;">
       <div style="font-size:15px; font-weight:800; color:var(--text); text-align:center; margin-bottom: 12px;">
-        ⏳ اختيار الفصل أو سجل نهاية السنة
+        اختر الفترة أو سجل نهاية السنة
+        ${headerSubtitle}
       </div>
       <div style="display:flex; flex-direction:column; gap:4px; max-height:240px; overflow-y:auto; margin-bottom:12px;">
         ${periodsHtml}

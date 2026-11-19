@@ -3009,9 +3009,11 @@
       const termMonths = clampTermMonths(cfg.termMonths);
       const startObj = parseYMD(cfg.startDate);
       const options = [];
+      let subtitle = '';
 
       if (mode === 'weekly') {
         const formatShortDM = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+        subtitle = 'النظام الأسبوعي • 7 أيام لكل أسبوع';
         for (let i = 0; i < 12; i++) {
           const wStart = addDays(startObj, i * 7);
           const wEnd = addDays(wStart, 6);
@@ -3023,29 +3025,32 @@
             isYearly: false
           });
         }
-        options.push({ value: 'سجل نهاية السنة', label: '🎓 كشف نهاية السنة الشامل', isYearly: true });
+        options.push({ value: 'سجل نهاية السنة', label: 'كشف نهاية السنة الشامل', isYearly: true });
       } else if (mode === 'term') {
+        const termUnit = termMonths === 2 ? 'شهران' : `${termMonths} أشهر`;
+        subtitle = `النظام الفصلي • ${termUnit} لكل فصل`;
         const count = Math.max(1, Math.ceil(12 / termMonths));
         for (let i = 0; i < count; i++) {
           const ord = ARABIC_ORDINALS[i] || `رقم ${i + 1}`;
-          const labelText = `الفصل ${ord} (${termMonths} أشهر)`;
           options.push({
-            value: labelText,
-            label: labelText,
+            value: `الفصل ${ord} (${termMonths} أشهر)`,
+            label: `الفصل ${ord}`,
             isYearly: false
           });
         }
-        options.push({ value: 'سجل نهاية السنة', label: '🎓 كشف نهاية السنة الشامل', isYearly: true });
+        options.push({ value: 'سجل نهاية السنة', label: 'كشف نهاية السنة الشامل', isYearly: true });
       } else if (mode === 'yearly') {
-        options.push({ value: 'سجل نهاية السنة', label: '🎓 السجل السنوي الشامل', isYearly: true });
+        subtitle = 'النظام السنوي الشامل';
+        options.push({ value: 'سجل نهاية السنة', label: 'السجل السنوي الشامل', isYearly: true });
       } else {
+        subtitle = 'النظام الشهري • الأشهر الهجرية';
         HIJRI_MONTH_NAMES.forEach((m) => {
           options.push({ value: m, label: `شهر ${m}`, isYearly: false });
         });
-        options.push({ value: 'سجل نهاية السنة', label: '🎓 كشف نهاية السنة الشامل', isYearly: true });
+        options.push({ value: 'سجل نهاية السنة', label: 'كشف نهاية السنة الشامل', isYearly: true });
       }
 
-      return { config: cfg, options };
+      return { config: cfg, options, subtitle };
     }
 
     function getArchives() {

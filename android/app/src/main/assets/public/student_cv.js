@@ -1520,6 +1520,7 @@ function renderInlineCategoryTags(category, focusIndex = null) {
     const tagText = isAchievement ? (typeof item === "object" ? (item.text || "") : (item || "")) : (item || "");
     const fileUrl = isAchievement && typeof item === "object" ? (item.file_url || "") : "";
     const fileName = isAchievement && typeof item === "object" ? (item.file_name || "") : "";
+    const fileType = isAchievement && typeof item === "object" ? (item.file_type || "") : "";
     const hasFile = Boolean(fileUrl);
 
     if (isAchievement) {
@@ -1533,7 +1534,7 @@ function renderInlineCategoryTags(category, focusIndex = null) {
           
           <div class="achievement-pill-group">
             ${hasFile ? `
-              <button type="button" class="btn-view-attachment-pure" onclick="openFloatingFileViewer('${escapeHtml(fileUrl)}', '${escapeHtml(tagText || 'وثيقة الإنجاز')}', '${escapeHtml(fileName || 'الملف المرفق')}')" title="معاينة المستند المرفق (${escapeHtml(fileName || 'ملف')})">
+              <button type="button" class="btn-view-attachment-pure" onclick="openFloatingFileViewer('${escapeHtml(fileUrl)}', '${escapeHtml(tagText || 'وثيقة الإنجاز')}', '${escapeHtml(fileName || 'الملف المرفق')}', '${escapeHtml(fileType)}')" title="معاينة المستند المرفق (${escapeHtml(fileName || 'ملف')})">
                 <i data-lucide="eye" style="width:17px; height:17px;"></i>
               </button>
               <button type="button" class="btn-remove-attachment" onclick="removeAchievementAttachment(${idx})" title="إزالة الملف المرفق" tabindex="-1">
@@ -1778,7 +1779,214 @@ function removeAchievementAttachment(index) {
   }
 }
 
-function openFloatingFileViewer(fileUrl, title, filename) {
+let activeViewerState = { url: "", filename: "", title: "", mimeType: "" };
+
+function resolvePreviewMediaUrl(rawUrl) {
+  const src = String(rawUrl || "").trim();
+  if (!src) return "";
+  if ((/^file:\/\//i.test(src) || /^content:\/\//i.test(src) || src.startsWith("/")) &&
+      window.Capacitor && typeof window.Capacitor.convertFileSrc === "function") {
+    try {
+      return window.Capacitor.convertFileSrc(src);
+    } catch (e) {}
+  }
+  return src;
+}
+
+function guessMimeFromNameOrUrl(url, filename, explicitType) {
+  if (explicitType) return explicitType;
+  const u = String(url || "");
+  const m = /^data:([^;,]+)[;,]/i.exec(u);
+  if (m && m[1]) return m[1];
+  const probe = (String(filename || "") + " " + u).toLowerCase();
+  if (/\.(jpe?g)(?:$|[?#\s])/.test(probe)) return "image/jpeg";
+  if (/\.png(?:$|[?#\s])/.test(probe)) return "image/png";
+  if (/\.webp(?:$|[?#\s])/.test(probe)) return "image/webp";
+  if (/\.gif(?:$|[?#\s])/.test(probe)) return "image/gif";
+  if (/\.bmp(?:$|[?#\s])/.test(probe)) return "image/bmp";
+  if (/\.svg(?:$|[?#\s])/.test(probe)) return "image/svg+xml";
+  if (/\.pdf(?:$|[?#\s])/.test(probe)) return "application/pdf";
+  return "application/octet-stream";
+}
+
+function isImageAttachment(url, filename, fileType) {
+  const u = String(url || "").trim();
+  const f = String(filename || "").trim();
+  const t = String(fileType || "").trim().toLowerCase();
+  if (/^data:image\//i.test(u)) return true;
+  if (t.startsWith("image/")) return true;
+  const imgExtRe = /\.(jpg|jpeg|png|webp|gif|bmp|svg)(?:$|[?#])/i;
+  if (imgExtRe.test(u) || imgExtRe.test(f)) return true;
+  return false;
+}
+
+function isPdfAttachment(url, filename, fileType) {
+  const u = String(url || "").trim();
+  const f = String(filename || "").trim();
+  const t = String(fileType || "").trim().toLowerCase();
+  if (/^data:application\/pdf/i.test(u) || t === "application/pdf") return true;
+  const pdfExtRe = /\.pdf(?:$|[?#])/i;
+  return pdfExtRe.test(u) || pdfExtRe.test(f);
+}
+
+async function urlToBase64AndMime(fileUrl, fallbackName, fallbackMime) {
+  const raw = String(fileUrl || "");
+  if (raw.startsWith("data:")) {
+    const commaIdx = raw.indexOf(",");
+    const header = raw.slice(0, commaIdx);
+    const mimeMatch = /^data:([^;]+)/i.exec(header);
+    return {
+      base64Data: raw.slice(commaIdx + 1),
+      mimeType: (mimeMatch && mimeMatch[1]) || fallbackMime || "application/octet-stream"
+    };
+  }
+  const resolved = resolvePreviewMediaUrl(raw);
+  const res = await fetch(resolved);
+  const blob = await res.blob();
+  const dataUrl = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+  const base64Data = String(dataUrl).split(",")[1] || "";
+  return {
+    base64Data,
+    mimeType: blob.type || fallbackMime || guessMimeFromNameOrUrl(raw, fallbackName)
+  };
+}
+
+async function openCvAttachmentExternal(fileUrl, filename, mimeType) {
+  const url = fileUrl || activeViewerState.url;
+  const name = filename || activeViewerState.filename || "attachment";
+  const mime = mimeType || activeViewerState.mimeType || guessMimeFromNameOrUrl(url, name);
+  if (!url) return;
+
+  const capPlugins = window.Capacitor && window.Capacitor.Plugins;
+  if (capPlugins && capPlugins.AlbayanExport && typeof capPlugins.AlbayanExport.shareFile === "function") {
+    try {
+      showAlert("جاري فتح المستند...", true);
+      const payload = await urlToBase64AndMime(url, name, mime);
+      await capPlugins.AlbayanExport.shareFile({
+        base64Data: payload.base64Data,
+        fileName: name,
+        mimeType: payload.mimeType,
+        title: name,
+        text: name
+      });
+      return;
+    } catch (err) {
+      console.warn("Native share/open fallback:", err);
+    }
+  }
+
+  window.open(resolvePreviewMediaUrl(url), "_blank", "noopener");
+}
+
+async function downloadCvAttachment(fileUrl, filename, mimeType) {
+  const url = fileUrl || activeViewerState.url;
+  const name = filename || activeViewerState.filename || "attachment";
+  const mime = mimeType || activeViewerState.mimeType || guessMimeFromNameOrUrl(url, name);
+  if (!url) return;
+
+  const capPlugins = window.Capacitor && window.Capacitor.Plugins;
+  if (capPlugins && capPlugins.AlbayanExport) {
+    try {
+      const payload = await urlToBase64AndMime(url, name, mime);
+      const isImg = String(payload.mimeType).startsWith("image/");
+      const fn = (isImg && typeof capPlugins.AlbayanExport.saveImageToGallery === "function")
+        ? capPlugins.AlbayanExport.saveImageToGallery
+        : capPlugins.AlbayanExport.saveFileToDownloads;
+      if (typeof fn === "function") {
+        await fn.call(capPlugins.AlbayanExport, {
+          base64Data: payload.base64Data,
+          fileName: name,
+          mimeType: payload.mimeType
+        });
+        showAlert(`تم حفظ "${name}" على الجهاز بنجاح`, true);
+        return;
+      }
+    } catch (err) {
+      console.warn("Native save failed, trying share:", err);
+    }
+  }
+
+  const a = document.createElement("a");
+  a.href = resolvePreviewMediaUrl(url);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function renderCvFallbackCard(bodyEl, fileUrl, filename, mimeType) {
+  bodyEl.innerHTML = `
+    <div class="cv-viewer-fallback-wrap">
+      <div class="cv-viewer-fallback-icon">
+        <i data-lucide="file-text" style="width:28px; height:28px;"></i>
+      </div>
+      <h4>${escapeHtml(filename || "مستند مرفق")}</h4>
+      <p>يمكنك فتح هذا المستند أو تحميله مباشرة عبر تطبيقات الجهاز.</p>
+      <button type="button" class="cv-viewer-fallback-btn" id="cvViewerFallbackOpenBtn">
+        <i data-lucide="download" style="width:17px; height:17px;"></i>
+        <span>فتح وتحميل المستند</span>
+      </button>
+    </div>
+  `;
+  const btn = bodyEl.querySelector("#cvViewerFallbackOpenBtn");
+  if (btn) {
+    btn.onclick = () => openCvAttachmentExternal(fileUrl, filename, mimeType);
+  }
+  if (window.lucide) lucide.createIcons();
+}
+
+function attachCvImageZoom(imgEl, wrapEl) {
+  if (!imgEl || !wrapEl) return;
+  let scale = 1;
+  let lastTap = 0;
+  let pinchStartDist = 0;
+  let pinchStartScale = 1;
+
+  const applyScale = (s) => {
+    scale = Math.max(1, Math.min(3.5, s));
+    imgEl.style.transform = scale === 1 ? "" : `scale(${scale.toFixed(2)})`;
+  };
+
+  imgEl.addEventListener("dblclick", () => {
+    applyScale(scale > 1.2 ? 1 : 2.2);
+  });
+
+  imgEl.addEventListener("touchend", (e) => {
+    if (e.touches && e.touches.length > 0) return;
+    const now = Date.now();
+    if (now - lastTap < 280) {
+      e.preventDefault();
+      applyScale(scale > 1.2 ? 1 : 2.2);
+    }
+    lastTap = now;
+  }, { passive: false });
+
+  wrapEl.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchStartDist = Math.hypot(dx, dy);
+      pinchStartScale = scale;
+    }
+  }, { passive: true });
+
+  wrapEl.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 2 && pinchStartDist > 0) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      applyScale(pinchStartScale * (dist / pinchStartDist));
+    }
+  }, { passive: false });
+}
+
+function openFloatingFileViewer(fileUrl, title, filename, fileType = "") {
   if (!fileUrl) return;
 
   const modal = document.getElementById("cvAttachmentViewerModal");
@@ -1790,42 +1998,53 @@ function openFloatingFileViewer(fileUrl, title, filename) {
 
   if (!modal || !bodyEl) return;
 
-  if (titleEl) titleEl.textContent = title || "معاينة وثيقة الإنجاز";
-  if (filenameEl) filenameEl.textContent = filename || "وثيقة_معتمدة";
-  if (openTabBtn) openTabBtn.href = fileUrl;
-  if (downloadBtn) downloadBtn.href = fileUrl;
+  const mimeType = guessMimeFromNameOrUrl(fileUrl, filename, fileType);
+  const resolvedSrc = resolvePreviewMediaUrl(fileUrl);
+  activeViewerState = { url: fileUrl, filename: filename || "ملف_مرفق", title: title || "معاينة وثيقة الإنجاز", mimeType };
 
-  const cleanUrl = fileUrl.toLowerCase();
-  const isImage = cleanUrl.endsWith(".png") || cleanUrl.endsWith(".jpg") || cleanUrl.endsWith(".jpeg") || cleanUrl.endsWith(".webp") || cleanUrl.endsWith(".gif");
-  const isPdf = cleanUrl.endsWith(".pdf");
-
-  if (isImage) {
-    bodyEl.innerHTML = `
-      <div class="cv-viewer-image-wrap">
-        <img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(title)}" class="cv-viewer-preview-img">
-      </div>
-    `;
-  } else if (isPdf) {
-    bodyEl.innerHTML = `
-      <iframe src="${escapeHtml(fileUrl)}" class="cv-viewer-preview-frame" title="معاينة PDF"></iframe>
-    `;
-  } else {
-    bodyEl.innerHTML = `
-      <div class="cv-viewer-fallback-wrap">
-        <i data-lucide="file-text" style="width:48px; height:48px; color:#2563eb; margin-bottom:12px;"></i>
-        <h4>${escapeHtml(filename || 'مستند مرفق')}</h4>
-        <p>لا تتوفر معاينة مباشرة لهذا النوع من الملفات.</p>
-        <a href="${escapeHtml(fileUrl)}" target="_blank" class="btn-primary" style="margin-top:10px;">
-          <i data-lucide="download" style="width:16px; height:16px;"></i> فتح وتحميل المستند
-        </a>
-      </div>
-    `;
+  if (titleEl) titleEl.textContent = activeViewerState.title;
+  if (filenameEl) filenameEl.textContent = activeViewerState.filename;
+  if (openTabBtn) {
+    openTabBtn.onclick = () => openCvAttachmentExternal(fileUrl, activeViewerState.filename, mimeType);
+  }
+  if (downloadBtn) {
+    downloadBtn.onclick = () => downloadCvAttachment(fileUrl, activeViewerState.filename, mimeType);
   }
 
+  const isImg = isImageAttachment(fileUrl, filename, mimeType);
+  const isPdf = isPdfAttachment(fileUrl, filename, mimeType);
+  const isCap = !!(window.IS_CAPACITOR_APP || (window.Capacitor && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform()));
+
+  if (isImg) {
+    bodyEl.innerHTML = `<div class="cv-viewer-image-wrap" id="cvViewerImageStage"></div>`;
+    const stage = bodyEl.querySelector("#cvViewerImageStage");
+    const img = document.createElement("img");
+    img.className = "cv-viewer-preview-img";
+    img.alt = activeViewerState.title;
+    img.src = resolvedSrc;
+    img.onerror = () => {
+      renderCvFallbackCard(bodyEl, fileUrl, activeViewerState.filename, mimeType);
+    };
+    stage.appendChild(img);
+    attachCvImageZoom(img, stage);
+  } else if (isPdf && !isCap && !String(fileUrl).startsWith("file:")) {
+    bodyEl.innerHTML = `
+      <iframe src="${escapeHtml(resolvedSrc)}" class="cv-viewer-preview-frame" title="معاينة PDF"></iframe>
+    `;
+  } else {
+    renderCvFallbackCard(bodyEl, fileUrl, activeViewerState.filename, mimeType);
+  }
+
+  if (typeof window.albayanPushModalState === "function") {
+    window.albayanPushModalState();
+  }
   modal.classList.add("active");
   document.body.style.overflow = "hidden";
   if (window.lucide) lucide.createIcons();
 }
+
+window.openFloatingFileViewer = openFloatingFileViewer;
+window.closeFloatingFileViewer = closeFloatingFileViewer;
 
 function closeFloatingFileViewer() {
   const modal = document.getElementById("cvAttachmentViewerModal");

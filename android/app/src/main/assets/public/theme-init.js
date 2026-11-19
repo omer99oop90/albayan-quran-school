@@ -355,7 +355,10 @@
 
   window.albayanHasOpenOverlay = function() {
     try {
+      var selectSheet = document.getElementById('albayanSelectSheet');
+      if (selectSheet && selectSheet.classList.contains('active')) return true;
       var modalSelectors = [
+        '#cvAttachmentViewerModal.active',
         '#cellPopover',
         '.swal2-container',
         '.modal.show',
@@ -389,6 +392,16 @@
 
   window.albayanHandleBack = function(fromPopState) {
     try {
+      if (window.AlbayanBottomSheetSelect && window.AlbayanBottomSheetSelect.isOpen && window.AlbayanBottomSheetSelect.isOpen()) {
+        window.AlbayanBottomSheetSelect.close();
+        return true;
+      }
+      var cvModal = document.getElementById('cvAttachmentViewerModal');
+      if (cvModal && cvModal.classList.contains('active')) {
+        if (typeof window.closeFloatingFileViewer === 'function') window.closeFloatingFileViewer();
+        else cvModal.classList.remove('active');
+        return true;
+      }
       // A. Check for open modals, dialogs, bottom sheets, or overlays
       var modalSelectors = [
         '#cellPopover',
@@ -523,5 +536,315 @@
   };
   window.logout = window.albayanLogout;
   window.confirmLogout = window.albayanLogout;
+
+  // 7. Global Custom Bottom Sheet Picker (Replaces ALL native Android <select> popups)
+  (function initGlobalBottomSheetSelect() {
+    if (typeof document === 'undefined') return;
+
+    var activeSelectEl = null;
+    var SHEET_TITLES = {
+      filterMonth: 'اختر الفترة',
+      rosterCircleSelect: 'اختر الحلقة القرآنية',
+      transferTargetCircle: 'نقل الطالب إلى حلقة',
+      circleSelect: 'اختر الحلقة القرآنية',
+      studentSelect: 'اختر الطالب',
+      studentGradeRecordSelect: 'سجل الدرجات المرتبط',
+      timeframeSelect: 'النطاق الزمني للتفوق',
+      monthSelect: 'اختر الشهر',
+      yearSelect: 'اختر السنة',
+      limitSelect: 'العدد الأقصى',
+      exportFormatSelect: 'صيغة التصدير',
+      filterCirclesMonth: 'فترة تقييم الحلقات',
+      filterStudentsMonth: 'فترة تقييم الطلاب',
+      filterStudentCircle: 'تصفية حسب الحلقة',
+      filterStudentMemo: 'تصفية حسب تقدير الحفظ',
+      filterStudentAttendance: 'تصفية حسب الحضور',
+      filterAnalyticsExamSelect: 'اختر الاختبار',
+      filterStatus: 'تصفية حسب النتيجة',
+      circleTeacher: 'تعيين معلم الحلقة',
+      modalBulkExamTitleSelect: 'اختر الاختبار الشهري',
+      modalBulkAccompanyingExamSelect: 'اختر الاختبار الشهري',
+      popExamTitleSelect: 'اختر الاختبار',
+      vqType: 'نوع السؤال',
+      filterStudentCircleSelect: 'تصفية حسب الحلقة',
+      userRole: 'الدور والصلاحيات',
+      userActiveStatus: 'حالة الحساب',
+      studentCircleSelect: 'الحلقة الدراسية',
+      customPeriodYearSelect: 'اختر السنة'
+    };
+
+    var ICON_CHECK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    var ICON_CALENDAR = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+    var ICON_BOOK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>';
+    var ICON_LIST = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>';
+    var ICON_CLOSE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+    function injectSelectSheetStyles() {
+      if (document.getElementById('albayan-bottom-sheet-select-css')) return;
+      var style = document.createElement('style');
+      style.id = 'albayan-bottom-sheet-select-css';
+      style.textContent = [
+        'select { -webkit-tap-highlight-color: transparent; cursor: pointer; }',
+        '.ab-select-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 1000010; opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; }',
+        '.ab-select-backdrop.active { opacity: 1; visibility: visible; }',
+        '.ab-select-sheet { position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; max-width: 560px; max-height: 82vh; background: #FFFFFF; border-top: 1px solid rgba(15, 23, 42, 0.08); border-radius: 20px 20px 0 0; z-index: 1000015; transform: translateY(105%); transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1); display: flex; flex-direction: column; overflow: hidden; box-shadow: none !important; direction: rtl; font-family: inherit; }',
+        '.ab-select-sheet.active { transform: translateY(0); }',
+        '@media (min-width: 768px) { .ab-select-sheet { bottom: 20px; border-radius: 20px; border: 1px solid rgba(15, 23, 42, 0.1); max-height: 75vh; } }',
+        '.ab-select-handle { width: 40px; height: 4px; border-radius: 99px; background: #CBD5E1; margin: 10px auto 4px; flex-shrink: 0; }',
+        '.ab-select-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 18px 14px; border-bottom: 1px solid #E2E8F0; flex-shrink: 0; }',
+        '.ab-select-header-text { flex: 1; min-width: 0; }',
+        '.ab-select-title { margin: 0; font-size: 16px; font-weight: 800; color: #0F172A; line-height: 1.35; }',
+        '.ab-select-subtitle { margin: 3px 0 0; font-size: 12.5px; font-weight: 600; color: #2563EB; line-height: 1.35; }',
+        '.ab-select-close { width: 34px; height: 34px; min-height: 34px !important; padding: 0 !important; border-radius: 10px !important; background: #F8FAFC !important; background-image: none !important; border: 1px solid #E2E8F0 !important; color: #64748B !important; display: inline-flex !important; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: none !important; }',
+        '.ab-select-close:hover { background: #F1F5F9 !important; color: #0F172A !important; transform: none !important; }',
+        '.ab-select-close svg { margin: 0 !important; display: block; }',
+        '.ab-select-list { padding: 12px 16px calc(18px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 8px; }',
+        '.ab-sheet-opt { width: 100%; min-height: 50px !important; padding: 12px 16px !important; border-radius: 12px !important; background: #FFFFFF !important; background-image: none !important; border: 1px solid #E2E8F0 !important; color: #0F172A !important; font-family: inherit; font-size: 14px; font-weight: 600; text-align: right; display: flex !important; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; box-shadow: none !important; transition: background-color 0.14s ease, border-color 0.14s ease; }',
+        '.ab-sheet-opt:hover { transform: none !important; background: #F8FAFC !important; border-color: rgba(37, 99, 235, 0.35) !important; }',
+        '.ab-sheet-opt.selected { background: #EFF6FF !important; border: 1.5px solid #2563EB !important; color: #1D4ED8 !important; font-weight: 800; }',
+        '.ab-sheet-opt:disabled { opacity: 0.45; cursor: not-allowed; }',
+        '.ab-sheet-opt-main { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }',
+        '.ab-sheet-opt-icon { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; color: #64748B; flex-shrink: 0; }',
+        '.ab-sheet-opt.selected .ab-sheet-opt-icon { color: #2563EB; }',
+        '.ab-sheet-opt-icon svg, .ab-sheet-opt-check svg { margin: 0 !important; display: block; }',
+        '.ab-sheet-opt-label { flex: 1; min-width: 0; line-height: 1.4; word-break: break-word; }',
+        '.ab-sheet-opt-check { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; color: #2563EB; flex-shrink: 0; }',
+        'html[data-theme="dark"] .ab-select-backdrop { background: rgba(2, 6, 23, 0.72); }',
+        'html[data-theme="dark"] .ab-select-sheet { background: #1E293B; border-color: rgba(255, 255, 255, 0.08); }',
+        'html[data-theme="dark"] .ab-select-handle { background: rgba(255, 255, 255, 0.22); }',
+        'html[data-theme="dark"] .ab-select-header { border-bottom-color: rgba(255, 255, 255, 0.08); }',
+        'html[data-theme="dark"] .ab-select-title { color: #F8FAFC; }',
+        'html[data-theme="dark"] .ab-select-subtitle { color: #60A5FA; }',
+        'html[data-theme="dark"] .ab-select-close { background: #0F172A !important; border-color: #334155 !important; color: #94A3B8 !important; }',
+        'html[data-theme="dark"] .ab-sheet-opt { background: #0F172A !important; border-color: #334155 !important; color: #F1F5F9 !important; }',
+        'html[data-theme="dark"] .ab-sheet-opt:hover { background: rgba(255, 255, 255, 0.04) !important; border-color: rgba(96, 165, 250, 0.4) !important; }',
+        'html[data-theme="dark"] .ab-sheet-opt.selected { background: rgba(37, 99, 235, 0.18) !important; border-color: #3B82F6 !important; color: #60A5FA !important; }',
+        'html[data-theme="dark"] .ab-sheet-opt-icon { color: #94A3B8; }',
+        'html[data-theme="dark"] .ab-sheet-opt.selected .ab-sheet-opt-icon, html[data-theme="dark"] .ab-sheet-opt-check { color: #60A5FA; }'
+      ].join('\n');
+      (document.head || document.documentElement).appendChild(style);
+    }
+
+    function stripEmojis(text) {
+      return String(text || '')
+        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function ensureDom() {
+      injectSelectSheetStyles();
+      var backdrop = document.getElementById('albayanSelectSheetBackdrop');
+      var sheet = document.getElementById('albayanSelectSheet');
+      if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.id = 'albayanSelectSheetBackdrop';
+        backdrop.className = 'ab-select-backdrop';
+        backdrop.addEventListener('click', function(e) {
+          e.stopPropagation();
+          closeSelectSheet();
+        });
+        document.body.appendChild(backdrop);
+      }
+      if (!sheet) {
+        sheet = document.createElement('div');
+        sheet.id = 'albayanSelectSheet';
+        sheet.className = 'ab-select-sheet';
+        sheet.setAttribute('role', 'dialog');
+        sheet.setAttribute('aria-modal', 'true');
+        sheet.addEventListener('click', function(e) { e.stopPropagation(); });
+        sheet.innerHTML =
+          '<div class="ab-select-handle"></div>' +
+          '<div class="ab-select-header">' +
+            '<div class="ab-select-header-text">' +
+              '<h3 class="ab-select-title" id="abSelectSheetTitle">اختر من القائمة</h3>' +
+              '<p class="ab-select-subtitle" id="abSelectSheetSubtitle" style="display:none;"></p>' +
+            '</div>' +
+            '<button type="button" class="ab-select-close" id="abSelectSheetCloseBtn" aria-label="إغلاق">' + ICON_CLOSE + '</button>' +
+          '</div>' +
+          '<div class="ab-select-list" id="abSelectSheetList"></div>';
+        document.body.appendChild(sheet);
+        sheet.querySelector('#abSelectSheetCloseBtn').onclick = function(e) {
+          e.stopPropagation();
+          closeSelectSheet();
+        };
+      }
+      return { backdrop: backdrop, sheet: sheet };
+    }
+
+    function resolveTitleAndSubtitle(selectEl) {
+      var id = selectEl.id || '';
+      var title = (selectEl.dataset && selectEl.dataset.sheetTitle) || SHEET_TITLES[id] || '';
+      if (!title) {
+        var group = selectEl.closest('.field, .form-group, .filter-item, .period-badge-group, .timeframe-row');
+        var lbl = group ? group.querySelector('label, .form-label-sm, .section-label, .period-badge-label') : null;
+        if (lbl) title = stripEmojis(lbl.textContent).replace(/[:*]+/g, '').trim();
+      }
+      if (!title) title = 'اختر من القائمة';
+
+      var subtitle = (selectEl.dataset && selectEl.dataset.sheetSubtitle) || '';
+      if (!subtitle && id === 'filterMonth' && window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.getConfig === 'function') {
+        var cfg = window.AlbayanCycleEngine.getConfig();
+        if (cfg.mode === 'term' || cfg.periodType === 'term') {
+          var tm = cfg.termMonths || 3;
+          subtitle = 'النظام الفصلي • ' + (tm === 2 ? 'شهران لكل فصل' : (tm + ' أشهر لكل فصل'));
+        } else if (cfg.mode === 'weekly' || cfg.periodType === 'weekly') {
+          subtitle = 'النظام الأسبوعي • 7 أيام لكل أسبوع';
+        } else if (cfg.mode === 'yearly' || cfg.periodType === 'yearly') {
+          subtitle = 'النظام السنوي الشامل';
+        } else {
+          subtitle = 'النظام الشهري • الأشهر الهجرية';
+        }
+      }
+      return { title: title, subtitle: subtitle };
+    }
+
+    function resolveRowIcon(selectEl, optValue) {
+      var id = (selectEl && selectEl.id) || '';
+      if (id === 'filterMonth' || id === 'monthSelect' || id === 'yearSelect' || id === 'timeframeSelect' || id.indexOf('Month') !== -1) {
+        return ICON_CALENDAR;
+      }
+      if (id.indexOf('Circle') !== -1 || id.indexOf('circle') !== -1 || String(optValue).indexOf('سجل') !== -1) {
+        return ICON_BOOK;
+      }
+      return ICON_LIST;
+    }
+
+    function openForSelect(selectEl) {
+      if (!selectEl || selectEl.disabled) return;
+      var dom = ensureDom();
+      activeSelectEl = selectEl;
+
+      var meta = resolveTitleAndSubtitle(selectEl);
+      var titleEl = document.getElementById('abSelectSheetTitle');
+      var subEl = document.getElementById('abSelectSheetSubtitle');
+      var listEl = document.getElementById('abSelectSheetList');
+
+      if (titleEl) titleEl.textContent = meta.title;
+      if (subEl) {
+        if (meta.subtitle) {
+          subEl.textContent = meta.subtitle;
+          subEl.style.display = 'block';
+        } else {
+          subEl.textContent = '';
+          subEl.style.display = 'none';
+        }
+      }
+
+      if (listEl) {
+        listEl.innerHTML = '';
+        var opts = Array.from(selectEl.options || []);
+        var currentVal = selectEl.value;
+
+        opts.forEach(function(opt, idx) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          var isSelected = opt.value === currentVal || (idx === selectEl.selectedIndex && currentVal === opt.value);
+          btn.className = 'ab-sheet-opt' + (isSelected ? ' selected' : '');
+          btn.disabled = !!opt.disabled;
+
+          var cleanText = stripEmojis(opt.textContent || opt.label || opt.value);
+          var iconSvg = resolveRowIcon(selectEl, opt.value);
+
+          var mainSpan = document.createElement('span');
+          mainSpan.className = 'ab-sheet-opt-main';
+
+          var iconSpan = document.createElement('span');
+          iconSpan.className = 'ab-sheet-opt-icon';
+          iconSpan.innerHTML = iconSvg;
+
+          var labelSpan = document.createElement('span');
+          labelSpan.className = 'ab-sheet-opt-label';
+          labelSpan.textContent = cleanText;
+
+          mainSpan.appendChild(iconSpan);
+          mainSpan.appendChild(labelSpan);
+          btn.appendChild(mainSpan);
+
+          if (isSelected) {
+            var chkSpan = document.createElement('span');
+            chkSpan.className = 'ab-sheet-opt-check';
+            chkSpan.innerHTML = ICON_CHECK;
+            btn.appendChild(chkSpan);
+          }
+
+          btn.onclick = function() {
+            if (opt.disabled) return;
+            var changed = (selectEl.value !== opt.value);
+            selectEl.value = opt.value;
+            selectEl.selectedIndex = idx;
+            closeSelectSheet();
+            if (changed) {
+              selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          };
+
+          listEl.appendChild(btn);
+        });
+      }
+
+      if (typeof window.albayanPushModalState === 'function') {
+        window.albayanPushModalState();
+      }
+      dom.backdrop.classList.add('active');
+      dom.sheet.classList.add('active');
+      document.body.style.overflow = 'hidden';
+
+      var activeBtn = listEl ? listEl.querySelector('.ab-sheet-opt.selected') : null;
+      if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
+        setTimeout(function() { activeBtn.scrollIntoView({ block: 'nearest' }); }, 60);
+      }
+    }
+
+    function closeSelectSheet() {
+      var backdrop = document.getElementById('albayanSelectSheetBackdrop');
+      var sheet = document.getElementById('albayanSelectSheet');
+      if (backdrop) backdrop.classList.remove('active');
+      if (sheet) sheet.classList.remove('active');
+      activeSelectEl = null;
+      if (!document.querySelector('.bottom-sheet.active, .cv-viewer-overlay.active')) {
+        document.body.style.overflow = '';
+      }
+    }
+
+    function interceptSelectEvent(e) {
+      var target = e.target;
+      if (!target || target.tagName !== 'SELECT') return;
+      if (target.disabled || target.multiple || target.hasAttribute('data-native-select')) return;
+      if (e.type === 'keydown') {
+        if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          openForSelect(target);
+        }
+        return;
+      }
+      e.preventDefault();
+      if (e.type === 'click') {
+        e.stopPropagation();
+        try { target.blur(); } catch (err) {}
+        openForSelect(target);
+      }
+    }
+
+    document.addEventListener('mousedown', interceptSelectEvent, true);
+    document.addEventListener('pointerdown', interceptSelectEvent, true);
+    document.addEventListener('click', interceptSelectEvent, true);
+    document.addEventListener('keydown', interceptSelectEvent, true);
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && document.getElementById('albayanSelectSheet')?.classList.contains('active')) {
+        closeSelectSheet();
+      }
+    });
+
+    window.AlbayanBottomSheetSelect = {
+      openForSelect: openForSelect,
+      close: closeSelectSheet,
+      isOpen: function() {
+        var s = document.getElementById('albayanSelectSheet');
+        return !!(s && s.classList.contains('active'));
+      }
+    };
+  })();
 })();
 
