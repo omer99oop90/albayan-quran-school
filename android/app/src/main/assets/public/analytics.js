@@ -48,6 +48,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   loadAnalyticsData();
 
+  window.addEventListener("albayan:record-period-updated", () => {
+    hasAdaptedFilters = false;
+    loadAnalyticsData();
+  });
   window.addEventListener("albayan:cycle-updated", () => {
     hasAdaptedFilters = false;
     loadAnalyticsData();
@@ -766,19 +770,20 @@ function adaptAnalyticsFilters(settings) {
   const monthsCount = (settings && settings.custom_period_months) || 6;
   const totalTerms = Math.max(1, Math.floor(12 / monthsCount));
 
-  // Inject subtle Cycle Banner inside #viewCirclesAnalytics
+  // Inject subtle Year Cycle Banner inside #viewCirclesAnalytics (Blue brand palette)
   const circlesSec = document.getElementById("viewCirclesAnalytics");
   if (circlesSec && stats) {
     let banner = document.getElementById("analyticsCycleStatusBanner");
     if (!banner) {
       banner = document.createElement("div");
       banner.id = "analyticsCycleStatusBanner";
-      banner.style.cssText = "display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:11px 16px; border-radius:14px; background:rgba(15,118,110,0.08); border:1px solid rgba(15,118,110,0.18); color:#0F766E; font-size:13px; font-weight:700; margin-bottom:16px;";
+      banner.style.cssText = "display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:11px 16px; border-radius:14px; background:#EFF6FF; border:1px solid rgba(37,99,235,0.28); color:#1D4ED8; font-size:13px; font-weight:700; margin-bottom:16px;";
       circlesSec.insertBefore(banner, circlesSec.firstChild);
     }
+    const modeTitle = stats.config.periodType === "term" ? `فصلي (${stats.config.termMonths || 3} أشهر)` : stats.meta.label;
     banner.innerHTML = `
-      <span>النظام المعتمد: <strong>${stats.meta.label}</strong> (الدورة #${stats.config.cycleIndex || 1})</span>
-      <span>متبقي ${stats.remainingDays} يوماً • دورات مؤرشفة: ${archives.length}</span>
+      <span>النظام المعتمد: <strong>${modeTitle}</strong> (السنة الحالية #${stats.config.yearNumber || stats.config.cycleIndex || 1})</span>
+      <span>متبقي ${stats.remainingDays} يوماً • سنوات مؤرشفة: ${archives.length}</span>
     `;
   }
 
@@ -804,7 +809,7 @@ function adaptAnalyticsFilters(settings) {
       const activeOpt = document.createElement("option");
       activeOpt.value = "active_cycle";
       activeOpt.dataset.cycleOpt = "1";
-      activeOpt.textContent = `الدورة النشطة (#${cfg.cycleIndex || 1} - ${stats ? stats.meta.badge : 'الحالية'})`;
+      activeOpt.textContent = `السنة الحالية (#${cfg.yearNumber || cfg.cycleIndex || 1} - ${stats ? stats.meta.badge : 'الحالية'})`;
       select.insertBefore(activeOpt, select.firstChild);
 
       archives.slice(0, 12).forEach(arc => {
@@ -812,7 +817,7 @@ function adaptAnalyticsFilters(settings) {
         const opt = document.createElement("option");
         opt.value = `archive:${arc.id}`;
         opt.dataset.cycleOpt = "1";
-        opt.textContent = `أرشيف ${arc.periodLabel || ('الدورة #' + arc.cycleNumber)} (${arc.startDate || ''})`;
+        opt.textContent = `أرشيف ${arc.periodLabel || ('السنة #' + arc.cycleNumber)} (${arc.startDate || ''})`;
         select.appendChild(opt);
       });
     }

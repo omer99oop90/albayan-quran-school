@@ -2700,7 +2700,7 @@
           gradeKey: `archive_${arc.id || aIdx}`,
           type: 'archive',
           sourceStudentId: sid,
-          label: `أرشيف ${arc.periodLabel || ('الدورة #' + arc.cycleNumber)} — ${aBadge}`,
+          label: `أرشيف ${arc.periodLabel || ('السنة #' + arc.cycleNumber)} — ${aBadge}`,
           exam_percent: aExam,
           sard_pages: aPages,
           attendance_rate: aAtt,

@@ -6,7 +6,7 @@
   <title>الإعدادات - مدرسة البيان</title>
   <link rel="stylesheet" href="style.css?v=2.7">
   <link rel="stylesheet" href="dark_theme.css?v=3.0">
-  <link rel="stylesheet" href="settings.css?v=6.0">
+  <link rel="stylesheet" href="settings.css?v=7.0">
   <script src="theme-init.js"></script>
   <script src="lucide.min.js"></script>
 </head>
@@ -16,7 +16,7 @@
     <!-- Top Bar -->
     <header class="settings-top-bar">
       <a href="more.html" class="btn-back-circle" title="رجوع" aria-label="العودة لصفحة المزيد">
-        <i data-lucide="arrow-right" style="width:19px; height:19px;"></i>
+        <i data-lucide="arrow-right"></i>
       </a>
       <h1 class="settings-page-title">الإعدادات</h1>
       <div style="width:40px;" aria-hidden="true"></div>
@@ -35,7 +35,7 @@
         <span class="profile-handle-sub" id="heroUserMeta" style="display:none;"></span>
       </div>
       <button type="button" class="btn-edit-profile-pill" onclick="event.stopPropagation(); openSheet('sheet-profile')" title="تعديل الاسم" aria-label="تعديل الاسم">
-        <i data-lucide="pencil" style="width:16px; height:16px;"></i>
+        <i data-lucide="pencil"></i>
       </button>
     </section>
 
@@ -43,27 +43,27 @@
     <span class="settings-group-label">النظام القرآني والعرض</span>
     <section class="settings-group-card">
       <button type="button" class="settings-row-item clickable" id="rowRecordPeriod" onclick="openRecordPeriodSheet()">
-        <div class="row-icon-circle gold">
-          <i data-lucide="calendar-clock" style="width:19px; height:19px;"></i>
+        <div class="row-icon-circle">
+          <i data-lucide="calendar-clock"></i>
         </div>
         <div class="row-content">
-          <span class="row-title">مدة ونظام السجل القرآني</span>
-          <span class="row-subtitle" id="recordPeriodSubtitle">تحديد الدورة، التصفير، والأرشفة التلقائية</span>
+          <span class="row-title">مدة السجل</span>
+          <span class="row-subtitle" id="recordPeriodSubtitle">السنة #1 • متبقي 30 يوماً</span>
         </div>
-        <span class="row-badge-pill gold" id="currentRecordPeriodBadge">شهري</span>
-        <span class="row-chevron"><i data-lucide="chevron-left" style="width:17px; height:17px;"></i></span>
+        <span class="row-badge-pill" id="currentRecordPeriodBadge">شهري</span>
+        <span class="row-chevron"><i data-lucide="chevron-left"></i></span>
       </button>
 
       <button type="button" class="settings-row-item clickable" id="rowViewMode" onclick="openSheet('sheet-view-mode')">
         <div class="row-icon-circle">
-          <i data-lucide="layout-grid" style="width:19px; height:19px;"></i>
+          <i data-lucide="layout-grid"></i>
         </div>
         <div class="row-content">
-          <span class="row-title">طريقة عرض الحلقات القرآنية</span>
+          <span class="row-title">عرض الحلقات</span>
           <span class="row-subtitle">التبديل بين البطاقات والشبكة والقائمة</span>
         </div>
         <span class="row-badge-pill neutral" id="currentViewModeBadge">لوحات تفصيلية</span>
-        <span class="row-chevron"><i data-lucide="chevron-left" style="width:17px; height:17px;"></i></span>
+        <span class="row-chevron"><i data-lucide="chevron-left"></i></span>
       </button>
     </section>
 
@@ -72,7 +72,7 @@
     <section class="settings-group-card">
       <div class="settings-row-item">
         <div class="row-icon-circle">
-          <i id="themeRowIcon" data-lucide="moon" style="width:19px; height:19px;"></i>
+          <i id="themeRowIcon" data-lucide="moon"></i>
         </div>
         <div class="row-content">
           <span class="row-title">الوضع الليلي (Dark Mode)</span>
@@ -85,24 +85,24 @@
       </div>
 
       <button type="button" class="settings-row-item clickable" id="rowFontSelection" onclick="openSheet('sheet-font-selection')">
-        <div class="row-icon-circle gold">
-          <i data-lucide="type" style="width:19px; height:19px;"></i>
+        <div class="row-icon-circle">
+          <i data-lucide="type"></i>
         </div>
         <div class="row-content">
-          <span class="row-title">نوع الخط والمظهر الطباعي</span>
+          <span class="row-title">نوع الخط</span>
           <span class="row-subtitle">تخصيص الخط العربي عبر جميع الشاشات</span>
         </div>
         <span class="row-badge-pill" id="currentFontFamilyBadge">خط كايرو</span>
-        <span class="row-chevron"><i data-lucide="chevron-left" style="width:17px; height:17px;"></i></span>
+        <span class="row-chevron"><i data-lucide="chevron-left"></i></span>
       </button>
 
       <div class="settings-row-item">
         <div class="row-icon-circle">
-          <i data-lucide="bell" style="width:19px; height:19px;"></i>
+          <i data-lucide="bell"></i>
         </div>
         <div class="row-content">
           <span class="row-title">الإشعارات والتنبيهات</span>
-          <span class="row-subtitle">تنبيهات السجلات، الاختبارات، ونهاية الدورة</span>
+          <span class="row-subtitle">تنبيهات السجلات، الاختبارات، ونهاية السنة</span>
         </div>
         <label class="switch-toggle" aria-label="تفعيل الإشعارات">
           <input type="checkbox" id="notificationsToggle" onchange="handleNotificationsToggle(this)">
@@ -115,42 +115,42 @@
     <span class="settings-group-label">الأمان والنسخ الاحتياطي</span>
     <section class="settings-group-card">
       <button type="button" class="settings-row-item clickable" id="rowChangePassword" onclick="openSheet('sheet-password')">
-        <div class="row-icon-circle gold">
-          <i data-lucide="lock" style="width:19px; height:19px;"></i>
+        <div class="row-icon-circle">
+          <i data-lucide="lock"></i>
         </div>
         <div class="row-content">
           <span class="row-title">تغيير الرمز السرّي</span>
           <span class="row-subtitle">تحديث رمز الدخول لحماية الحساب</span>
         </div>
-        <span class="row-chevron"><i data-lucide="chevron-left" style="width:17px; height:17px;"></i></span>
+        <span class="row-chevron"><i data-lucide="chevron-left"></i></span>
       </button>
 
       <button type="button" class="settings-row-item clickable" id="rowDownloadBackup" onclick="downloadBackup()">
         <div class="row-icon-circle">
-          <i data-lucide="download" style="width:19px; height:19px;"></i>
+          <i data-lucide="download"></i>
         </div>
         <div class="row-content">
           <span class="row-title">تنزيل النسخة الاحتياطية (ZIP)</span>
           <span class="row-subtitle" id="lastBackupSubtitle">تصدير كامل البيانات والسجلات بأمان</span>
         </div>
-        <span class="row-chevron"><i data-lucide="chevron-left" style="width:17px; height:17px;"></i></span>
+        <span class="row-chevron"><i data-lucide="chevron-left"></i></span>
       </button>
 
       <button type="button" class="settings-row-item clickable" id="rowRestoreBackup" onclick="openSheet('sheet-restore')">
         <div class="row-icon-circle">
-          <i data-lucide="upload-cloud" style="width:19px; height:19px;"></i>
+          <i data-lucide="upload-cloud"></i>
         </div>
         <div class="row-content">
           <span class="row-title">استعادة النسخة الاحتياطية</span>
           <span class="row-subtitle">استرجاع البيانات من ملف محفوظ مسبقاً</span>
         </div>
-        <span class="row-chevron"><i data-lucide="chevron-left" style="width:17px; height:17px;"></i></span>
+        <span class="row-chevron"><i data-lucide="chevron-left"></i></span>
       </button>
     </section>
 
-    <!-- Standalone Bottom Logout -->
+    <!-- Professional Bottom Logout Button -->
     <button type="button" class="settings-logout-btn" id="btnOpenLogoutSheet" onclick="openSheet('sheet-logout')">
-      <i data-lucide="log-out" style="width:18px; height:18px;"></i>
+      <i data-lucide="log-out"></i>
       <span>تسجيل الخروج من المنظومة</span>
     </button>
   </div>
@@ -163,14 +163,14 @@
     <div class="sheet-handle-bar"></div>
     <div class="sheet-header">
       <div class="sheet-title-group">
-        <div class="sheet-icon-bubble"><i data-lucide="user-pen" style="width:19px; height:19px;"></i></div>
+        <div class="sheet-icon-bubble"><i data-lucide="user-pen"></i></div>
         <div>
           <h3>تعديل الاسم الشخصي</h3>
           <p>تحديث اسم العرض في ملفك والشهادات</p>
         </div>
       </div>
       <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-profile')" title="إغلاق" aria-label="إغلاق">
-        <i data-lucide="x" style="width:17px; height:17px;"></i>
+        <i data-lucide="x"></i>
       </button>
     </div>
     <div class="sheet-body">
@@ -187,27 +187,27 @@
     </div>
   </div>
 
-  <!-- Sheet 2: Quranic Record Cycle Configuration -->
+  <!-- Sheet 2: Record Duration Configuration (مدة السجل) -->
   <div class="bottom-sheet" id="sheet-record-period">
     <div class="sheet-handle-bar"></div>
     <div class="sheet-header">
       <div class="sheet-title-group">
-        <div class="sheet-icon-bubble gold"><i data-lucide="calendar-clock" style="width:19px; height:19px;"></i></div>
+        <div class="sheet-icon-bubble"><i data-lucide="calendar-clock"></i></div>
         <div>
-          <h3>مدة ونظام السجل القرآني</h3>
-          <p>تخصيص الدورة الزمنية وسلوك الأرشفة في كامل المنظومة</p>
+          <h3>مدة السجل</h3>
+          <p>ضبط نظام الفترات وبداية السنة الدراسية</p>
         </div>
       </div>
       <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-record-period')" title="إغلاق" aria-label="إغلاق">
-        <i data-lucide="x" style="width:17px; height:17px;"></i>
+        <i data-lucide="x"></i>
       </button>
     </div>
 
     <div class="sheet-body">
-      <!-- Live Progress Card -->
+      <!-- Live Year Progress Card -->
       <div class="cycle-progress-card">
         <div class="cycle-progress-top">
-          <strong id="cycleProgressTitle">الدورة #1 • شهري</strong>
+          <strong id="cycleProgressTitle">السنة الحالية #1 • شهري</strong>
           <span class="cycle-remaining-pill" id="cycleRemainingBadge">متبقي 30 يوماً</span>
         </div>
         <div class="cycle-progress-track">
@@ -219,64 +219,66 @@
         </div>
       </div>
 
-      <!-- 1. Cycle Duration -->
+      <!-- 1. Duration Mode Selector -->
       <div class="cycle-section-block">
         <div class="cycle-block-label">
-          <span>اختر مدة الدورة القرآنية</span>
+          <span>اختر مدة السجل</span>
         </div>
         <div class="cycle-duration-grid" id="cycleDurationGrid">
           <button type="button" class="cycle-duration-option" data-period="weekly" onclick="selectCyclePeriodType('weekly')">
             <strong>أسبوعي</strong>
-            <small>كل 7 أيام متتالية</small>
+            <small>أسابيع متتالية (7 أيام)</small>
           </button>
           <button type="button" class="cycle-duration-option" data-period="monthly" onclick="selectCyclePeriodType('monthly')">
             <strong>شهري (الافتراضي)</strong>
-            <small>شهر واحد من تاريخ البداية</small>
+            <small>الأشهر الهجرية الإثنا عشر</small>
           </button>
           <button type="button" class="cycle-duration-option" data-period="term" onclick="selectCyclePeriodType('term')">
-            <strong>فصلي / ربع سنوي</strong>
-            <small>كل 3 أشهر دراسية</small>
+            <strong>فصلي</strong>
+            <small>تقسيم السنة لفصول مخصصة</small>
           </button>
           <button type="button" class="cycle-duration-option" data-period="yearly" onclick="selectCyclePeriodType('yearly')">
             <strong>سنوي</strong>
-            <small>عام دراسي كامل (12 شهراً)</small>
+            <small>السجل السنوي الشامل</small>
           </button>
         </div>
       </div>
 
-      <!-- 2. Start Date Picker -->
-      <div class="cycle-section-block">
-        <div class="cycle-block-label">
-          <span>تاريخ بداية الدورة الحالية</span>
-          <span id="cycleHijriStartHint" style="font-weight:600; color:var(--st-muted);"></span>
+      <!-- Custom Semester Month Count (2 to 6 months, shown dynamically for فصلي) -->
+      <div class="term-months-box" id="termMonthsControlBlock" style="display:none;">
+        <div class="term-months-header">
+          <span>عدد أشهر الفصل</span>
+          <div class="term-stepper-wrap">
+            <button type="button" class="btn-term-step" onclick="stepTermMonths(-1)" aria-label="تقليل شهر">
+              <i data-lucide="minus" style="width:15px; height:15px;"></i>
+            </button>
+            <span class="term-months-val" id="termMonthsValueLabel">3 أشهر</span>
+            <button type="button" class="btn-term-step" onclick="stepTermMonths(1)" aria-label="زيادة شهر">
+              <i data-lucide="plus" style="width:15px; height:15px;"></i>
+            </button>
+          </div>
         </div>
-        <input type="date" id="cycleStartDateInput" class="cycle-date-input" onchange="onCycleStartDateChange(this.value)">
-      </div>
-
-      <!-- 3. End-of-Period Behavior -->
-      <div class="cycle-section-block">
-        <div class="cycle-block-label">
-          <span>ماذا يحدث عند انتهاء المدة؟</span>
-        </div>
-        <div class="cycle-action-list">
-          <label class="cycle-action-card" id="endActionCardArchive" onclick="selectCycleEndAction('archive_reset')">
-            <input type="radio" name="cycle_end_action" value="archive_reset">
-            <div>
-              <strong>أرشفة تلقائية وبدء دورة جديدة (موصى به)</strong>
-              <small>أرشفة درجات الحفظ والمراجعة والحضور للدورة المنتهية في الإحصائيات وتصفير العدادات للدورة الجديدة.</small>
-            </div>
-          </label>
-          <label class="cycle-action-card" id="endActionCardCumulative" onclick="selectCycleEndAction('cumulative')">
-            <input type="radio" name="cycle_end_action" value="cumulative">
-            <div>
-              <strong>استمرار تراكمي</strong>
-              <small>الاستمرار في تراكم النقاط والدرجات والأوجه دون تصفير العدادات عند انتقال الدورة.</small>
-            </div>
-          </label>
+        <div class="term-chips-row">
+          <button type="button" class="term-month-chip" data-months="2" onclick="setTermMonths(2)">2 أشهر</button>
+          <button type="button" class="term-month-chip" data-months="3" onclick="setTermMonths(3)">3 أشهر</button>
+          <button type="button" class="term-month-chip" data-months="4" onclick="setTermMonths(4)">4 أشهر</button>
+          <button type="button" class="term-month-chip" data-months="5" onclick="setTermMonths(5)">5 أشهر</button>
+          <button type="button" class="term-month-chip" data-months="6" onclick="setTermMonths(6)">6 أشهر</button>
         </div>
       </div>
 
-      <!-- Save & Apply + Manual Close/Archive Button -->
+      <!-- 2. Compact Single-Row Start of Year Date Field -->
+      <div class="cycle-section-block">
+        <div class="cycle-block-label">
+          <label for="cycleStartDateInput">تاريخ بداية السنة</label>
+        </div>
+        <div class="compact-date-row">
+          <input type="date" id="cycleStartDateInput" class="compact-date-input" onchange="onCycleStartDateChange(this.value)">
+          <span class="compact-date-hijri" id="cycleHijriStartHint"></span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
         <button type="button" class="btn-action-primary" id="btnSaveRecordPeriod" onclick="saveRecordPeriodSettings()">
           <i data-lucide="check" style="width:17px; height:17px;"></i>
@@ -285,15 +287,15 @@
 
         <button type="button" class="btn-archive-cycle-outline" id="btnArchiveCycleNow" onclick="handleArchiveCurrentCycleNow()">
           <i data-lucide="archive" style="width:17px; height:17px;"></i>
-          <span>إغلاق الدورة الحالية وأرشفتها الآن</span>
+          <span>إغلاق السنة الحالية وأرشفتها الآن</span>
         </button>
       </div>
 
-      <!-- Archived Cycles Quick Preview -->
+      <!-- Archived Years Preview -->
       <div class="cycle-archives-preview" id="cycleArchivesPreviewBox" style="display:none;">
         <div class="cycle-archives-preview-title">
-          <span>سجل الدورات المؤرشفة</span>
-          <span id="cycleArchivesCountBadge" style="color:var(--st-emerald);">0</span>
+          <span>سجل السنوات المؤرشفة</span>
+          <span id="cycleArchivesCountBadge" style="color:var(--st-icon-fg);">0</span>
         </div>
         <div id="cycleArchivesList"></div>
       </div>
@@ -305,14 +307,14 @@
     <div class="sheet-handle-bar"></div>
     <div class="sheet-header">
       <div class="sheet-title-group">
-        <div class="sheet-icon-bubble"><i data-lucide="layout-grid" style="width:19px; height:19px;"></i></div>
+        <div class="sheet-icon-bubble"><i data-lucide="layout-grid"></i></div>
         <div>
-          <h3>طريقة عرض الحلقات القرآنية</h3>
+          <h3>عرض الحلقات</h3>
           <p>اختر التصميم المناسب لاستعراض الحلقات</p>
         </div>
       </div>
       <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-view-mode')" title="إغلاق" aria-label="إغلاق">
-        <i data-lucide="x" style="width:17px; height:17px;"></i>
+        <i data-lucide="x"></i>
       </button>
     </div>
 
@@ -350,14 +352,14 @@
     <div class="sheet-handle-bar"></div>
     <div class="sheet-header">
       <div class="sheet-title-group">
-        <div class="sheet-icon-bubble gold"><i data-lucide="type" style="width:19px; height:19px;"></i></div>
+        <div class="sheet-icon-bubble"><i data-lucide="type"></i></div>
         <div>
-          <h3>نوع الخط والمظهر الطباعي</h3>
+          <h3>نوع الخط</h3>
           <p>اختر الخط المريح لقراءة الواجهات والجداول</p>
         </div>
       </div>
       <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-font-selection')" title="إغلاق" aria-label="إغلاق">
-        <i data-lucide="x" style="width:17px; height:17px;"></i>
+        <i data-lucide="x"></i>
       </button>
     </div>
 
@@ -418,7 +420,7 @@
             <strong id="customFontFileName" style="display:block; font-size:13px;">خط مخصص</strong>
             <small id="customFontFileSize" style="color:var(--st-muted); font-size:11.5px;"></small>
           </div>
-          <button type="button" class="btn-action-danger" style="padding:7px 12px; font-size:12px;" onclick="removeCustomFont()">حذف</button>
+          <button type="button" class="btn-action-danger" style="height:34px; min-height:34px !important; padding:0 12px !important; font-size:12px;" onclick="removeCustomFont()">حذف</button>
         </div>
 
         <div id="customFontEmptyBox" class="custom-font-upload-box" onclick="document.getElementById('customFontFileInput').click()">
@@ -435,14 +437,14 @@
     <div class="sheet-handle-bar"></div>
     <div class="sheet-header">
       <div class="sheet-title-group">
-        <div class="sheet-icon-bubble gold"><i data-lucide="lock" style="width:19px; height:19px;"></i></div>
+        <div class="sheet-icon-bubble"><i data-lucide="lock"></i></div>
         <div>
           <h3>تغيير الرمز السرّي</h3>
           <p>أدخل الرمز الحالي متبوعاً بالرمز الجديد</p>
         </div>
       </div>
       <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-password')" title="إغلاق" aria-label="إغلاق">
-        <i data-lucide="x" style="width:17px; height:17px;"></i>
+        <i data-lucide="x"></i>
       </button>
     </div>
 
@@ -492,14 +494,14 @@
     <div class="sheet-handle-bar"></div>
     <div class="sheet-header">
       <div class="sheet-title-group">
-        <div class="sheet-icon-bubble"><i data-lucide="upload-cloud" style="width:19px; height:19px;"></i></div>
+        <div class="sheet-icon-bubble"><i data-lucide="upload-cloud"></i></div>
         <div>
           <h3>استعادة النسخة الاحتياطية</h3>
           <p>استرجاع بيانات الحلقات والطلاب من ملف محفوظ</p>
         </div>
       </div>
       <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-restore')" title="إغلاق" aria-label="إغلاق">
-        <i data-lucide="x" style="width:17px; height:17px;"></i>
+        <i data-lucide="x"></i>
       </button>
     </div>
 
@@ -538,14 +540,14 @@
     <div class="sheet-handle-bar"></div>
     <div class="sheet-header">
       <div class="sheet-title-group">
-        <div class="sheet-icon-bubble rose"><i data-lucide="log-out" style="width:19px; height:19px;"></i></div>
+        <div class="sheet-icon-bubble rose"><i data-lucide="log-out"></i></div>
         <div>
           <h3>تسجيل الخروج</h3>
           <p>إنهاء الجلسة والعودة إلى شاشة الدخول</p>
         </div>
       </div>
       <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-logout')" title="إغلاق" aria-label="إغلاق">
-        <i data-lucide="x" style="width:17px; height:17px;"></i>
+        <i data-lucide="x"></i>
       </button>
     </div>
 
@@ -568,7 +570,7 @@
   <script src="mobile-db.js?v=2.0"></script>
   <script src="hijri_date.js?v=1.0"></script>
   <script src="mobile_bottom_nav.js?v=2.0"></script>
-  <script src="firebase-client.js?v=4.0"></script>
-  <script src="settings.js?v=6.0"></script>
+  <script src="firebase-client.js?v=5.0"></script>
+  <script src="settings.js?v=7.0"></script>
 </body>
 </html>

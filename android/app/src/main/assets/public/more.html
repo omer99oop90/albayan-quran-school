@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>المزيد - مدرسة البيان</title>
   <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
   <link rel="stylesheet" href="dark_theme.css?v=3.0">
   <script src="theme-init.js"></script>
   <style>
@@ -13,19 +14,21 @@
       box-sizing: border-box;
     }
 
-    :root {
+    :root,
+    html[data-theme="light"] {
       --more-bg: #F6F8FA;
       --more-card: #FFFFFF;
-      --more-border: rgba(15, 23, 42, 0.06);
+      --more-border: rgba(15, 23, 42, 0.07);
+      --more-selected-border: rgba(37, 99, 235, 0.35);
       --more-text: #0F172A;
       --more-muted: #64748B;
-      --more-emerald: #0F766E;
-      --more-emerald-bg: rgba(15, 118, 110, 0.10);
-      --more-gold: #B45309;
-      --more-gold-bg: rgba(180, 83, 9, 0.10);
-      --more-hover: #F1F5F9;
+      --more-primary: #2563EB;
+      --more-primary-hover: #1D4ED8;
+      --more-icon-bg: #EFF6FF;
+      --more-icon-fg: #1D4ED8;
+      --more-hover: #F8FAFC;
       --more-danger-bg: #FEF2F2;
-      --more-danger-border: rgba(220, 38, 38, 0.16);
+      --more-danger-border: #FECACA;
       --more-danger-text: #DC2626;
     }
 
@@ -34,15 +37,16 @@
       --more-bg: #0F172A;
       --more-card: #1E293B;
       --more-border: rgba(255, 255, 255, 0.08);
+      --more-selected-border: rgba(96, 165, 250, 0.45);
       --more-text: #F8FAFC;
       --more-muted: #94A3B8;
-      --more-emerald: #2DD4BF;
-      --more-emerald-bg: rgba(45, 212, 191, 0.14);
-      --more-gold: #FBBF24;
-      --more-gold-bg: rgba(251, 191, 36, 0.14);
+      --more-primary: #2563EB;
+      --more-primary-hover: #3B82F6;
+      --more-icon-bg: rgba(37, 99, 235, 0.16);
+      --more-icon-fg: #60A5FA;
       --more-hover: rgba(255, 255, 255, 0.05);
       --more-danger-bg: rgba(220, 38, 38, 0.12);
-      --more-danger-border: rgba(248, 113, 113, 0.25);
+      --more-danger-border: rgba(248, 113, 113, 0.28);
       --more-danger-text: #F87171;
     }
 
@@ -92,7 +96,7 @@
       flex-direction: column;
       align-items: flex-start;
       justify-content: space-between;
-      min-height: 132px;
+      min-height: 128px;
       padding: 16px;
       background: var(--more-card);
       border: 1px solid var(--more-border);
@@ -100,32 +104,37 @@
       text-decoration: none;
       color: var(--more-text);
       box-shadow: none !important;
-      transition: background-color 0.18s ease, transform 0.14s ease;
+      transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.14s ease;
+    }
+
+    .more-featured-card:hover {
+      background: var(--more-hover);
+      border-color: var(--more-selected-border);
     }
 
     .more-featured-card:active {
       transform: scale(0.98);
       background: var(--more-hover);
+      border-color: var(--more-selected-border);
     }
 
     .more-icon-pill {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       border-radius: 12px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      background: var(--more-icon-bg);
+      color: var(--more-icon-fg);
     }
 
-    .more-icon-pill.gold {
-      background: var(--more-gold-bg);
-      color: var(--more-gold);
-    }
-
-    .more-icon-pill.emerald {
-      background: var(--more-emerald-bg);
-      color: var(--more-emerald);
+    .more-icon-pill svg {
+      width: 20px;
+      height: 20px;
+      display: block;
+      margin: 0 !important;
     }
 
     .more-featured-meta {
@@ -135,7 +144,7 @@
 
     .more-featured-meta strong {
       display: block;
-      font-size: 14.5px;
+      font-size: 15px;
       font-weight: 800;
       line-height: 1.35;
       color: var(--more-text);
@@ -160,8 +169,13 @@
       text-decoration: none;
       color: var(--more-text);
       box-shadow: none !important;
-      margin-bottom: 18px;
-      transition: background-color 0.18s ease, transform 0.14s ease;
+      margin-bottom: 16px;
+      transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.14s ease;
+    }
+
+    .more-row-card:hover {
+      background: var(--more-hover);
+      border-color: var(--more-selected-border);
     }
 
     .more-row-card:active {
@@ -193,26 +207,29 @@
 
     .more-row-chevron {
       color: var(--more-muted);
-      display: flex;
+      display: inline-flex;
       align-items: center;
+      justify-content: center;
       flex-shrink: 0;
       opacity: 0.75;
     }
 
     .more-logout-btn {
       width: 100%;
-      display: flex;
+      height: 48px;
+      min-height: 48px !important;
+      padding: 0 16px !important;
+      display: flex !important;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      padding: 15px 18px;
+      gap: 8px;
       background: var(--more-danger-bg) !important;
       background-image: none !important;
       border: 1px solid var(--more-danger-border) !important;
-      border-radius: 16px !important;
+      border-radius: 14px !important;
       color: var(--more-danger-text) !important;
       font-family: inherit;
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 800;
       cursor: pointer;
       box-shadow: none !important;
@@ -220,19 +237,55 @@
     }
 
     .more-logout-btn:hover {
-      transform: none;
+      transform: none !important;
+      background: var(--more-danger-bg) !important;
       opacity: 0.92;
     }
 
     .more-logout-btn:active {
-      transform: scale(0.98);
+      transform: scale(0.98) !important;
     }
 
+    .more-logout-btn svg,
+    .more-logout-btn .lucide {
+      width: 18px !important;
+      height: 18px !important;
+      display: block !important;
+      margin: 0 !important;
+      flex-shrink: 0;
+    }
+
+    /* Defensive Bottom Navigation Layout Guarantee (prevents vertical unstyled links & oversized SVGs) */
     @media (max-width: 768px) {
       .sidebar, .sidebar-overlay { display: none !important; }
       .main-content.more-main {
         margin-right: 0 !important;
         width: 100% !important;
+      }
+      .mobile-bottom-nav {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        z-index: 9990 !important;
+      }
+      .mobile-bottom-nav-inner {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-around !important;
+        align-items: center !important;
+        width: 100% !important;
+      }
+      .mobile-bottom-nav svg {
+        max-width: 24px !important;
+        max-height: 24px !important;
+        width: 20px !important;
+        height: 20px !important;
+        display: block !important;
       }
     }
 
@@ -282,8 +335,8 @@
       <!-- Featured 2-Column Tools Grid -->
       <section class="more-featured-grid" aria-label="الأدوات الأساسية">
         <a href="certificates.html" class="more-featured-card" id="linkCertificates">
-          <div class="more-icon-pill gold">
-            <i data-lucide="award" style="width:22px; height:22px;"></i>
+          <div class="more-icon-pill">
+            <i data-lucide="award"></i>
           </div>
           <div class="more-featured-meta">
             <strong>استوديو الشهادات</strong>
@@ -292,24 +345,24 @@
         </a>
 
         <a href="users.html" class="more-featured-card" id="linkUsers">
-          <div class="more-icon-pill emerald">
-            <i data-lucide="users" style="width:22px; height:22px;"></i>
+          <div class="more-icon-pill">
+            <i data-lucide="users"></i>
           </div>
           <div class="more-featured-meta">
-            <strong>إدارة المستخدمين وحسابات الطلاب</strong>
-            <small>الحسابات والصلاحيات</small>
+            <strong>إدارة الحسابات</strong>
+            <small>المستخدمون والصلاحيات</small>
           </div>
         </a>
       </section>
 
       <!-- Horizontal Settings Card -->
       <a href="settings.html" class="more-row-card" id="linkSettings">
-        <div class="more-icon-pill emerald">
-          <i data-lucide="settings" style="width:21px; height:21px;"></i>
+        <div class="more-icon-pill">
+          <i data-lucide="settings"></i>
         </div>
         <div class="more-row-body">
           <strong>إعدادات الحساب والمظهر</strong>
-          <small>النظام القرآني، الوضع الليلي، الخطوط، والنسخ الاحتياطي</small>
+          <small>مدة السجل، المظهر، الخطوط، والنسخ الاحتياطي</small>
         </div>
         <span class="more-row-chevron">
           <i data-lucide="chevron-left" style="width:18px; height:18px;"></i>
@@ -318,7 +371,7 @@
 
       <!-- Standalone Logout Button -->
       <button type="button" class="more-logout-btn" id="linkLogout" onclick="handleLogout()">
-        <i data-lucide="log-out" style="width:18px; height:18px;"></i>
+        <i data-lucide="log-out"></i>
         <span>تسجيل الخروج</span>
       </button>
     </main>

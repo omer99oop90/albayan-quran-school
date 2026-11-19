@@ -434,22 +434,18 @@ async function loadUserProfile() {
   const isSuper = currentUserData.is_superadmin === 1;
   const role = currentUserData.role || "teacher";
   let roleText = "معلم قرآن كريم";
-  let isEmeraldRole = true;
   if (isSuper) {
     roleText = "مدير النظام";
-    isEmeraldRole = false;
   } else if (role === "admin") {
     roleText = "مشرف وإدارة";
-    isEmeraldRole = false;
   } else if (role === "supervisor") {
     roleText = "مشرف تربوي";
-    isEmeraldRole = true;
   }
 
   const badgeEl = document.getElementById("heroRoleBadge");
   if (badgeEl) {
     badgeEl.textContent = roleText;
-    badgeEl.className = isEmeraldRole ? "profile-role-pill emerald" : "profile-role-pill";
+    badgeEl.className = "profile-role-pill";
   }
 
   if (fetchedData && fetchedData.settings && window.AlbayanCycleEngine) {
@@ -527,7 +523,7 @@ function checkPasswordMatch() {
 
   msg.style.display = "block";
   if (newPass === confirmPass) {
-    msg.innerHTML = `<span style="color:#0F766E; font-weight:700;">✓ الرمزان متطابقان</span>`;
+    msg.innerHTML = `<span style="color:#2563EB; font-weight:700;">✓ الرمزان متطابقان</span>`;
   } else {
     msg.innerHTML = `<span style="color:#DC2626; font-weight:700;">الرمزان غير متطابقين</span>`;
   }
@@ -656,11 +652,13 @@ function refreshRecordPeriodBadgesAndDraft(resetDraft = false) {
 
   const badge = document.getElementById("currentRecordPeriodBadge");
   if (badge) {
-    badge.textContent = stats.meta.badge;
+    badge.textContent = stats.config.periodType === "term"
+      ? `فصلي (${stats.config.termMonths || 3} أشهر)`
+      : stats.meta.badge;
   }
   const subtitle = document.getElementById("recordPeriodSubtitle");
   if (subtitle) {
-    subtitle.textContent = `الدورة #${cfg.cycleIndex || 1} • متبقي ${stats.remainingDays} يوماً`;
+    subtitle.textContent = `السنة الحالية #${cfg.yearNumber || cfg.cycleIndex || 1} • متبقي ${stats.remainingDays} يوماً`;
   }
 
   renderCycleSheetUI(draftCycleConfig);
@@ -676,17 +674,36 @@ function openRecordPeriodSheet() {
   openSheet("sheet-record-period");
 }
 
+function formatArabicTermMonthsLabel(m) {
+  return m === 2 ? "شهران (2)" : `${m} أشهر`;
+}
+
 function renderCycleSheetUI(cfg) {
   const eng = getCycleEngineSafe();
   if (!eng || !cfg) return;
   const stats = eng.computeCycleStats(cfg);
+  const yearNum = stats.config.yearNumber || stats.config.cycleIndex || 1;
+  const termMonths = stats.config.termMonths || 3;
 
   // Duration option buttons
   document.querySelectorAll("#cycleDurationGrid .cycle-duration-option").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.period === stats.config.periodType);
   });
 
-  // Start Date picker
+  // Dynamic Custom Semester Month Count (shown when فصلي / term is selected)
+  const termBlock = document.getElementById("termMonthsControlBlock");
+  if (termBlock) {
+    termBlock.style.display = (stats.config.periodType === "term") ? "block" : "none";
+  }
+  const termLabel = document.getElementById("termMonthsValueLabel");
+  if (termLabel) {
+    termLabel.textContent = formatArabicTermMonthsLabel(termMonths);
+  }
+  document.querySelectorAll(".term-month-chip").forEach(chip => {
+    chip.classList.toggle("active", Number(chip.dataset.months) === termMonths);
+  });
+
+  // Start Date picker & Hijri preview
   const dateInput = document.getElementById("cycleStartDateInput");
   if (dateInput && dateInput.value !== stats.startDate) {
     dateInput.value = stats.startDate;
@@ -698,18 +715,21 @@ function renderCycleSheetUI(cfg) {
       const dual = window.HijriDate.formatDualDate(stats.startDate);
       hijriHint.textContent = dual.hijri || "";
     } else {
-      hijriHint.textContent = "";
+      hijriHint.textContent = stats.startDate;
     }
   }
 
   // Live progress bar & labels
+  const modeLabel = stats.config.periodType === "term"
+    ? `فصلي (${termMonths} أشهر)`
+    : stats.meta.badge;
   const pTitle = document.getElementById("cycleProgressTitle");
-  if (pTitle) pTitle.textContent = `الدورة #${stats.config.cycleIndex || 1} • ${stats.meta.badge}`;
+  if (pTitle) pTitle.textContent = `السنة الحالية #${yearNum} • ${modeLabel}`;
 
   const remPill = document.getElementById("cycleRemainingBadge");
   if (remPill) {
     remPill.textContent = stats.remainingDays === 0
-      ? "انتهت مدة الدورة"
+      ? "انتهت مدة السنة"
       : (stats.remainingDays === 1 ? "متبقي يوم واحد" : `متبقي ${stats.remainingDays} يوماً`);
   }
 
@@ -720,29 +740,34 @@ function renderCycleSheetUI(cfg) {
   const endTxt = document.getElementById("cycleDatesEndText");
   if (startTxt) startTxt.textContent = `البداية: ${stats.startDate}`;
   if (endTxt) endTxt.textContent = `النهاية: ${stats.endDate} (${stats.elapsedDays}/${stats.totalDays} يوم)`;
-
-  // End-of-period behavior radios
-  const isArchive = stats.config.endAction !== "cumulative";
-  const cardArchive = document.getElementById("endActionCardArchive");
-  const cardCum = document.getElementById("endActionCardCumulative");
-  if (cardArchive) {
-    cardArchive.classList.toggle("active", isArchive);
-    const radio = cardArchive.querySelector("input");
-    if (radio) radio.checked = isArchive;
-  }
-  if (cardCum) {
-    cardCum.classList.toggle("active", !isArchive);
-    const radio = cardCum.querySelector("input");
-    if (radio) radio.checked = !isArchive;
-  }
 }
 
 function selectCyclePeriodType(periodType) {
   if (!draftCycleConfig) {
     const eng = getCycleEngineSafe();
-    draftCycleConfig = eng ? { ...eng.getConfig() } : { periodType: "monthly", startDate: "", endAction: "archive_reset" };
+    draftCycleConfig = eng ? { ...eng.getConfig() } : { mode: "monthly", periodType: "monthly", termMonths: 3, startDate: "", endAction: "archive_reset" };
   }
+  draftCycleConfig.mode = periodType;
   draftCycleConfig.periodType = periodType;
+  renderCycleSheetUI(draftCycleConfig);
+}
+
+function stepTermMonths(delta) {
+  if (!draftCycleConfig) {
+    const eng = getCycleEngineSafe();
+    draftCycleConfig = eng ? { ...eng.getConfig() } : { mode: "term", periodType: "term", termMonths: 3 };
+  }
+  const curr = parseInt(draftCycleConfig.termMonths || 3, 10) || 3;
+  draftCycleConfig.termMonths = Math.max(2, Math.min(6, curr + delta));
+  renderCycleSheetUI(draftCycleConfig);
+}
+
+function setTermMonths(months) {
+  if (!draftCycleConfig) {
+    const eng = getCycleEngineSafe();
+    draftCycleConfig = eng ? { ...eng.getConfig() } : { mode: "term", periodType: "term", termMonths: 3 };
+  }
+  draftCycleConfig.termMonths = Math.max(2, Math.min(6, parseInt(months, 10) || 3));
   renderCycleSheetUI(draftCycleConfig);
 }
 
@@ -753,15 +778,6 @@ function onCycleStartDateChange(dateStr) {
     draftCycleConfig = eng ? { ...eng.getConfig() } : {};
   }
   draftCycleConfig.startDate = dateStr;
-  renderCycleSheetUI(draftCycleConfig);
-}
-
-function selectCycleEndAction(action) {
-  if (!draftCycleConfig) {
-    const eng = getCycleEngineSafe();
-    draftCycleConfig = eng ? { ...eng.getConfig() } : {};
-  }
-  draftCycleConfig.endAction = (action === "cumulative") ? "cumulative" : "archive_reset";
   renderCycleSheetUI(draftCycleConfig);
 }
 
@@ -777,13 +793,22 @@ async function saveRecordPeriodSettings() {
   }
 
   try {
-    const saved = await eng.saveConfig(draftCycleConfig || eng.getConfig());
+    const payload = {
+      ...(draftCycleConfig || eng.getConfig()),
+      mode: (draftCycleConfig && (draftCycleConfig.mode || draftCycleConfig.periodType)) || "monthly",
+      periodType: (draftCycleConfig && (draftCycleConfig.periodType || draftCycleConfig.mode)) || "monthly",
+      endAction: "archive_reset"
+    };
+    const saved = await eng.saveConfig(payload);
     draftCycleConfig = { ...saved };
     refreshRecordPeriodBadgesAndDraft(true);
-    showAlert("تم حفظ وتطبيق نظام السجل القرآني في كافة الصفحات", true);
-    setTimeout(() => closeSheet("sheet-record-period"), 600);
+    if (typeof window.renderRosterPeriodSelector === "function") {
+      window.renderRosterPeriodSelector(saved);
+    }
+    showAlert("تم حفظ وتطبيق مدة السجل بنجاح", true);
+    setTimeout(() => closeSheet("sheet-record-period"), 550);
   } catch (err) {
-    showAlert("حدث خطأ أثناء حفظ إعدادات الدورة.", false);
+    showAlert("حدث خطأ أثناء حفظ إعدادات السجل.", false);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -798,18 +823,17 @@ async function handleArchiveCurrentCycleNow() {
   const btn = document.getElementById("btnArchiveCycleNow");
   if (!eng) return;
 
-  if (!confirm("سيتم أرشفة درجات الحفظ والمراجعة والحضور للدورة الحالية وبدء دورة جديدة. هل ترغب في المتابعة؟")) {
+  if (!confirm("سيتم أرشفة درجات الحفظ والمراجعة والحضور للسنة الحالية وبدء سنة جديدة. هل ترغب في المتابعة؟")) {
     return;
   }
 
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px;"></i><span>جاري الأرشفة وبدء الدورة الجديدة...</span>`;
+    btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px;"></i><span>جاري الأرشفة وبدء السنة الجديدة...</span>`;
     safeCreateIcons();
   }
 
   try {
-    // Save any pending duration/start edits first
     if (draftCycleConfig) {
       await eng.saveConfig(draftCycleConfig);
     }
@@ -818,16 +842,16 @@ async function handleArchiveCurrentCycleNow() {
       draftCycleConfig = { ...res.config };
       refreshRecordPeriodBadgesAndDraft(true);
       renderCycleArchivesPreview();
-      showAlert(`تم إغلاق وأرشفة الدورة #${res.archive.cycleNumber} بنجاح وبدأت الدورة الجديدة`, true);
+      showAlert(`تم إغلاق وأرشفة السنة #${res.archive.cycleNumber} بنجاح وبدأت السنة الجديدة`, true);
     } else {
       showAlert("تعذر إتمام الأرشفة، يرجى المحاولة مجدداً.", false);
     }
   } catch (err) {
-    showAlert("حدث خطأ أثناء أرشفة الدورة.", false);
+    showAlert("حدث خطأ أثناء أرشفة السنة.", false);
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = `<i data-lucide="archive" style="width:17px; height:17px;"></i><span>إغلاق الدورة الحالية وأرشفتها الآن</span>`;
+      btn.innerHTML = `<i data-lucide="archive" style="width:17px; height:17px;"></i><span>إغلاق السنة الحالية وأرشفتها الآن</span>`;
       safeCreateIcons();
     }
   }
@@ -847,14 +871,14 @@ function renderCycleArchivesPreview() {
   }
 
   box.style.display = "block";
-  if (countEl) countEl.textContent = `${archives.length} دورات`;
+  if (countEl) countEl.textContent = `${archives.length} سنوات`;
 
   listEl.innerHTML = archives.slice(0, 4).map(a => {
     const s = a.summary || {};
     return `
       <div class="cycle-archive-item">
         <div>
-          <strong style="display:block; color:var(--st-text);">${a.periodLabel || ('الدورة #' + a.cycleNumber)}</strong>
+          <strong style="display:block; color:var(--st-text);">${a.periodLabel || ('السنة #' + a.cycleNumber)}</strong>
           <small style="color:var(--st-muted);">${a.startDate || ''} → ${a.endDate || ''}</small>
         </div>
         <span class="row-badge-pill neutral">${s.totalStudents || 0} طالب • ${s.totalMemoPages || 0} وجه</span>
@@ -866,8 +890,9 @@ function renderCycleArchivesPreview() {
 window.initRecordPeriodSettings = initRecordPeriodSettings;
 window.openRecordPeriodSheet = openRecordPeriodSheet;
 window.selectCyclePeriodType = selectCyclePeriodType;
+window.stepTermMonths = stepTermMonths;
+window.setTermMonths = setTermMonths;
 window.onCycleStartDateChange = onCycleStartDateChange;
-window.selectCycleEndAction = selectCycleEndAction;
 window.saveRecordPeriodSettings = saveRecordPeriodSettings;
 window.handleArchiveCurrentCycleNow = handleArchiveCurrentCycleNow;
 

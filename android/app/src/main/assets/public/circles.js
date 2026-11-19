@@ -375,43 +375,61 @@ function renderActiveCycleBadgeInCircles() {
   if (!chip) {
     chip = document.createElement("span");
     chip.id = "activeCycleStatusChip";
-    chip.style.cssText = "display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:800; background:rgba(15,118,110,0.10); color:#0F766E; border:1px solid rgba(15,118,110,0.2); margin-right:6px; white-space:nowrap;";
+    chip.style.cssText = "display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:800; background:#EFF6FF; color:#1D4ED8; border:1px solid rgba(37,99,235,0.25); margin-right:6px; white-space:nowrap;";
     wrapper.appendChild(chip);
   }
-  chip.textContent = `الدورة #${stats.config.cycleIndex || 1} (${stats.meta.badge}) • متبقي ${stats.remainingDays}ي`;
+  const badgeText = stats.config.periodType === "term"
+    ? `فصلي (${stats.config.termMonths || 3} أشهر)`
+    : stats.meta.badge;
+  chip.textContent = `السنة #${stats.config.yearNumber || stats.config.cycleIndex || 1} (${badgeText}) • متبقي ${stats.remainingDays}ي`;
+}
+
+function syncPeriodFromEngine(reloadRoster = false) {
+  if (!window.AlbayanCycleEngine) return;
+  const cfg = window.AlbayanCycleEngine.getConfig();
+  const prevType = currentPeriodType;
+  const prevMonths = customPeriodMonths;
+  currentPeriodType = cfg.mode || cfg.periodType || "monthly";
+  customPeriodMonths = currentPeriodType === "term" ? (cfg.termMonths || 3) : (currentPeriodType === "yearly" ? 12 : 1);
+
+  const filterMonthInput = document.getElementById("filterMonth");
+  if (filterMonthInput && (prevType !== currentPeriodType || prevMonths !== customPeriodMonths)) {
+    const built = window.AlbayanCycleEngine.buildPeriodOptionsList(cfg);
+    if (built && built.options && built.options.length > 0) {
+      filterMonthInput.value = built.options[0].value;
+    }
+  }
+  updatePeriodUI();
+  renderActiveCycleBadgeInCircles();
+  if (reloadRoster && activeCircleId !== null) loadStudents(true);
 }
 
 async function initPeriodSystem() {
   if (window.AlbayanCycleEngine) {
-    const cfg = window.AlbayanCycleEngine.getConfig();
-    currentPeriodType = cfg.periodType || "monthly";
-    customPeriodMonths = cfg.periodType === "term" ? 3 : (cfg.periodType === "yearly" ? 12 : 1);
+    syncPeriodFromEngine(false);
     const autoCheck = await window.AlbayanCycleEngine.checkAndAutoArchive().catch(() => null);
     if (autoCheck && autoCheck.archived && typeof showNotice === "function") {
-      showNotice("تم أرشفة الدورة القرآنية السابقة تلقائياً وبدء دورة جديدة.");
+      showNotice("تم أرشفة السنة السابقة تلقائياً وبدء سنة جديدة.");
     }
   } else {
     const savedType = localStorage.getItem("record_period_type");
     const savedMonths = localStorage.getItem("custom_period_months");
     if (savedType) currentPeriodType = savedType;
     if (savedMonths) customPeriodMonths = parseInt(savedMonths);
-  }
-  updatePeriodUI();
-  renderActiveCycleBadgeInCircles();
-
-  window.addEventListener("albayan:cycle-updated", () => {
-    if (!window.AlbayanCycleEngine) return;
-    const cfg = window.AlbayanCycleEngine.getConfig();
-    currentPeriodType = cfg.periodType || "monthly";
-    customPeriodMonths = cfg.periodType === "term" ? 3 : (cfg.periodType === "yearly" ? 12 : 1);
     updatePeriodUI();
-    renderActiveCycleBadgeInCircles();
-    if (activeCircleId !== null) loadStudents(true);
-  });
+  }
 
-  window.addEventListener("albayan:cycle-archived", () => {
-    renderActiveCycleBadgeInCircles();
-    if (activeCircleId !== null) loadStudents(true);
+  window.addEventListener("albayan:record-period-updated", () => syncPeriodFromEngine(true));
+  window.addEventListener("albayan:cycle-updated", () => syncPeriodFromEngine(true));
+  window.addEventListener("albayan:cycle-archived", () => syncPeriodFromEngine(true));
+  window.addEventListener("pageshow", () => syncPeriodFromEngine(true));
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) syncPeriodFromEngine(true);
+  });
+  window.addEventListener("storage", (e) => {
+    if (!e || !e.key || e.key === "albayan_record_period_config" || e.key === "albayan_quran_cycle_v1") {
+      syncPeriodFromEngine(true);
+    }
   });
 
   try {
@@ -475,21 +493,23 @@ function updatePeriodUI() {
   if (currentPeriodType === "daily") {
     updateDailyDateUI();
   } else if (currentPeriodType === "weekly") {
-    const stats = window.AlbayanCycleEngine ? window.AlbayanCycleEngine.computeCycleStats() : null;
-    const weeklyLabel = stats ? `الأسبوع الحالي (الدورة #${stats.config.cycleIndex})` : `الأسبوع الحالي`;
-    if (filterMonthInput && (!filterMonthInput.value || filterMonthInput.value === "صفر")) {
-      filterMonthInput.value = weeklyLabel;
-    }
-    if (monthTrigger) monthTrigger.textContent = filterMonthInput?.value || weeklyLabel;
+    const weeklyLabel = (filterMonthInput && filterMonthInput.value && filterMonthInput.value.startsWith("الأسبوع"))
+      ? filterMonthInput.value
+      : "الأسبوع الأول";
+    if (filterMonthInput) filterMonthInput.value = weeklyLabel;
+    if (monthTrigger) monthTrigger.textContent = weeklyLabel;
   } else if (currentPeriodType === "term" || currentPeriodType === "custom") {
-    const monthsVal = currentPeriodType === "term" ? 3 : customPeriodMonths;
-    const customLabel = `الفصل 1 (${monthsVal} أشهر)`;
-    if (filterMonthInput && !filterMonthInput.value) filterMonthInput.value = customLabel;
-    if (monthTrigger) monthTrigger.textContent = filterMonthInput?.value || customLabel;
+    const cfg = window.AlbayanCycleEngine ? window.AlbayanCycleEngine.getConfig() : null;
+    const monthsVal = currentPeriodType === "term" ? ((cfg && cfg.termMonths) || customPeriodMonths || 3) : customPeriodMonths;
+    const customLabel = (filterMonthInput && filterMonthInput.value && filterMonthInput.value.startsWith("الفصل"))
+      ? filterMonthInput.value
+      : `الفصل الأول (${monthsVal} أشهر)`;
+    if (filterMonthInput) filterMonthInput.value = customLabel;
+    if (monthTrigger) monthTrigger.textContent = customLabel;
   } else if (currentPeriodType === "yearly") {
-    const yearlyLabel = `سجل نهاية السنة`;
-    if (filterMonthInput && !filterMonthInput.value) filterMonthInput.value = yearlyLabel;
-    if (monthTrigger) monthTrigger.textContent = filterMonthInput?.value || yearlyLabel;
+    const yearlyLabel = "السجل السنوي الشامل";
+    if (filterMonthInput) filterMonthInput.value = "سجل نهاية السنة";
+    if (monthTrigger) monthTrigger.textContent = yearlyLabel;
   } else {
     // monthly
     if (monthTrigger && filterMonthInput) {
@@ -3207,7 +3227,7 @@ window.toggleSidebar = function() {
 window.openPeriodPicker = function(event) {
   if (currentPeriodType === "daily") {
     openDailyDatePicker(event);
-  } else if (currentPeriodType === "custom" || currentPeriodType === "term") {
+  } else if (currentPeriodType === "weekly" || currentPeriodType === "custom" || currentPeriodType === "term" || currentPeriodType === "yearly") {
     openCustomPeriodPicker(event);
   } else {
     openDatePicker(event);
@@ -3258,31 +3278,42 @@ function confirmDailyDatePicker() {
 
 function openCustomPeriodPicker(event) {
   event.stopPropagation();
-  const currentMonthVal = document.getElementById("filterMonth")?.value || `الفصل 1 (${customPeriodMonths} أشهر)`;
+  const currentMonthVal = document.getElementById("filterMonth")?.value || "";
   const currentYearVal = document.getElementById("filterYear")?.value || new Date().getFullYear();
 
-  // حساب عدد الفصول في السنة بناء على عدد الأشهر المحددة (السنة = 12 شهر)
-  const totalTerms = Math.max(1, Math.floor(12 / (customPeriodMonths || 6)));
+  const built = (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.buildPeriodOptionsList === "function")
+    ? window.AlbayanCycleEngine.buildPeriodOptionsList()
+    : null;
 
   let periodsHtml = "";
-  for (let i = 1; i <= totalTerms; i++) {
-    const label = `الفصل ${i} (${customPeriodMonths} أشهر)`;
-    const isSel = (label === currentMonthVal || currentMonthVal.includes(` ${i} `) || currentMonthVal.startsWith(`الفترة ${i}`));
-    periodsHtml += `
-      <div class="popover-menu-item ${isSel ? 'active-item' : ''}" onclick="selectCustomPeriod('${label}')" style="padding:10px 14px; cursor:pointer; font-weight:700; font-size:13px;">
-        ⏳ ${label}
-      </div>
-    `;
+  if (built && Array.isArray(built.options)) {
+    periodsHtml = built.options.map(opt => {
+      const isSel = opt.value === currentMonthVal;
+      if (opt.isYearly) {
+        return `
+          <div class="popover-menu-item ${isSel ? 'active-item' : ''}" onclick="selectCustomPeriod('${opt.value}')" style="padding:11px 14px; cursor:pointer; font-weight:800; font-size:13px; color:#1D4ED8; background:#EFF6FF; border-radius:10px; margin-top:6px; border:1px dashed rgba(37,99,235,0.4); display:flex; align-items:center; gap:8px;">
+            <span>${opt.label}</span>
+          </div>
+        `;
+      }
+      return `
+        <div class="popover-menu-item ${isSel ? 'active-item' : ''}" onclick="selectCustomPeriod('${opt.value}')" style="padding:10px 14px; cursor:pointer; font-weight:700; font-size:13px;">
+          ${opt.label}
+        </div>
+      `;
+    }).join("");
+  } else {
+    const totalTerms = Math.max(1, Math.ceil(12 / (customPeriodMonths || 3)));
+    for (let i = 1; i <= totalTerms; i++) {
+      const label = `الفصل ${i} (${customPeriodMonths} أشهر)`;
+      const isSel = (label === currentMonthVal);
+      periodsHtml += `
+        <div class="popover-menu-item ${isSel ? 'active-item' : ''}" onclick="selectCustomPeriod('${label}')" style="padding:10px 14px; cursor:pointer; font-weight:700; font-size:13px;">
+          ${label}
+        </div>
+      `;
+    }
   }
-
-  // إضافة خيار سجل نهاية السنة الشامل
-  const isYearlySelected = (currentMonthVal === "سجل نهاية السنة" || currentMonthVal === "المحصلة السنوية" || currentMonthVal === "نهاية السنة");
-  periodsHtml += `
-    <div class="popover-menu-item ${isYearlySelected ? 'active-item' : ''}" onclick="selectCustomPeriod('سجل نهاية السنة')" style="padding:11px 14px; cursor:pointer; font-weight:800; font-size:13px; color:#1e40af; background:#eff6ff; border-radius:10px; margin-top:6px; border:1.5px dashed #93c5fd; display:flex; align-items:center; gap:8px;">
-      <span>🎓</span>
-      <span>سجل نهاية السنة (المحصلة الشاملة)</span>
-    </div>
-  `;
 
   const content = `
     <div class="quran-picker-card" onclick="event.stopPropagation()" style="width: 100%; border: none; padding: 16px;">

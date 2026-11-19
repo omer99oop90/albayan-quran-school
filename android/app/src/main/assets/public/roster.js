@@ -231,9 +231,51 @@ function normalizeStudentId(id) {
   return isNaN(num) ? s : num;
 }
 
+let lastRenderedPeriodSignature = "";
+
+function renderRosterPeriodSelector(configInput = null, reloadIfChanged = false) {
+  const selectEl = document.getElementById("filterMonth");
+  const eng = window.AlbayanCycleEngine;
+  if (!selectEl || !eng || typeof eng.buildPeriodOptionsList !== "function") return;
+
+  const { config, options } = eng.buildPeriodOptionsList(configInput);
+  currentPeriodType = config.mode || config.periodType || "monthly";
+
+  const signature = `${currentPeriodType}|${config.termMonths}|${config.startDate}|${config.yearNumber || 1}`;
+  if (signature === lastRenderedPeriodSignature && selectEl.options.length === options.length) {
+    return;
+  }
+
+  const prevVal = selectEl.value;
+  selectEl.innerHTML = options.map(opt => `<option value="${escapeHtml(opt.value)}">${opt.label}</option>`).join("");
+
+  let nextVal = "";
+  if (prevVal && options.some(o => o.value === prevVal) && signature === lastRenderedPeriodSignature) {
+    nextVal = prevVal;
+  } else if (currentPeriodType === "monthly") {
+    const hijriCurr = (window.HijriDate && typeof window.HijriDate.getCurrentHijriMonth === "function")
+      ? window.HijriDate.getCurrentHijriMonth()
+      : "صفر";
+    nextVal = options.some(o => o.value === hijriCurr) ? hijriCurr : (options[0] ? options[0].value : "صفر");
+  } else {
+    nextVal = options[0] ? options[0].value : "سجل نهاية السنة";
+  }
+
+  if (nextVal) selectEl.value = nextVal;
+  const changed = lastRenderedPeriodSignature !== "" && lastRenderedPeriodSignature !== signature;
+  lastRenderedPeriodSignature = signature;
+
+  if ((reloadIfChanged || changed) && activeCircleId) {
+    loadStudents();
+  }
+}
+
+window.renderRosterPeriodSelector = renderRosterPeriodSelector;
+
 document.addEventListener("DOMContentLoaded", () => {
   safeCreateIcons();
   setupDesktopTableScroll();
+  renderRosterPeriodSelector(null, false);
 
   // Handle URL query param circle_id immediately
   let paramCid = null;
@@ -295,9 +337,31 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   window.addEventListener('albayan:firebase-ready', () => {
+    renderRosterPeriodSelector(null, true);
     loadCirclesDropdown(true).then(() => {
       if (activeCircleId) loadStudents(true).catch(() => {});
     }).catch(() => {});
+  });
+
+  window.addEventListener('albayan:record-period-updated', (e) => {
+    renderRosterPeriodSelector(e && e.detail ? e.detail : null, true);
+  });
+  window.addEventListener('albayan:cycle-updated', (e) => {
+    renderRosterPeriodSelector(e && e.detail ? e.detail : null, true);
+  });
+  window.addEventListener('albayan:cycle-archived', () => {
+    renderRosterPeriodSelector(null, true);
+  });
+  window.addEventListener('storage', (e) => {
+    if (!e || !e.key || e.key === 'albayan_record_period_config' || e.key === 'albayan_quran_cycle_v1' || e.key === 'record_period_type') {
+      renderRosterPeriodSelector(null, true);
+    }
+  });
+  window.addEventListener('pageshow', () => {
+    renderRosterPeriodSelector(null, true);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) renderRosterPeriodSelector(null, true);
   });
 
   // Close popover when clicking outside
@@ -547,8 +611,12 @@ function switchCircleFromSelect(circleId) {
 function getPeriodFilterPayload() {
   const filterYear = document.getElementById("filterYear")?.value || "1448";
   const filterMonth = document.getElementById("filterMonth")?.value || "صفر";
+  const cfg = (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.getConfig === "function")
+    ? window.AlbayanCycleEngine.getConfig()
+    : null;
   return {
     period_type: currentPeriodType,
+    term_months: cfg ? (cfg.termMonths || 3) : 3,
     record_date: currentRecordDate,
     year: filterYear,
     month: filterMonth

@@ -2750,6 +2750,7 @@
   // ==========================================================================
   const AlbayanCycleEngine = (function () {
     const CONFIG_KEY = 'albayan_quran_cycle_v1';
+    const RECORD_CFG_KEY = 'albayan_record_period_config';
     const ARCHIVE_KEY = 'albayan_cycle_archives_v1';
     let archiveInFlight = false;
 
@@ -2758,28 +2759,28 @@
         key: 'weekly',
         label: 'أسبوعي (7 أيام)',
         badge: 'أسبوعي',
-        description: 'دورة متابعة أسبوعية كل 7 أيام',
+        description: 'متابعة أسبوعية كل 7 أيام',
         timeframe: 'week'
       },
       monthly: {
         key: 'monthly',
         label: 'شهري (الافتراضي)',
         badge: 'شهري',
-        description: 'دورة شهرية قياسية (شهر واحد من تاريخ البداية)',
+        description: 'متابعة شهرية قياسية',
         timeframe: 'month'
       },
       term: {
         key: 'term',
-        label: 'فصلي / ربع سنوي',
+        label: 'فصلي',
         badge: 'فصلي',
-        description: 'دورة فصلية ممتدة لثلاثة أشهر (ربع سنوي)',
+        description: 'فصل دراسي بعدد أشهر مخصص (2 إلى 6 أشهر)',
         timeframe: 'term'
       },
       yearly: {
         key: 'yearly',
         label: 'سنوي (عام دراسي)',
         badge: 'سنوي',
-        description: 'دورة سنوية متصلة لعام دراسي كامل',
+        description: 'سجل سنوي متصل لعام دراسي كامل',
         timeframe: 'year'
       }
     };
@@ -2841,12 +2842,23 @@
       return raw === 'cumulative' ? 'cumulative' : 'archive_reset';
     }
 
+    function clampTermMonths(raw) {
+      const n = parseInt(raw, 10);
+      if (isNaN(n)) return 3;
+      return Math.max(2, Math.min(6, n));
+    }
+
     function getDefaultConfig() {
       const legacyType = localStorage.getItem('record_period_type');
+      const legacyMonths = localStorage.getItem('custom_period_months');
+      const mode = normalizePeriodType(legacyType || 'monthly');
       return {
-        periodType: normalizePeriodType(legacyType || 'monthly'),
+        mode,
+        periodType: mode,
+        termMonths: clampTermMonths(legacyMonths || 3),
         startDate: firstOfMonthYMD(),
         endAction: 'archive_reset',
+        yearNumber: 1,
         cycleIndex: 1,
         lastArchiveAt: null,
         updatedAt: new Date().toISOString()
@@ -2859,11 +2871,17 @@
       const startDate = /^\d{4}-\d{2}-\d{2}$/.test(String(src.startDate || ''))
         ? src.startDate
         : def.startDate;
+      const mode = normalizePeriodType(src.mode || src.periodType || src.record_period_type || def.periodType);
+      const termMonths = clampTermMonths(src.termMonths !== undefined ? src.termMonths : (src.custom_period_months !== undefined ? src.custom_period_months : def.termMonths));
+      const yearNum = Math.max(1, parseInt(src.yearNumber || src.cycleIndex || src.cycle_index || 1, 10) || 1);
       return {
-        periodType: normalizePeriodType(src.periodType || src.record_period_type || def.periodType),
+        mode,
+        periodType: mode,
+        termMonths,
         startDate,
-        endAction: normalizeEndAction(src.endAction || src.end_action),
-        cycleIndex: Math.max(1, parseInt(src.cycleIndex || src.cycle_index || 1, 10) || 1),
+        endAction: 'archive_reset',
+        yearNumber: yearNum,
+        cycleIndex: yearNum,
         lastArchiveAt: src.lastArchiveAt || null,
         updatedAt: src.updatedAt || new Date().toISOString()
       };
@@ -2871,11 +2889,21 @@
 
     function getConfig() {
       try {
+        const rawRec = localStorage.getItem(RECORD_CFG_KEY);
+        if (rawRec) return normalizeConfig(JSON.parse(rawRec));
         const raw = localStorage.getItem(CONFIG_KEY);
         if (raw) return normalizeConfig(JSON.parse(raw));
       } catch (e) {}
       const def = getDefaultConfig();
-      try { localStorage.setItem(CONFIG_KEY, JSON.stringify(def)); } catch (e) {}
+      try {
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(def));
+        localStorage.setItem(RECORD_CFG_KEY, JSON.stringify({
+          mode: def.mode,
+          termMonths: def.termMonths,
+          startDate: def.startDate,
+          yearNumber: def.yearNumber
+        }));
+      } catch (e) {}
       return def;
     }
 
@@ -2886,7 +2914,7 @@
       if (cfg.periodType === 'weekly') {
         nextStartObj = addDays(startObj, 7);
       } else if (cfg.periodType === 'term') {
-        nextStartObj = addMonths(startObj, 3);
+        nextStartObj = addMonths(startObj, clampTermMonths(cfg.termMonths));
       } else if (cfg.periodType === 'yearly') {
         nextStartObj = addMonths(startObj, 12);
       } else {
@@ -2924,16 +2952,26 @@
       const merged = normalizeConfig({
         ...current,
         ...partial,
+        endAction: 'archive_reset',
         updatedAt: new Date().toISOString()
       });
 
+      const canonicalShort = {
+        mode: merged.mode,
+        termMonths: merged.termMonths,
+        startDate: merged.startDate,
+        yearNumber: merged.yearNumber
+      };
+
       try {
         localStorage.setItem(CONFIG_KEY, JSON.stringify(merged));
+        localStorage.setItem(RECORD_CFG_KEY, JSON.stringify(canonicalShort));
         localStorage.setItem('record_period_type', merged.periodType);
-        const monthsMap = { weekly: 1, monthly: 1, term: 3, yearly: 12 };
-        localStorage.setItem('custom_period_months', String(monthsMap[merged.periodType] || 1));
+        const effMonths = merged.periodType === 'term' ? merged.termMonths : (merged.periodType === 'yearly' ? 12 : 1);
+        localStorage.setItem('custom_period_months', String(effMonths));
       } catch (e) {}
 
+      window.dispatchEvent(new CustomEvent('albayan:record-period-updated', { detail: canonicalShort }));
       window.dispatchEvent(new CustomEvent('albayan:cycle-updated', { detail: merged }));
 
       if (!options.localOnly) {
@@ -2945,15 +2983,69 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               record_period_type: merged.periodType,
-              custom_period_months: merged.periodType === 'term' ? 3 : (merged.periodType === 'yearly' ? 12 : 1),
+              custom_period_months: merged.periodType === 'term' ? merged.termMonths : (merged.periodType === 'yearly' ? 12 : 1),
               cycle_start_date: merged.startDate,
-              cycle_end_action: merged.endAction
+              cycle_end_action: 'archive_reset'
             })
           }).catch(() => {});
         } catch (e) {}
       }
 
       return merged;
+    }
+
+    const HIJRI_MONTH_NAMES = [
+      'محرم', 'صفر', 'ربيع الأول', 'ربيع الآخر', 'جمادى الأولى', 'جمادى الآخرة',
+      'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'
+    ];
+    const ARABIC_ORDINALS = [
+      'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس',
+      'السابع', 'الثامن', 'التاسع', 'العاشر', 'الحادي عشر', 'الثاني عشر'
+    ];
+
+    function buildPeriodOptionsList(cfgInput = null) {
+      const cfg = normalizeConfig(cfgInput || getConfig());
+      const mode = cfg.mode;
+      const termMonths = clampTermMonths(cfg.termMonths);
+      const startObj = parseYMD(cfg.startDate);
+      const options = [];
+
+      if (mode === 'weekly') {
+        const formatShortDM = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+        for (let i = 0; i < 12; i++) {
+          const wStart = addDays(startObj, i * 7);
+          const wEnd = addDays(wStart, 6);
+          const ord = ARABIC_ORDINALS[i] || `رقم ${i + 1}`;
+          const val = `الأسبوع ${ord}`;
+          options.push({
+            value: val,
+            label: `${val} (${formatShortDM(wStart)} - ${formatShortDM(wEnd)})`,
+            isYearly: false
+          });
+        }
+        options.push({ value: 'سجل نهاية السنة', label: '🎓 كشف نهاية السنة الشامل', isYearly: true });
+      } else if (mode === 'term') {
+        const count = Math.max(1, Math.ceil(12 / termMonths));
+        for (let i = 0; i < count; i++) {
+          const ord = ARABIC_ORDINALS[i] || `رقم ${i + 1}`;
+          const labelText = `الفصل ${ord} (${termMonths} أشهر)`;
+          options.push({
+            value: labelText,
+            label: labelText,
+            isYearly: false
+          });
+        }
+        options.push({ value: 'سجل نهاية السنة', label: '🎓 كشف نهاية السنة الشامل', isYearly: true });
+      } else if (mode === 'yearly') {
+        options.push({ value: 'سجل نهاية السنة', label: '🎓 السجل السنوي الشامل', isYearly: true });
+      } else {
+        HIJRI_MONTH_NAMES.forEach((m) => {
+          options.push({ value: m, label: `شهر ${m}`, isYearly: false });
+        });
+        options.push({ value: 'سجل نهاية السنة', label: '🎓 كشف نهاية السنة الشامل', isYearly: true });
+      }
+
+      return { config: cfg, options };
     }
 
     function getArchives() {
@@ -3217,7 +3309,7 @@
           id: archiveId,
           cycleNumber: cfg.cycleIndex || 1,
           periodType: cfg.periodType,
-          periodLabel: `${stats.meta.badge} — الدورة #${cfg.cycleIndex || 1}`,
+          periodLabel: `${stats.meta.badge} — السنة #${cfg.cycleIndex || 1}`,
           startDate: stats.startDate,
           endDate: manual && stats.todayStr < stats.endDate ? stats.todayStr : stats.endDate,
           archivedAt: new Date().toISOString(),
@@ -3346,9 +3438,11 @@
 
     return {
       PERIOD_META,
+      HIJRI_MONTH_NAMES,
       getConfig,
       saveConfig,
       computeCycleStats,
+      buildPeriodOptionsList,
       getArchives,
       archiveCurrentCycle,
       checkAndAutoArchive,
@@ -3358,6 +3452,20 @@
       normalizePeriodType
     };
   })();
+
+  window.AlbayanRecordPeriodConfig = {
+    get: () => {
+      const cfg = AlbayanCycleEngine.getConfig();
+      return {
+        mode: cfg.mode || cfg.periodType,
+        termMonths: cfg.termMonths || 3,
+        startDate: cfg.startDate,
+        yearNumber: cfg.yearNumber || cfg.cycleIndex || 1
+      };
+    },
+    set: (cfg) => AlbayanCycleEngine.saveConfig(cfg),
+    buildPeriods: (cfg) => AlbayanCycleEngine.buildPeriodOptionsList(cfg)
+  };
 
   // Expose Clean Layered Architecture & Backward-Compatible Globals
   window.firebaseConfig = firebaseConfig;
