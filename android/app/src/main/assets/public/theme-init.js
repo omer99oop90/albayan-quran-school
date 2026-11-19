@@ -537,7 +537,7 @@
   window.logout = window.albayanLogout;
   window.confirmLogout = window.albayanLogout;
 
-  // 7. Global Compact Floating Select Menu (Replaces ALL native Android <select> popups)
+  // 7. Global Centered 1-Column Floating Select Menu (Zero Scroll, Options Only)
   (function initGlobalBottomSheetSelect() {
     if (typeof document === 'undefined') return;
 
@@ -550,23 +550,22 @@
       style.id = 'albayan-bottom-sheet-select-css';
       style.textContent = [
         'select { -webkit-tap-highlight-color: transparent; cursor: pointer; }',
-        '.ab-select-backdrop { position: fixed; inset: 0; background: transparent !important; z-index: 1000010; display: none; }',
+        '.ab-select-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.42); z-index: 1000010; display: none; }',
         '.ab-select-backdrop.active { display: block; }',
-        '.ab-select-sheet { position: fixed; left: 0; top: 0; width: 260px; max-width: calc(100vw - 16px); max-height: calc(100vh - 20px); background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14); z-index: 1000015; display: none; overflow-y: auto; overflow-x: hidden; direction: rtl; font-family: inherit; opacity: 0; transform: scale(0.97); transition: opacity 0.14s ease, transform 0.14s ease; }',
-        '.ab-select-sheet.active { display: block; opacity: 1; transform: scale(1); }',
-        '.ab-select-list { padding: 6px; display: flex; flex-direction: column; }',
-        '.ab-select-list.ab-grid-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }',
-        '.ab-sheet-opt { width: 100%; height: 40px !important; min-height: 40px !important; max-height: 40px !important; padding: 0 12px !important; margin-bottom: 2px; border-radius: 10px !important; background: transparent !important; background-image: none !important; border: none !important; color: #0F172A !important; font-family: inherit; font-size: 14px !important; font-weight: 600; text-align: right; display: flex !important; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; box-shadow: none !important; transition: background-color 0.12s ease, color 0.12s ease; }',
-        '.ab-sheet-opt:last-child { margin-bottom: 0; }',
-        '.ab-select-list.ab-grid-2col .ab-sheet-opt { margin-bottom: 0; padding: 0 10px !important; font-size: 13.5px !important; }',
-        '.ab-select-list.ab-grid-2col .ab-sheet-opt.ab-span-full { grid-column: 1 / -1; }',
+        '.ab-select-sheet { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.97); width: min(88vw, 330px); overflow: visible; max-height: none; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 18px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18); z-index: 1000015; display: none; direction: rtl; font-family: inherit; opacity: 0; transition: opacity 0.16s ease, transform 0.16s ease; }',
+        '.ab-select-sheet.active { display: block; opacity: 1; transform: translate(-50%, -50%) scale(1); }',
+        '.ab-select-list { display: flex; flex-direction: column; width: 100%; padding: 10px; gap: 5px; box-sizing: border-box; }',
+        '.ab-select-list.ab-dense-list { padding: 8px; gap: 3px; }',
+        '.ab-sheet-opt { width: 100%; height: 42px !important; min-height: 42px !important; max-height: 42px !important; padding: 0 14px !important; margin: 0 !important; border-radius: 10px !important; background: transparent !important; background-image: none !important; border: none !important; color: #0F172A !important; font-family: inherit; font-size: 14px !important; font-weight: 600; text-align: right; display: flex !important; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; box-shadow: none !important; transition: background-color 0.12s ease, color 0.12s ease; }',
+        '.ab-select-list.ab-dense-list .ab-sheet-opt { height: 34px !important; min-height: 34px !important; max-height: 34px !important; padding: 0 12px !important; font-size: 13px !important; border-radius: 9px !important; }',
         '.ab-sheet-opt:hover { transform: none !important; background: #F8FAFC !important; color: #0F172A !important; }',
         '.ab-sheet-opt.selected { background: #EFF6FF !important; color: #1D4ED8 !important; font-weight: 700 !important; }',
         '.ab-sheet-opt:disabled { opacity: 0.45; cursor: not-allowed; }',
-        '.ab-sheet-opt-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 40px; }',
+        '.ab-sheet-opt-label { flex: 1; min-width: 0; white-space: nowrap; overflow: visible; line-height: 1.3; text-align: right; }',
         '.ab-sheet-opt-check { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; color: #2563EB; flex-shrink: 0; }',
         '.ab-sheet-opt-check svg { margin: 0 !important; display: block; }',
-        'html[data-theme="dark"] .ab-select-sheet { background: #1E293B; border-color: #334155; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45); }',
+        'html[data-theme="dark"] .ab-select-backdrop { background: rgba(2, 6, 23, 0.56); }',
+        'html[data-theme="dark"] .ab-select-sheet { background: #1E293B; border-color: #334155; box-shadow: 0 18px 44px rgba(0, 0, 0, 0.48); }',
         'html[data-theme="dark"] .ab-sheet-opt { color: #F1F5F9 !important; }',
         'html[data-theme="dark"] .ab-sheet-opt:hover { background: rgba(255, 255, 255, 0.06) !important; color: #F8FAFC !important; }',
         'html[data-theme="dark"] .ab-sheet-opt.selected { background: rgba(37, 99, 235, 0.22) !important; color: #60A5FA !important; }',
@@ -608,44 +607,6 @@
       return { backdrop: backdrop, sheet: sheet };
     }
 
-    function positionFloatingMenu(sheet, triggerEl, optsCount, isGrid) {
-      var anchor = (triggerEl && triggerEl.closest('.period-badge-group')) || triggerEl;
-      var rect = anchor.getBoundingClientRect();
-      var vw = window.innerWidth || document.documentElement.clientWidth || 360;
-      var vh = window.innerHeight || document.documentElement.clientHeight || 640;
-
-      var targetWidth = isGrid
-        ? Math.min(vw - 16, Math.max(rect.width, 286), 300)
-        : Math.min(vw - 16, Math.max(rect.width, 240), 300);
-
-      sheet.style.width = Math.round(targetWidth) + 'px';
-      sheet.style.visibility = 'hidden';
-      sheet.classList.add('active');
-
-      var menuRect = sheet.getBoundingClientRect();
-      var menuW = menuRect.width || targetWidth;
-      var menuH = menuRect.height || (optsCount * 42 + 12);
-
-      // Vertical placement with viewport auto-flip
-      var spaceBelow = vh - rect.bottom - 10;
-      var spaceAbove = rect.top - 10;
-      var topPos;
-      if (spaceBelow >= menuH || spaceBelow >= spaceAbove) {
-        topPos = Math.min(rect.bottom + 6, Math.max(8, vh - menuH - 8));
-      } else {
-        topPos = Math.max(8, rect.top - menuH - 6);
-      }
-
-      // Horizontal placement aligned to trigger right edge (RTL) clamped inside viewport
-      var leftPos = rect.right - menuW;
-      if (leftPos < 8) leftPos = 8;
-      if (leftPos + menuW > vw - 8) leftPos = Math.max(8, vw - menuW - 8);
-
-      sheet.style.top = Math.round(topPos) + 'px';
-      sheet.style.left = Math.round(leftPos) + 'px';
-      sheet.style.visibility = '';
-    }
-
     function openForSelect(selectEl) {
       if (!selectEl || selectEl.disabled) return;
       var dom = ensureDom();
@@ -653,19 +614,18 @@
 
       var listEl = document.getElementById('abSelectSheetList');
       var opts = Array.from(selectEl.options || []);
-      var isGrid = opts.length >= 7;
+      var isDense = opts.length > 6;
 
       if (listEl) {
         listEl.innerHTML = '';
-        listEl.className = isGrid ? 'ab-select-list ab-grid-2col' : 'ab-select-list';
+        listEl.className = isDense ? 'ab-select-list ab-dense-list' : 'ab-select-list';
         var currentVal = selectEl.value;
 
         opts.forEach(function(opt, idx) {
           var btn = document.createElement('button');
           btn.type = 'button';
           var isSelected = opt.value === currentVal || (idx === selectEl.selectedIndex && currentVal === opt.value);
-          var isSpanFull = isGrid && (opts.length % 2 === 1) && (idx === opts.length - 1);
-          btn.className = 'ab-sheet-opt' + (isSelected ? ' selected' : '') + (isSpanFull ? ' ab-span-full' : '');
+          btn.className = 'ab-sheet-opt' + (isSelected ? ' selected' : '');
           btn.disabled = !!opt.disabled;
 
           var cleanText = stripEmojis(opt.textContent || opt.label || opt.value);
@@ -700,7 +660,7 @@
         window.albayanPushModalState();
       }
       dom.backdrop.classList.add('active');
-      positionFloatingMenu(dom.sheet, selectEl, opts.length, isGrid);
+      dom.sheet.classList.add('active');
     }
 
     function closeSelectSheet() {
@@ -735,7 +695,6 @@
     document.addEventListener('pointerdown', interceptSelectEvent, true);
     document.addEventListener('click', interceptSelectEvent, true);
     document.addEventListener('keydown', interceptSelectEvent, true);
-    window.addEventListener('resize', closeSelectSheet);
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape' && document.getElementById('albayanSelectSheet')?.classList.contains('active')) {
         closeSelectSheet();
