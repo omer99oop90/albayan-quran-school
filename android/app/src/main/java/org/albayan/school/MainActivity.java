@@ -14,6 +14,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AlbayanExportPlugin.class);
         super.onCreate(savedInstanceState);
+        AlbayanExportPlugin.applyStatusBarToActivity(this, "#FFFFFF", true);
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override

@@ -1,12 +1,37 @@
 // theme-init.js — يُشغَّل فوراً في <head> لتطبيق الثيم والخطوط قبل عرض الصفحة وتوفير مشغل الأيقونات الموحد
 (function() {
-  // 1. Theme Initialization
+  // 1. Theme & Android Status Bar Synchronization
+  window.albayanSyncStatusBar = function(activeTheme) {
+    try {
+      var resolved = activeTheme || document.documentElement.getAttribute('data-theme') || localStorage.getItem('appTheme') || 'light';
+      var isDark = (resolved === 'dark');
+      var barColor = isDark ? '#0F172A' : '#FFFFFF';
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (!meta && document.head) {
+        meta = document.createElement('meta');
+        meta.name = 'theme-color';
+        document.head.appendChild(meta);
+      }
+      if (meta) {
+        meta.setAttribute('content', barColor);
+      }
+      var plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AlbayanExport;
+      if (plugin && typeof plugin.setStatusBar === 'function') {
+        plugin.setStatusBar({ color: barColor, darkIcons: !isDark }).catch(function() {});
+      }
+    } catch(e) {}
+  };
+
   try {
     var theme = localStorage.getItem('appTheme') || 'light';
     document.documentElement.setAttribute('data-theme', theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark-theme');
     }
+    window.albayanSyncStatusBar(theme);
+    document.addEventListener('DOMContentLoaded', function() {
+      window.albayanSyncStatusBar(localStorage.getItem('appTheme') || 'light');
+    });
   } catch(e) {}
 
   // 2. Typography & Font System Initialization

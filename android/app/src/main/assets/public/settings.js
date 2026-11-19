@@ -185,6 +185,9 @@ function applyTheme(theme, notify = true) {
   }
 
   safeCreateIcons();
+  if (typeof window.albayanSyncStatusBar === "function") {
+    window.albayanSyncStatusBar(theme);
+  }
 
   if (notify) {
     showAlert(theme === "dark" ? "تم تفعيل الوضع الليلي" : "تم تفعيل الوضع النهاري", true);

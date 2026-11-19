@@ -866,9 +866,9 @@ function renderCirclesGrid(circles) {
       });
     }
 
-    const mainHeading = document.querySelector('.content-header h1');
+    const mainHeading = document.querySelector('.wa-circles-top-bar h1, .content-header h1');
     if (mainHeading) {
-      mainHeading.textContent = "حلقاتي القرآنية وسجلات الطلاب";
+      mainHeading.textContent = "حلقاتي القرآنية";
     }
   }
 
@@ -3651,3 +3651,234 @@ const handleCirclesSyncRefresh = () => {
 
 window.addEventListener("albayan:db-synced", handleCirclesSyncRefresh);
 window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
+
+// ============================================================================
+// Live Search Filtering & WhatsApp Top App Bar Interactions
+// ============================================================================
+(function initCirclesTopBarSearch() {
+  const circleStudentsIndex = new Map();
+  let lastIndexedSignature = "";
+
+  function normalizeArabicSearch(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+      .replace(/[أإآ]/g, "ا")
+      .replace(/ى/g, "ي")
+      .replace(/ة/g, "ه")
+      .replace(/ؤ/g, "و")
+      .replace(/ئ/g, "ي")
+      .replace(/\s+/g, " ");
+  }
+
+  function addStudentNamesToIndex(circleId, studentList) {
+    if (circleId === null || circleId === undefined || !Array.isArray(studentList)) return;
+    const key = String(circleId);
+    const bucket = circleStudentsIndex.get(key) || new Set();
+    studentList.forEach((student) => {
+      if (!student) return;
+      const rawName = typeof student === "string"
+        ? student
+        : (student.name || student.student_name || student.full_name || "");
+      const norm = normalizeArabicSearch(rawName);
+      if (norm) bucket.add(norm);
+    });
+    circleStudentsIndex.set(key, bucket);
+  }
+
+  function collectSyncStudentCaches(circleList) {
+    (circleList || []).forEach((circle) => {
+      if (!circle || circle.id === undefined) return;
+      if (Array.isArray(circle.students)) {
+        addStudentNamesToIndex(circle.id, circle.students);
+      }
+      if (window.AlbayanStateStore && typeof window.AlbayanStateStore.getRoster === "function") {
+        try {
+          const roster = window.AlbayanStateStore.getRoster(circle.id);
+          if (Array.isArray(roster) && roster.length > 0) {
+            addStudentNamesToIndex(circle.id, roster);
+          }
+        } catch (e) {}
+      }
+    });
+
+    try {
+      const rawKnown = localStorage.getItem("albayan_known_students_v3");
+      if (rawKnown) {
+        const parsed = JSON.parse(rawKnown);
+        const records = Array.isArray(parsed)
+          ? parsed
+          : (parsed && typeof parsed === "object" ? Object.values(parsed) : []);
+        records.forEach((entry) => {
+          if (!entry) return;
+          if (Array.isArray(entry)) {
+            entry.forEach((stu) => {
+              if (stu && stu.circle_id !== undefined) addStudentNamesToIndex(stu.circle_id, [stu]);
+            });
+          } else if (typeof entry === "object" && entry.circle_id !== undefined) {
+            addStudentNamesToIndex(entry.circle_id, [entry]);
+          }
+        });
+      }
+    } catch (e) {}
+  }
+
+  async function hydrateStudentsIndexFromDB(circleList) {
+    if (!window.AlbayanLocalDB || typeof window.AlbayanLocalDB.getLocalStudents !== "function") return;
+    const validCircles = (circleList || []).filter((c) => c && c.id !== undefined && c.id !== null);
+    const sig = validCircles.map((c) => c.id).join(",");
+    if (!sig || sig === lastIndexedSignature) return;
+    lastIndexedSignature = sig;
+
+    await Promise.all(
+      validCircles.map(async (circle) => {
+        try {
+          const students = await window.AlbayanLocalDB.getLocalStudents(circle.id);
+          if (Array.isArray(students) && students.length > 0) {
+            addStudentNamesToIndex(circle.id, students);
+          }
+        } catch (e) {}
+      })
+    );
+
+    const searchInput = document.getElementById("circlesSearchInput");
+    if (searchInput && searchInput.value.trim()) {
+      applySearchFilterToGrid(false);
+    }
+  }
+
+  function matchesCircleSearch(circle, normalizedQuery) {
+    if (!normalizedQuery) return true;
+    if (!circle) return false;
+
+    const haystacks = [
+      circle.name,
+      circle.teacher_name,
+      circle.description
+    ];
+    for (let i = 0; i < haystacks.length; i++) {
+      if (normalizeArabicSearch(haystacks[i]).includes(normalizedQuery)) {
+        return true;
+      }
+    }
+
+    const stuBucket = circleStudentsIndex.get(String(circle.id));
+    if (stuBucket && stuBucket.size > 0) {
+      for (const stuName of stuBucket) {
+        if (stuName.includes(normalizedQuery)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  const baseRenderCirclesGrid = typeof window.renderCirclesGrid === "function"
+    ? window.renderCirclesGrid
+    : (typeof renderCirclesGrid === "function" ? renderCirclesGrid : null);
+
+  function renderFilteredCircles(sourceCircles) {
+    const list = Array.isArray(sourceCircles) ? sourceCircles : [];
+    collectSyncStudentCaches(list);
+    hydrateStudentsIndexFromDB(list).catch(() => {});
+
+    const searchInput = document.getElementById("circlesSearchInput");
+    const clearBtn = document.getElementById("circlesSearchClearBtn");
+    const rawQuery = searchInput ? searchInput.value : "";
+    const normQuery = normalizeArabicSearch(rawQuery);
+
+    if (clearBtn) {
+      clearBtn.classList.toggle("visible", rawQuery.trim().length > 0);
+    }
+
+    const filtered = normQuery
+      ? list.filter((circle) => matchesCircleSearch(circle, normQuery))
+      : list;
+
+    if (baseRenderCirclesGrid) {
+      baseRenderCirclesGrid(filtered);
+    }
+
+    if (normQuery && list.length > 0 && filtered.length === 0) {
+      const grid = document.getElementById("circlesGrid");
+      if (grid) {
+        grid.innerHTML = `
+          <div class="wa-empty-search-state">
+            <div style="font-size: 16px; font-weight: 800; margin-bottom: 6px;">لا توجد نتائج مطابقة</div>
+            <div style="font-size: 13px; opacity: 0.85; margin-bottom: 14px;">لم يتم العثور على حلقات أو طلاب يطابقون "${rawQuery.trim().replace(/[&<>"']/g, "")}"</div>
+            <button type="button" class="wa-filter-pill active" onclick="window.clearCirclesSearch && window.clearCirclesSearch()">عرض جميع الحلقات</button>
+          </div>
+        `;
+      }
+    }
+  }
+
+  function applySearchFilterToGrid(syncRosterFab = true) {
+    const source = Array.isArray(cachedCircles) && cachedCircles.length > 0
+      ? cachedCircles
+      : (Array.isArray(circles) ? circles : []);
+    renderFilteredCircles(source);
+    if (syncRosterFab) {
+      syncFabVisibility();
+    }
+  }
+
+  function syncFabVisibility() {
+    const fab = document.getElementById("addCircleFab");
+    const rosterSec = document.getElementById("circleRosterSection");
+    if (!fab) return;
+    const isRosterVisible = rosterSec && window.getComputedStyle(rosterSec).display !== "none";
+    fab.style.display = isRosterVisible ? "none" : "inline-flex";
+  }
+
+  window.clearCirclesSearch = function () {
+    const searchInput = document.getElementById("circlesSearchInput");
+    if (searchInput) {
+      searchInput.value = "";
+      searchInput.focus();
+    }
+    applySearchFilterToGrid();
+  };
+
+  if (baseRenderCirclesGrid) {
+    const wrappedRender = function (circleList) {
+      return renderFilteredCircles(circleList);
+    };
+    window.renderCirclesGrid = wrappedRender;
+    try {
+      renderCirclesGrid = wrappedRender;
+    } catch (e) {}
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("circlesSearchInput");
+    const clearBtn = document.getElementById("circlesSearchClearBtn");
+    const pillAll = document.getElementById("pillFilterCircles");
+
+    if (searchInput) {
+      searchInput.addEventListener("input", () => applySearchFilterToGrid());
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => window.clearCirclesSearch());
+    }
+    if (pillAll) {
+      pillAll.addEventListener("click", () => {
+        if (searchInput && searchInput.value.trim()) {
+          searchInput.value = "";
+        }
+        applySearchFilterToGrid();
+        const grid = document.getElementById("circlesGrid");
+        if (grid && typeof grid.scrollIntoView === "function") {
+          grid.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    }
+
+    syncFabVisibility();
+  });
+
+  window.addEventListener("albayan:db-synced", () => {
+    lastIndexedSignature = "";
+  });
+})();

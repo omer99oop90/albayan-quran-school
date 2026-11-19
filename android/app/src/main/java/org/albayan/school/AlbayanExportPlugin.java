@@ -1,11 +1,13 @@
 package org.albayan.school;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
@@ -13,7 +15,11 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.util.Base64;
+import android.view.Window;
+import android.view.WindowManager;
 import androidx.core.content.FileProvider;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
@@ -365,6 +371,42 @@ public class AlbayanExportPlugin extends Plugin {
             return fallback;
         }
         return cleaned;
+    }
+
+    /**
+     * Synchronize the Android system status bar background color and icon luminance with the active web theme.
+     */
+    @PluginMethod
+    public void setStatusBar(PluginCall call) {
+        final String colorHex = call.getString("color", "#FFFFFF");
+        final boolean darkIcons = call.getBoolean("darkIcons", true);
+        final Activity activity = getActivity();
+        if (activity == null) {
+            call.resolve();
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            applyStatusBarToActivity(activity, colorHex, darkIcons);
+            call.resolve();
+        });
+    }
+
+    public static void applyStatusBarToActivity(Activity activity, String colorHex, boolean darkIcons) {
+        if (activity == null) return;
+        try {
+            Window window = activity.getWindow();
+            if (window == null) return;
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            String safeHex = (colorHex != null && colorHex.trim().startsWith("#")) ? colorHex.trim() : "#FFFFFF";
+            window.setStatusBarColor(Color.parseColor(safeHex));
+            WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
+            if (controller != null) {
+                controller.setAppearanceLightStatusBars(darkIcons);
+            }
+        } catch (Exception ignored) {
+            // Keep UI responsive even if color string is invalid on older devices
+        }
     }
 
     private static File makeUniqueFile(File dir, String fileName) {
