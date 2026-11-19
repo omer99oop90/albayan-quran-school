@@ -36,6 +36,7 @@
     if (path.includes('more')) return 'more';
     if (path.includes('certificates')) return 'certificates';
     if (path.includes('users')) return 'users';
+    if (path.includes('albayan_ai')) return 'albayan_ai';
     if (path.includes('settings')) return 'settings';
     return '';
   }
@@ -47,7 +48,7 @@
     const current = getCurrentRoute();
 
     // Do NOT render bottom nav on sub-pages belonging to "More"
-    if (current === 'certificates' || current === 'users' || current === 'settings') {
+    if (current === 'certificates' || current === 'users' || current === 'settings' || current === 'albayan_ai') {
       return;
     }
 

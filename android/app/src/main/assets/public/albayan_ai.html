@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>مساعد البيان الذكي - مدرسة البيان</title>
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="dark_theme.css?v=3.0">
+  <link rel="stylesheet" href="albayan_ai.css?v=1.0">
+</head>
+<body class="ai-page">
+  <div class="ai-shell" id="aiAppShell">
+    <!-- Top App Bar -->
+    <header class="ai-top-bar">
+      <div class="ai-top-brand">
+        <a href="more.html" class="ai-icon-btn" id="aiBackBtn" aria-label="العودة" title="العودة">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </a>
+        <div class="ai-brand-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path>
+            <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path>
+            <path d="M12 5v14"></path>
+            <circle cx="9" cy="12" r="1"></circle>
+            <circle cx="15" cy="12" r="1"></circle>
+          </svg>
+        </div>
+        <div class="ai-brand-titles">
+          <h1>مساعد البيان الذكي</h1>
+          <div class="ai-status-pill" id="aiConnectionBadge">
+            <span class="ai-status-dot" id="aiStatusDot"></span>
+            <span id="aiStatusText">جاهز • المحرك المدمج</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ai-top-actions">
+        <button type="button" class="ai-icon-btn" id="aiNewChatBtn" aria-label="محادثة جديدة" title="محادثة جديدة">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 5v14"></path>
+            <path d="M5 12h14"></path>
+          </svg>
+        </button>
+        <button type="button" class="ai-icon-btn" id="aiOpenHistoryBtn" aria-label="سجل المحادثات" title="سجل المحادثات">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+            <path d="M12 7v5l4 2"></path>
+          </svg>
+        </button>
+        <button type="button" class="ai-icon-btn" id="aiOpenSettingsBtn" aria-label="إعدادات المزود والنموذج" title="إعدادات النموذج والمزود">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Scrollable Chat Stream & Empty Welcome -->
+    <main class="ai-chat-scroll" id="aiChatScroll">
+      <div class="ai-chat-inner" id="aiChatInner">
+        <section class="ai-welcome-screen" id="aiWelcomeScreen">
+          <div class="ai-welcome-badge" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path>
+              <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path>
+              <path d="M12 5v14"></path>
+              <circle cx="9" cy="12" r="1"></circle>
+              <circle cx="15" cy="12" r="1"></circle>
+            </svg>
+          </div>
+          <h2>مرحباً بك في مساعد البيان الذكي</h2>
+          <p>مساعدك الذكي لإدارة المدرسة وتحليل بياناتها واكتشاف الأخطاء وتنفيذ المهام.</p>
+
+          <div class="ai-suggestions-grid" id="aiSuggestionsGrid">
+            <button type="button" class="ai-suggestion-card" data-prompt="حلل أداء الحلقات القرآنية">
+              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg></span>
+              <span>حلل أداء الحلقات القرآنية</span>
+            </button>
+            <button type="button" class="ai-suggestion-card" data-prompt="اكتشف الأخطاء في إحصائيات الطلاب ولماذا يختلف العدد">
+              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></span>
+              <span>اكتشف الأخطاء في إحصائيات الطلاب</span>
+            </button>
+            <button type="button" class="ai-suggestion-card" data-prompt="أعطني تقريراً مفصلاً عن الطلاب">
+              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></span>
+              <span>أعطني تقريراً عن الطلاب</span>
+            </button>
+            <button type="button" class="ai-suggestion-card" data-prompt="راجع بيانات المعلمين وتوزيع الحلقات">
+              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path></svg></span>
+              <span>راجع بيانات المعلمين</span>
+            </button>
+            <button type="button" class="ai-suggestion-card" data-prompt="ساعدني في إنشاء حلقة قرآنية جديدة">
+              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg></span>
+              <span>أنشئ حلقة قرآنية جديدة</span>
+            </button>
+            <button type="button" class="ai-suggestion-card" data-prompt="ابحث عن أي مشكلة أو تناقض في سجلات المدرسة">
+              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
+              <span>ابحث عن مشكلة في سجلات المدرسة</span>
+            </button>
+            <button type="button" class="ai-suggestion-card" data-prompt="أنشئ تقريراً إدارياً شاملاً عن المدرسة">
+              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></span>
+              <span>أنشئ تقريراً إدارياً</span>
+            </button>
+            <button type="button" class="ai-suggestion-card" data-prompt="ساعدني في تعديل بيانات أو درجات طالب">
+              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></span>
+              <span>ساعدني في تعديل بيانات طالب</span>
+            </button>
+          </div>
+        </section>
+
+        <div id="aiMessagesContainer" style="display:none; flex-direction:column; gap:14px;"></div>
+      </div>
+    </main>
+
+    <!-- Fixed Bottom Composer -->
+    <footer class="ai-composer-bar" id="aiComposerBar">
+      <div class="ai-composer-inner">
+        <textarea id="aiPromptInput" rows="1" placeholder="اكتب أمرك الإداري أو سؤالك لمساعد البيان..." aria-label="اكتب رسالتك هنا"></textarea>
+        <button type="button" class="ai-composer-btn stop" id="aiStopBtn" style="display:none;" aria-label="إيقاف التوليد" title="إيقاف التوليد">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+          </svg>
+        </button>
+        <button type="button" class="ai-composer-btn" id="aiSendBtn" aria-label="إرسال" title="إرسال">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Slide-Over Conversations History Drawer -->
+  <div class="ai-drawer-backdrop" id="aiHistoryBackdrop"></div>
+  <aside class="ai-history-drawer" id="aiHistoryDrawer" aria-label="سجل المحادثات">
+    <div class="ai-drawer-head">
+      <h3>سجل المحادثات</h3>
+      <button type="button" class="ai-icon-btn" id="aiCloseHistoryBtn" aria-label="إغلاق">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <button type="button" class="ai-btn-primary" id="aiDrawerNewChatBtn" style="width:100%; margin-top:10px;">+ محادثة جديدة</button>
+    <div class="ai-history-list" id="aiHistoryList"></div>
+  </aside>
+
+  <!-- AI Provider Settings Modal -->
+  <div class="ai-modal-overlay" id="aiProviderSettingsModal">
+    <div class="ai-modal-card" id="aiProviderSettingsCard">
+      <div class="ai-modal-header">
+        <h3>إعدادات مزود الذكاء الاصطناعي</h3>
+        <button type="button" class="ai-icon-btn" id="aiCloseSettingsBtn" aria-label="إغلاق">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div id="aiNonAdminNotice" class="ai-fallback-banner" style="display:none;">
+        صلاحية تعديل إعدادات المزود ومفاتيح API مخصصة لمدير النظام فقط. يمكنك عرض الحالة الحالية هنا.
+      </div>
+
+      <div class="ai-usage-box" id="aiUsageBox">
+        <span>إجمالي الرموز المستهلكة: <strong id="aiUsageTokens">0</strong></span>
+        <span>التكلفة التقديرية: <strong id="aiUsageCost">$0.000</strong></span>
+        <span>الطلبات: <strong id="aiUsageCount">0</strong></span>
+      </div>
+
+      <div class="ai-form-group">
+        <label for="aiCfgProvider">مزود الذكاء الاصطناعي</label>
+        <select id="aiCfgProvider" class="ai-form-control">
+          <option value="builtin">محرك البيان الذكي المدمج (مجاني ومحلي)</option>
+          <option value="gemini">Google Gemini API</option>
+          <option value="openai">OpenAI API</option>
+          <option value="anthropic">Anthropic Claude API</option>
+          <option value="custom">مزود متوافق مع OpenAI (Custom URL)</option>
+        </select>
+      </div>
+
+      <div class="ai-form-group">
+        <label for="aiCfgModelSelect">النموذج المستخدم</label>
+        <select id="aiCfgModelSelect" class="ai-form-control"></select>
+        <input type="text" id="aiCfgModelCustom" class="ai-form-control" style="margin-top:6px;" placeholder="أو اكتب معرّف نموذج مخصص">
+      </div>
+
+      <div class="ai-form-group" id="aiCfgKeyGroup">
+        <label for="aiCfgApiKey">مفتاح API Key <small id="aiCfgKeyStatusLabel" style="color:var(--ai-muted); font-weight:500;"></small></label>
+        <input type="password" id="aiCfgApiKey" class="ai-form-control" autocomplete="new-password" placeholder="أدخل مفتاحاً جديداً للحفظ بأمان (لا يُعرض بعد الحفظ)">
+      </div>
+
+      <div class="ai-form-group" id="aiCfgEndpointGroup">
+        <label for="aiCfgEndpoint">عنوان API مخصص (عند الحاجة)</label>
+        <input type="url" id="aiCfgEndpoint" class="ai-form-control" placeholder="https://...">
+      </div>
+
+      <div class="ai-form-row-2">
+        <div class="ai-form-group">
+          <label for="aiCfgTemp">درجة الإبداع (0 - 1)</label>
+          <input type="number" id="aiCfgTemp" class="ai-form-control" min="0" max="1" step="0.1" value="0.2">
+        </div>
+        <div class="ai-form-group">
+          <label for="aiCfgThinking">ميزانية التفكير (Tokens)</label>
+          <input type="number" id="aiCfgThinking" class="ai-form-control" min="0" max="16384" step="256" value="1024">
+        </div>
+      </div>
+
+      <div class="ai-form-row-2">
+        <div class="ai-form-group">
+          <label for="aiCfgMaxTokens">الحد الأقصى للإجابة</label>
+          <input type="number" id="aiCfgMaxTokens" class="ai-form-control" min="256" max="16384" step="256" value="2048">
+        </div>
+        <div class="ai-form-group">
+          <label for="aiCfgDailyLimit">الحد الأقصى لاستهلاك الرموز</label>
+          <input type="number" id="aiCfgDailyLimit" class="ai-form-control" min="1000" max="10000000" step="5000" value="250000">
+        </div>
+      </div>
+
+      <div id="aiTestResultBox" style="display:none; margin-bottom:12px; padding:10px; border-radius:10px; font-size:12.5px; font-weight:600;"></div>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" class="ai-btn-secondary" id="aiTestConnBtn" style="flex:1;">اختبار الاتصال</button>
+        <button type="button" class="ai-btn-primary" id="aiSaveCfgBtn" style="flex:1.2;">حفظ الإعدادات</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="albayan_dialog.js?v=2.0"></script>
+  <script src="mobile-db.js?v=3.0"></script>
+  <script src="firebase-client.js?v=4.0"></script>
+  <script src="albayan_ai_engine.js?v=1.0"></script>
+  <script src="albayan_ai.js?v=1.0"></script>
+</body>
+</html>

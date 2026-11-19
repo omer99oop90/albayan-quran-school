@@ -6,6 +6,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.media.MediaScannerConnection;
@@ -28,11 +29,19 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @CapacitorPlugin(
     name = "AlbayanExport",
@@ -46,6 +55,8 @@ import java.io.OutputStream;
 public class AlbayanExportPlugin extends Plugin {
 
     private static final String SUBFOLDER = "AlbayanCertificates";
+    private static final String AI_VAULT_PREFS = "albayan_ai_secure_vault";
+    private final ExecutorService aiHttpExecutor = Executors.newCachedThreadPool();
 
     private enum SaveTarget {
         GALLERY,
@@ -407,6 +418,185 @@ public class AlbayanExportPlugin extends Plugin {
         } catch (Exception ignored) {
             // Keep UI responsive even if color string is invalid on older devices
         }
+    }
+
+    /**
+     * Save or clear an AI provider API key inside private native SharedPreferences.
+     */
+    @PluginMethod
+    public void saveAiSecret(PluginCall call) {
+        String provider = sanitizeAiProvider(call.getString("provider", ""));
+        String rawKey = call.getString("apiKey", "");
+        String cleanKey = rawKey != null ? rawKey.trim() : "";
+
+        Context ctx = getContext();
+        if (ctx == null || provider.isEmpty()) {
+            call.reject("Invalid provider or context");
+            return;
+        }
+
+        SharedPreferences prefs = ctx.getSharedPreferences(AI_VAULT_PREFS, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        if (cleanKey.isEmpty()) {
+            editor.remove("key_" + provider);
+        } else {
+            editor.putString("key_" + provider, cleanKey);
+        }
+        editor.apply();
+
+        JSObject res = new JSObject();
+        res.put("ok", true);
+        res.put("provider", provider);
+        res.put("configured", !cleanKey.isEmpty());
+        res.put("maskedKey", maskSecretKey(cleanKey));
+        call.resolve(res);
+    }
+
+    /**
+     * Query whether a provider key is stored without exposing the secret itself.
+     */
+    @PluginMethod
+    public void getAiSecretStatus(PluginCall call) {
+        String provider = sanitizeAiProvider(call.getString("provider", ""));
+        Context ctx = getContext();
+        if (ctx == null || provider.isEmpty()) {
+            call.reject("Invalid provider or context");
+            return;
+        }
+
+        SharedPreferences prefs = ctx.getSharedPreferences(AI_VAULT_PREFS, Context.MODE_PRIVATE);
+        String stored = prefs.getString("key_" + provider, "");
+        String cleanKey = stored != null ? stored.trim() : "";
+
+        JSObject res = new JSObject();
+        res.put("ok", true);
+        res.put("provider", provider);
+        res.put("configured", !cleanKey.isEmpty());
+        res.put("maskedKey", maskSecretKey(cleanKey));
+        call.resolve(res);
+    }
+
+    /**
+     * Perform HTTPS AI provider requests from native layer with vault-injected credentials.
+     */
+    @PluginMethod
+    public void proxyAiHttp(PluginCall call) {
+        final String provider = sanitizeAiProvider(call.getString("provider", ""));
+        final String targetUrl = call.getString("url", "");
+        final String method = call.getString("method", "POST").toUpperCase();
+        final String body = call.getString("body", "");
+        final JSObject extraHeaders = call.getObject("headers", new JSObject());
+        final Integer timeoutObj = call.getInt("timeoutMs", 45000);
+        final int timeoutMs = timeoutObj != null ? Math.max(5000, Math.min(timeoutObj, 120000)) : 45000;
+        final String overrideKey = call.getString("overrideApiKey", "");
+
+        if (targetUrl == null || (!targetUrl.startsWith("https://") && !targetUrl.startsWith("http://"))) {
+            call.reject("Invalid target URL for AI proxy");
+            return;
+        }
+
+        Context ctx = getContext();
+        String resolvedKey = (overrideKey != null && !overrideKey.trim().isEmpty())
+            ? overrideKey.trim()
+            : "";
+        if (resolvedKey.isEmpty() && ctx != null && !provider.isEmpty()) {
+            SharedPreferences prefs = ctx.getSharedPreferences(AI_VAULT_PREFS, Context.MODE_PRIVATE);
+            resolvedKey = prefs.getString("key_" + provider, "");
+            if (resolvedKey != null) resolvedKey = resolvedKey.trim();
+        }
+        final String apiKeyToUse = resolvedKey != null ? resolvedKey : "";
+
+        aiHttpExecutor.execute(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(targetUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod(method);
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(timeoutMs);
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                conn.setRequestProperty("Accept", "application/json");
+
+                if (extraHeaders != null) {
+                    Iterator<String> keys = extraHeaders.keys();
+                    while (keys.hasNext()) {
+                        String hk = keys.next();
+                        if (hk == null) continue;
+                        String lower = hk.toLowerCase();
+                        if (lower.equals("authorization") || lower.equals("x-api-key") || lower.equals("x-goog-api-key")) {
+                            continue;
+                        }
+                        String hv = extraHeaders.getString(hk);
+                        if (hv != null) {
+                            conn.setRequestProperty(hk, hv);
+                        }
+                    }
+                }
+
+                if (!apiKeyToUse.isEmpty()) {
+                    if ("gemini".equals(provider)) {
+                        conn.setRequestProperty("x-goog-api-key", apiKeyToUse);
+                    } else if ("anthropic".equals(provider)) {
+                        conn.setRequestProperty("x-api-key", apiKeyToUse);
+                        conn.setRequestProperty("anthropic-version", "2023-06-01");
+                    } else {
+                        conn.setRequestProperty("Authorization", "Bearer " + apiKeyToUse);
+                    }
+                }
+
+                if (!"GET".equals(method) && !"DELETE".equals(method)) {
+                    conn.setDoOutput(true);
+                    byte[] payloadBytes = (body != null ? body : "").getBytes(StandardCharsets.UTF_8);
+                    try (OutputStream os = conn.getOutputStream()) {
+                        os.write(payloadBytes);
+                        os.flush();
+                    }
+                }
+
+                int status = conn.getResponseCode();
+                InputStream stream = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
+                StringBuilder sb = new StringBuilder();
+                if (stream != null) {
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            sb.append(line);
+                        }
+                    }
+                }
+
+                JSObject res = new JSObject();
+                res.put("ok", status >= 200 && status < 300);
+                res.put("status", status);
+                res.put("data", sb.toString());
+                call.resolve(res);
+            } catch (Exception e) {
+                JSObject errRes = new JSObject();
+                errRes.put("ok", false);
+                errRes.put("status", 0);
+                errRes.put("error", e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "Connection failed"));
+                call.resolve(errRes);
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
+            }
+        });
+    }
+
+    private static String sanitizeAiProvider(String raw) {
+        if (raw == null) return "";
+        String p = raw.trim().toLowerCase();
+        if ("gemini".equals(p) || "openai".equals(p) || "anthropic".equals(p) || "custom".equals(p)) {
+            return p;
+        }
+        return "";
+    }
+
+    private static String maskSecretKey(String key) {
+        if (key == null || key.isEmpty()) return "";
+        if (key.length() <= 6) return "••••••";
+        return "••••••••" + key.substring(key.length() - 4);
     }
 
     private static File makeUniqueFile(File dir, String fileName) {

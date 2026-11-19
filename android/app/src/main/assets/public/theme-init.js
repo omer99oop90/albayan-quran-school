@@ -384,6 +384,10 @@
       if (selectSheet && selectSheet.classList.contains('active')) return true;
       var moreMenu = document.getElementById('circlesMoreMenuDropdown');
       if (moreMenu && moreMenu.classList.contains('open')) return true;
+      var aiHistoryDrawer = document.getElementById('aiHistoryDrawer');
+      if (aiHistoryDrawer && aiHistoryDrawer.classList.contains('open')) return true;
+      var aiSettingsModal = document.getElementById('aiProviderSettingsModal');
+      if (aiSettingsModal && window.getComputedStyle(aiSettingsModal).display !== 'none') return true;
       var modalSelectors = [
         '#cvAttachmentViewerModal.active',
         '#cellPopover',
@@ -430,6 +434,18 @@
       if (moreMenu && moreMenu.classList.contains('open')) {
         if (typeof window.closeCirclesMoreMenu === 'function') window.closeCirclesMoreMenu();
         else moreMenu.classList.remove('open');
+        return true;
+      }
+      var aiHistoryDrawer = document.getElementById('aiHistoryDrawer');
+      if (aiHistoryDrawer && aiHistoryDrawer.classList.contains('open')) {
+        if (typeof window.closeAiHistoryDrawer === 'function') window.closeAiHistoryDrawer();
+        else aiHistoryDrawer.classList.remove('open');
+        return true;
+      }
+      var aiSettingsModal = document.getElementById('aiProviderSettingsModal');
+      if (aiSettingsModal && window.getComputedStyle(aiSettingsModal).display !== 'none') {
+        if (typeof window.closeAiProviderSettingsModal === 'function') window.closeAiProviderSettingsModal();
+        else aiSettingsModal.style.display = 'none';
         return true;
       }
       if (window.AlbayanBottomSheetSelect && window.AlbayanBottomSheetSelect.isOpen && window.AlbayanBottomSheetSelect.isOpen()) {
