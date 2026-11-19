@@ -378,18 +378,11 @@
 }
 
 .roster-table th {
-  background: #F1F5F9;
-  color: #334155;
-  border-bottom: 1px solid #E2E8F0 !important;
-  padding: 12px 14px;
-  font-weight: 800;
-  font-size: 12.5px;
+  background: #1f2937;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 12px;
   white-space: nowrap;
-}
-html[data-theme="dark"] .roster-table th {
-  background: #1E293B;
-  color: #E2E8F0;
-  border-bottom: 1px solid #334155 !important;
 }
 
 .roster-table td {

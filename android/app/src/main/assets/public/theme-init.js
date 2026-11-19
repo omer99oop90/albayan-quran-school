@@ -537,47 +537,12 @@
   window.logout = window.albayanLogout;
   window.confirmLogout = window.albayanLogout;
 
-  // 7. Global Custom Bottom Sheet Picker (Replaces ALL native Android <select> popups)
+  // 7. Global Compact Floating Select Menu (Replaces ALL native Android <select> popups)
   (function initGlobalBottomSheetSelect() {
     if (typeof document === 'undefined') return;
 
     var activeSelectEl = null;
-    var SHEET_TITLES = {
-      filterMonth: 'اختر الفترة',
-      rosterCircleSelect: 'اختر الحلقة القرآنية',
-      transferTargetCircle: 'نقل الطالب إلى حلقة',
-      circleSelect: 'اختر الحلقة القرآنية',
-      studentSelect: 'اختر الطالب',
-      studentGradeRecordSelect: 'سجل الدرجات المرتبط',
-      timeframeSelect: 'النطاق الزمني للتفوق',
-      monthSelect: 'اختر الشهر',
-      yearSelect: 'اختر السنة',
-      limitSelect: 'العدد الأقصى',
-      exportFormatSelect: 'صيغة التصدير',
-      filterCirclesMonth: 'فترة تقييم الحلقات',
-      filterStudentsMonth: 'فترة تقييم الطلاب',
-      filterStudentCircle: 'تصفية حسب الحلقة',
-      filterStudentMemo: 'تصفية حسب تقدير الحفظ',
-      filterStudentAttendance: 'تصفية حسب الحضور',
-      filterAnalyticsExamSelect: 'اختر الاختبار',
-      filterStatus: 'تصفية حسب النتيجة',
-      circleTeacher: 'تعيين معلم الحلقة',
-      modalBulkExamTitleSelect: 'اختر الاختبار الشهري',
-      modalBulkAccompanyingExamSelect: 'اختر الاختبار الشهري',
-      popExamTitleSelect: 'اختر الاختبار',
-      vqType: 'نوع السؤال',
-      filterStudentCircleSelect: 'تصفية حسب الحلقة',
-      userRole: 'الدور والصلاحيات',
-      userActiveStatus: 'حالة الحساب',
-      studentCircleSelect: 'الحلقة الدراسية',
-      customPeriodYearSelect: 'اختر السنة'
-    };
-
-    var ICON_CHECK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-    var ICON_CALENDAR = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
-    var ICON_BOOK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>';
-    var ICON_LIST = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>';
-    var ICON_CLOSE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    var ICON_CHECK = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
 
     function injectSelectSheetStyles() {
       if (document.getElementById('albayan-bottom-sheet-select-css')) return;
@@ -585,42 +550,27 @@
       style.id = 'albayan-bottom-sheet-select-css';
       style.textContent = [
         'select { -webkit-tap-highlight-color: transparent; cursor: pointer; }',
-        '.ab-select-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 1000010; opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease; }',
-        '.ab-select-backdrop.active { opacity: 1; visibility: visible; }',
-        '.ab-select-sheet { position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; max-width: 560px; max-height: 82vh; background: #FFFFFF; border-top: 1px solid rgba(15, 23, 42, 0.08); border-radius: 20px 20px 0 0; z-index: 1000015; transform: translateY(105%); transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1); display: flex; flex-direction: column; overflow: hidden; box-shadow: none !important; direction: rtl; font-family: inherit; }',
-        '.ab-select-sheet.active { transform: translateY(0); }',
-        '@media (min-width: 768px) { .ab-select-sheet { bottom: 20px; border-radius: 20px; border: 1px solid rgba(15, 23, 42, 0.1); max-height: 75vh; } }',
-        '.ab-select-handle { width: 40px; height: 4px; border-radius: 99px; background: #CBD5E1; margin: 10px auto 4px; flex-shrink: 0; }',
-        '.ab-select-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 18px 14px; border-bottom: 1px solid #E2E8F0; flex-shrink: 0; }',
-        '.ab-select-header-text { flex: 1; min-width: 0; }',
-        '.ab-select-title { margin: 0; font-size: 16px; font-weight: 800; color: #0F172A; line-height: 1.35; }',
-        '.ab-select-subtitle { margin: 3px 0 0; font-size: 12.5px; font-weight: 600; color: #2563EB; line-height: 1.35; }',
-        '.ab-select-close { width: 34px; height: 34px; min-height: 34px !important; padding: 0 !important; border-radius: 10px !important; background: #F8FAFC !important; background-image: none !important; border: 1px solid #E2E8F0 !important; color: #64748B !important; display: inline-flex !important; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: none !important; }',
-        '.ab-select-close:hover { background: #F1F5F9 !important; color: #0F172A !important; transform: none !important; }',
-        '.ab-select-close svg { margin: 0 !important; display: block; }',
-        '.ab-select-list { padding: 12px 16px calc(18px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 8px; }',
-        '.ab-sheet-opt { width: 100%; min-height: 50px !important; padding: 12px 16px !important; border-radius: 12px !important; background: #FFFFFF !important; background-image: none !important; border: 1px solid #E2E8F0 !important; color: #0F172A !important; font-family: inherit; font-size: 14px; font-weight: 600; text-align: right; display: flex !important; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; box-shadow: none !important; transition: background-color 0.14s ease, border-color 0.14s ease; }',
-        '.ab-sheet-opt:hover { transform: none !important; background: #F8FAFC !important; border-color: rgba(37, 99, 235, 0.35) !important; }',
-        '.ab-sheet-opt.selected { background: #EFF6FF !important; border: 1.5px solid #2563EB !important; color: #1D4ED8 !important; font-weight: 800; }',
+        '.ab-select-backdrop { position: fixed; inset: 0; background: transparent !important; z-index: 1000010; display: none; }',
+        '.ab-select-backdrop.active { display: block; }',
+        '.ab-select-sheet { position: fixed; left: 0; top: 0; width: 260px; max-width: calc(100vw - 16px); max-height: calc(100vh - 20px); background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14); z-index: 1000015; display: none; overflow-y: auto; overflow-x: hidden; direction: rtl; font-family: inherit; opacity: 0; transform: scale(0.97); transition: opacity 0.14s ease, transform 0.14s ease; }',
+        '.ab-select-sheet.active { display: block; opacity: 1; transform: scale(1); }',
+        '.ab-select-list { padding: 6px; display: flex; flex-direction: column; }',
+        '.ab-select-list.ab-grid-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }',
+        '.ab-sheet-opt { width: 100%; height: 40px !important; min-height: 40px !important; max-height: 40px !important; padding: 0 12px !important; margin-bottom: 2px; border-radius: 10px !important; background: transparent !important; background-image: none !important; border: none !important; color: #0F172A !important; font-family: inherit; font-size: 14px !important; font-weight: 600; text-align: right; display: flex !important; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; box-shadow: none !important; transition: background-color 0.12s ease, color 0.12s ease; }',
+        '.ab-sheet-opt:last-child { margin-bottom: 0; }',
+        '.ab-select-list.ab-grid-2col .ab-sheet-opt { margin-bottom: 0; padding: 0 10px !important; font-size: 13.5px !important; }',
+        '.ab-select-list.ab-grid-2col .ab-sheet-opt.ab-span-full { grid-column: 1 / -1; }',
+        '.ab-sheet-opt:hover { transform: none !important; background: #F8FAFC !important; color: #0F172A !important; }',
+        '.ab-sheet-opt.selected { background: #EFF6FF !important; color: #1D4ED8 !important; font-weight: 700 !important; }',
         '.ab-sheet-opt:disabled { opacity: 0.45; cursor: not-allowed; }',
-        '.ab-sheet-opt-main { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }',
-        '.ab-sheet-opt-icon { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; color: #64748B; flex-shrink: 0; }',
-        '.ab-sheet-opt.selected .ab-sheet-opt-icon { color: #2563EB; }',
-        '.ab-sheet-opt-icon svg, .ab-sheet-opt-check svg { margin: 0 !important; display: block; }',
-        '.ab-sheet-opt-label { flex: 1; min-width: 0; line-height: 1.4; word-break: break-word; }',
-        '.ab-sheet-opt-check { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; color: #2563EB; flex-shrink: 0; }',
-        'html[data-theme="dark"] .ab-select-backdrop { background: rgba(2, 6, 23, 0.72); }',
-        'html[data-theme="dark"] .ab-select-sheet { background: #1E293B; border-color: rgba(255, 255, 255, 0.08); }',
-        'html[data-theme="dark"] .ab-select-handle { background: rgba(255, 255, 255, 0.22); }',
-        'html[data-theme="dark"] .ab-select-header { border-bottom-color: rgba(255, 255, 255, 0.08); }',
-        'html[data-theme="dark"] .ab-select-title { color: #F8FAFC; }',
-        'html[data-theme="dark"] .ab-select-subtitle { color: #60A5FA; }',
-        'html[data-theme="dark"] .ab-select-close { background: #0F172A !important; border-color: #334155 !important; color: #94A3B8 !important; }',
-        'html[data-theme="dark"] .ab-sheet-opt { background: #0F172A !important; border-color: #334155 !important; color: #F1F5F9 !important; }',
-        'html[data-theme="dark"] .ab-sheet-opt:hover { background: rgba(255, 255, 255, 0.04) !important; border-color: rgba(96, 165, 250, 0.4) !important; }',
-        'html[data-theme="dark"] .ab-sheet-opt.selected { background: rgba(37, 99, 235, 0.18) !important; border-color: #3B82F6 !important; color: #60A5FA !important; }',
-        'html[data-theme="dark"] .ab-sheet-opt-icon { color: #94A3B8; }',
-        'html[data-theme="dark"] .ab-sheet-opt.selected .ab-sheet-opt-icon, html[data-theme="dark"] .ab-sheet-opt-check { color: #60A5FA; }'
+        '.ab-sheet-opt-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 40px; }',
+        '.ab-sheet-opt-check { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; color: #2563EB; flex-shrink: 0; }',
+        '.ab-sheet-opt-check svg { margin: 0 !important; display: block; }',
+        'html[data-theme="dark"] .ab-select-sheet { background: #1E293B; border-color: #334155; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45); }',
+        'html[data-theme="dark"] .ab-sheet-opt { color: #F1F5F9 !important; }',
+        'html[data-theme="dark"] .ab-sheet-opt:hover { background: rgba(255, 255, 255, 0.06) !important; color: #F8FAFC !important; }',
+        'html[data-theme="dark"] .ab-sheet-opt.selected { background: rgba(37, 99, 235, 0.22) !important; color: #60A5FA !important; }',
+        'html[data-theme="dark"] .ab-sheet-opt-check { color: #60A5FA; }'
       ].join('\n');
       (document.head || document.documentElement).appendChild(style);
     }
@@ -650,64 +600,50 @@
         sheet = document.createElement('div');
         sheet.id = 'albayanSelectSheet';
         sheet.className = 'ab-select-sheet';
-        sheet.setAttribute('role', 'dialog');
-        sheet.setAttribute('aria-modal', 'true');
+        sheet.setAttribute('role', 'listbox');
         sheet.addEventListener('click', function(e) { e.stopPropagation(); });
-        sheet.innerHTML =
-          '<div class="ab-select-handle"></div>' +
-          '<div class="ab-select-header">' +
-            '<div class="ab-select-header-text">' +
-              '<h3 class="ab-select-title" id="abSelectSheetTitle">اختر من القائمة</h3>' +
-              '<p class="ab-select-subtitle" id="abSelectSheetSubtitle" style="display:none;"></p>' +
-            '</div>' +
-            '<button type="button" class="ab-select-close" id="abSelectSheetCloseBtn" aria-label="إغلاق">' + ICON_CLOSE + '</button>' +
-          '</div>' +
-          '<div class="ab-select-list" id="abSelectSheetList"></div>';
+        sheet.innerHTML = '<div class="ab-select-list" id="abSelectSheetList"></div>';
         document.body.appendChild(sheet);
-        sheet.querySelector('#abSelectSheetCloseBtn').onclick = function(e) {
-          e.stopPropagation();
-          closeSelectSheet();
-        };
       }
       return { backdrop: backdrop, sheet: sheet };
     }
 
-    function resolveTitleAndSubtitle(selectEl) {
-      var id = selectEl.id || '';
-      var title = (selectEl.dataset && selectEl.dataset.sheetTitle) || SHEET_TITLES[id] || '';
-      if (!title) {
-        var group = selectEl.closest('.field, .form-group, .filter-item, .period-badge-group, .timeframe-row');
-        var lbl = group ? group.querySelector('label, .form-label-sm, .section-label, .period-badge-label') : null;
-        if (lbl) title = stripEmojis(lbl.textContent).replace(/[:*]+/g, '').trim();
-      }
-      if (!title) title = 'اختر من القائمة';
+    function positionFloatingMenu(sheet, triggerEl, optsCount, isGrid) {
+      var anchor = (triggerEl && triggerEl.closest('.period-badge-group')) || triggerEl;
+      var rect = anchor.getBoundingClientRect();
+      var vw = window.innerWidth || document.documentElement.clientWidth || 360;
+      var vh = window.innerHeight || document.documentElement.clientHeight || 640;
 
-      var subtitle = (selectEl.dataset && selectEl.dataset.sheetSubtitle) || '';
-      if (!subtitle && id === 'filterMonth' && window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.getConfig === 'function') {
-        var cfg = window.AlbayanCycleEngine.getConfig();
-        if (cfg.mode === 'term' || cfg.periodType === 'term') {
-          var tm = cfg.termMonths || 3;
-          subtitle = 'النظام الفصلي • ' + (tm === 2 ? 'شهران لكل فصل' : (tm + ' أشهر لكل فصل'));
-        } else if (cfg.mode === 'weekly' || cfg.periodType === 'weekly') {
-          subtitle = 'النظام الأسبوعي • 7 أيام لكل أسبوع';
-        } else if (cfg.mode === 'yearly' || cfg.periodType === 'yearly') {
-          subtitle = 'النظام السنوي الشامل';
-        } else {
-          subtitle = 'النظام الشهري • الأشهر الهجرية';
-        }
-      }
-      return { title: title, subtitle: subtitle };
-    }
+      var targetWidth = isGrid
+        ? Math.min(vw - 16, Math.max(rect.width, 286), 300)
+        : Math.min(vw - 16, Math.max(rect.width, 240), 300);
 
-    function resolveRowIcon(selectEl, optValue) {
-      var id = (selectEl && selectEl.id) || '';
-      if (id === 'filterMonth' || id === 'monthSelect' || id === 'yearSelect' || id === 'timeframeSelect' || id.indexOf('Month') !== -1) {
-        return ICON_CALENDAR;
+      sheet.style.width = Math.round(targetWidth) + 'px';
+      sheet.style.visibility = 'hidden';
+      sheet.classList.add('active');
+
+      var menuRect = sheet.getBoundingClientRect();
+      var menuW = menuRect.width || targetWidth;
+      var menuH = menuRect.height || (optsCount * 42 + 12);
+
+      // Vertical placement with viewport auto-flip
+      var spaceBelow = vh - rect.bottom - 10;
+      var spaceAbove = rect.top - 10;
+      var topPos;
+      if (spaceBelow >= menuH || spaceBelow >= spaceAbove) {
+        topPos = Math.min(rect.bottom + 6, Math.max(8, vh - menuH - 8));
+      } else {
+        topPos = Math.max(8, rect.top - menuH - 6);
       }
-      if (id.indexOf('Circle') !== -1 || id.indexOf('circle') !== -1 || String(optValue).indexOf('سجل') !== -1) {
-        return ICON_BOOK;
-      }
-      return ICON_LIST;
+
+      // Horizontal placement aligned to trigger right edge (RTL) clamped inside viewport
+      var leftPos = rect.right - menuW;
+      if (leftPos < 8) leftPos = 8;
+      if (leftPos + menuW > vw - 8) leftPos = Math.max(8, vw - menuW - 8);
+
+      sheet.style.top = Math.round(topPos) + 'px';
+      sheet.style.left = Math.round(leftPos) + 'px';
+      sheet.style.visibility = '';
     }
 
     function openForSelect(selectEl) {
@@ -715,51 +651,28 @@
       var dom = ensureDom();
       activeSelectEl = selectEl;
 
-      var meta = resolveTitleAndSubtitle(selectEl);
-      var titleEl = document.getElementById('abSelectSheetTitle');
-      var subEl = document.getElementById('abSelectSheetSubtitle');
       var listEl = document.getElementById('abSelectSheetList');
-
-      if (titleEl) titleEl.textContent = meta.title;
-      if (subEl) {
-        if (meta.subtitle) {
-          subEl.textContent = meta.subtitle;
-          subEl.style.display = 'block';
-        } else {
-          subEl.textContent = '';
-          subEl.style.display = 'none';
-        }
-      }
+      var opts = Array.from(selectEl.options || []);
+      var isGrid = opts.length >= 7;
 
       if (listEl) {
         listEl.innerHTML = '';
-        var opts = Array.from(selectEl.options || []);
+        listEl.className = isGrid ? 'ab-select-list ab-grid-2col' : 'ab-select-list';
         var currentVal = selectEl.value;
 
         opts.forEach(function(opt, idx) {
           var btn = document.createElement('button');
           btn.type = 'button';
           var isSelected = opt.value === currentVal || (idx === selectEl.selectedIndex && currentVal === opt.value);
-          btn.className = 'ab-sheet-opt' + (isSelected ? ' selected' : '');
+          var isSpanFull = isGrid && (opts.length % 2 === 1) && (idx === opts.length - 1);
+          btn.className = 'ab-sheet-opt' + (isSelected ? ' selected' : '') + (isSpanFull ? ' ab-span-full' : '');
           btn.disabled = !!opt.disabled;
 
           var cleanText = stripEmojis(opt.textContent || opt.label || opt.value);
-          var iconSvg = resolveRowIcon(selectEl, opt.value);
-
-          var mainSpan = document.createElement('span');
-          mainSpan.className = 'ab-sheet-opt-main';
-
-          var iconSpan = document.createElement('span');
-          iconSpan.className = 'ab-sheet-opt-icon';
-          iconSpan.innerHTML = iconSvg;
-
           var labelSpan = document.createElement('span');
           labelSpan.className = 'ab-sheet-opt-label';
           labelSpan.textContent = cleanText;
-
-          mainSpan.appendChild(iconSpan);
-          mainSpan.appendChild(labelSpan);
-          btn.appendChild(mainSpan);
+          btn.appendChild(labelSpan);
 
           if (isSelected) {
             var chkSpan = document.createElement('span');
@@ -787,13 +700,7 @@
         window.albayanPushModalState();
       }
       dom.backdrop.classList.add('active');
-      dom.sheet.classList.add('active');
-      document.body.style.overflow = 'hidden';
-
-      var activeBtn = listEl ? listEl.querySelector('.ab-sheet-opt.selected') : null;
-      if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
-        setTimeout(function() { activeBtn.scrollIntoView({ block: 'nearest' }); }, 60);
-      }
+      positionFloatingMenu(dom.sheet, selectEl, opts.length, isGrid);
     }
 
     function closeSelectSheet() {
@@ -802,9 +709,6 @@
       if (backdrop) backdrop.classList.remove('active');
       if (sheet) sheet.classList.remove('active');
       activeSelectEl = null;
-      if (!document.querySelector('.bottom-sheet.active, .cv-viewer-overlay.active')) {
-        document.body.style.overflow = '';
-      }
     }
 
     function interceptSelectEvent(e) {
@@ -831,6 +735,7 @@
     document.addEventListener('pointerdown', interceptSelectEvent, true);
     document.addEventListener('click', interceptSelectEvent, true);
     document.addEventListener('keydown', interceptSelectEvent, true);
+    window.addEventListener('resize', closeSelectSheet);
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape' && document.getElementById('albayanSelectSheet')?.classList.contains('active')) {
         closeSelectSheet();
