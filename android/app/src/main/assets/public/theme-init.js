@@ -382,6 +382,8 @@
     try {
       var selectSheet = document.getElementById('albayanSelectSheet');
       if (selectSheet && selectSheet.classList.contains('active')) return true;
+      var moreMenu = document.getElementById('circlesMoreMenuDropdown');
+      if (moreMenu && moreMenu.classList.contains('open')) return true;
       var modalSelectors = [
         '#cvAttachmentViewerModal.active',
         '#cellPopover',
@@ -390,11 +392,18 @@
         '.modal.active',
         '.modal[style*="display: block"]',
         '.modal[style*="display: flex"]',
+        '.modal-overlay.show',
+        '.modal-overlay.active',
+        '.modal-overlay[style*="display: block"]',
+        '.modal-overlay[style*="display: flex"]',
         '.dialog-overlay.active',
         '.bottom-sheet.active',
         '#moreBottomNavSheet.active',
         '#periodFilterDropdown',
+        '#circleModal',
         '#createCircleModal',
+        '#quickAddStudentModal',
+        '#studentHistoryModal',
         '#addStudentModal',
         '#studentDetailsModal',
         '#floatingAuthModal',
@@ -417,6 +426,12 @@
 
   window.albayanHandleBack = function(fromPopState) {
     try {
+      var moreMenu = document.getElementById('circlesMoreMenuDropdown');
+      if (moreMenu && moreMenu.classList.contains('open')) {
+        if (typeof window.closeCirclesMoreMenu === 'function') window.closeCirclesMoreMenu();
+        else moreMenu.classList.remove('open');
+        return true;
+      }
       if (window.AlbayanBottomSheetSelect && window.AlbayanBottomSheetSelect.isOpen && window.AlbayanBottomSheetSelect.isOpen()) {
         window.AlbayanBottomSheetSelect.close();
         return true;
@@ -435,11 +450,18 @@
         '.modal.active',
         '.modal[style*="display: block"]',
         '.modal[style*="display: flex"]',
+        '.modal-overlay.show',
+        '.modal-overlay.active',
+        '.modal-overlay[style*="display: block"]',
+        '.modal-overlay[style*="display: flex"]',
         '.dialog-overlay.active',
         '.bottom-sheet.active',
         '#moreBottomNavSheet.active',
         '#periodFilterDropdown',
+        '#circleModal',
         '#createCircleModal',
+        '#quickAddStudentModal',
+        '#studentHistoryModal',
         '#addStudentModal',
         '#studentDetailsModal',
         '#floatingAuthModal',

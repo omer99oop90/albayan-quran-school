@@ -692,16 +692,52 @@ async function loadSurahs() {
 
 function escapeHtmlAttr(str) {
   if (!str) return '';
-  return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
-let initialCircleAutoSelected = false;
+function escapeHtmlText(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
-function renderCirclesGrid(circles) {
-  const container = document.getElementById("circlesGrid");
-  if (!container) return;
+function formatHalaqahStudentCount(count) {
+  const n = Math.max(0, parseInt(count, 10) || 0);
+  if (n === 0) return '0 طالب';
+  if (n === 1) return 'طالب واحد';
+  if (n === 2) return 'طالبان';
+  const mod100 = n % 100;
+  if (mod100 >= 3 && mod100 <= 10) return `${n} طلاب`;
+  if (mod100 >= 11 && mod100 <= 99) return `${n} طالباً`;
+  return `${n} طالب`;
+}
+window.formatHalaqahStudentCount = formatHalaqahStudentCount;
 
-  // Strict deduplication by ID
+function resolveCircleTeacherName(circle, cachedUsersList) {
+  if (!circle) return 'إدارة عامة';
+  let teacherName = circle.teacher_name || '';
+  if (!teacherName && circle.teacher_id) {
+    try {
+      const users = Array.isArray(cachedUsersList)
+        ? cachedUsersList
+        : JSON.parse(localStorage.getItem('cached_users_list') || '[]');
+      const targetId = String(circle.teacher_id).replace(/^users_/, '');
+      const u = users.find(user => String(user.id).replace(/^users_/, '') === targetId);
+      if (u && u.username) teacherName = u.username;
+    } catch (e) {}
+  }
+  return teacherName || 'إدارة عامة';
+}
+
+function deduplicateCirclesList(circles) {
   const circleMap = new Map();
   (circles || []).forEach(c => {
     if (!c) return;
@@ -713,130 +749,93 @@ function renderCirclesGrid(circles) {
       circleMap.set(id, { ...c, id });
     }
   });
-  const uniqueCircles = Array.from(circleMap.values());
+  return Array.from(circleMap.values());
+}
+
+let initialCircleAutoSelected = false;
+
+function renderCirclesGrid(circles, totalSourceCirclesCount) {
+  const container = document.getElementById("circlesGrid");
+  if (!container) return;
+
+  const uniqueCircles = deduplicateCirclesList(circles);
+  const fullCount = typeof totalSourceCirclesCount === 'number'
+    ? totalSourceCirclesCount
+    : uniqueCircles.length;
 
   if (uniqueCircles.length === 0) {
-    container.innerHTML = `<div class="loading-box" style="grid-column:1/-1;">لا توجد حلقات قرآنية مضافة بعد. انقر على "إضافة حلقة قرآنية جديدة" للبدء.</div>`;
+    container.innerHTML = `<div class="loading-box" style="grid-column:1/-1;">لا توجد حلقات قرآنية مضافة بعد. افتح قائمة الخيارات (⋮) بالأعلى لإضافة حلقة قرآنية جديدة.</div>`;
     return;
   }
 
-  const viewMode = localStorage.getItem("circlesViewMode") || "boards";
+  let cachedUsers = [];
+  try {
+    cachedUsers = JSON.parse(localStorage.getItem("cached_users_list") || "[]");
+  } catch (e) {}
+
+  const emblemSvg = `
+    <svg width="22" height="22" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">
+      <circle cx="50" cy="22" r="14"/>
+      <path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/>
+      <path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>
+  `;
+
+  const editPencilSvg = `
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 20h9"></path>
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+    </svg>
+  `;
+
+  const chevronLeftSvg = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+  `;
 
   container.innerHTML = uniqueCircles.map(c => {
     const escapedName = escapeHtmlAttr(c.name);
-    const escapedDesc = escapeHtmlAttr(c.description || '');
-    const studentCount = c.student_count || 0;
-    let teacherName = c.teacher_name || '';
-    if (!teacherName && c.teacher_id) {
-      try {
-        const cachedUsers = JSON.parse(localStorage.getItem("cached_users_list") || "[]");
-        const u = cachedUsers.find(user => String(user.id).replace(/^users_/, '') === String(c.teacher_id).replace(/^users_/, ''));
-        if (u && u.username) teacherName = u.username;
-      } catch(e) {}
-    }
-    if (!teacherName) teacherName = 'إدارة عامة';
+    const rawDesc = typeof c.description === 'string' ? c.description : (c.description ? String(c.description) : '');
+    const escapedDesc = escapeHtmlAttr(rawDesc);
+    const trimmedDesc = rawDesc.trim();
+    const studentCount = Number(c.student_count || 0);
+    const studentCountLabel = formatHalaqahStudentCount(studentCount);
+    const teacherName = resolveCircleTeacherName(c, cachedUsers);
 
-    const emblemSvg = `
-      <svg style="width:22px; height:22px; fill:currentColor;" viewBox="0 0 100 100">
-        <circle cx="50" cy="22" r="14"/>
-        <path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/>
-        <path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-      </svg>
+    const metaParts = [
+      `الأستاذ: ${escapeHtmlText(teacherName)}`,
+      escapeHtmlText(studentCountLabel)
+    ];
+    if (trimmedDesc) {
+      metaParts.push(escapeHtmlText(trimmedDesc));
+    }
+    const metaLine = metaParts.join(' • ');
+
+    return `
+      <div class="wa-circle-row" role="button" tabindex="0" onclick="selectCircle(${c.id}, '${escapedName}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectCircle(${c.id}, '${escapedName}');}">
+        <div class="wa-circle-avatar" aria-hidden="true">${emblemSvg}</div>
+        <div class="wa-circle-info">
+          <h3 class="wa-circle-name">${escapeHtmlText(c.name)}</h3>
+          <div class="wa-circle-meta" title="${escapeHtmlAttr(metaParts.join(' • '))}">${metaLine}</div>
+        </div>
+        <div class="wa-circle-row-actions" onclick="event.stopPropagation()">
+          <button type="button" class="wa-row-edit-btn" onclick="event.stopPropagation(); openEditCircleModal(event, ${c.id}, '${escapedName}', '${escapedDesc}', ${c.teacher_id || 'null'})" aria-label="تعديل أو حذف الحلقة ${escapedName}" title="تعديل أو حذف الحلقة">
+            ${editPencilSvg}
+          </button>
+          <span class="wa-row-chevron" aria-hidden="true">${chevronLeftSvg}</span>
+        </div>
+      </div>
     `;
-    
-    if (viewMode === "details") {
-      return `
-        <div class="circle-card" onclick="selectCircle(${c.id}, '${escapedName}')" style="padding:12px 18px; display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px; min-height:auto;">
-          <div style="display:flex; align-items:center; gap:14px; flex:1;">
-            <div class="circle-icon-emblem" style="width:38px; height:38px; border-radius:12px;">${emblemSvg}</div>
-            <div style="display:flex; flex-direction:column; gap:2px;">
-              <h3 style="margin:0; font-size:16px; color:#0f172a; font-weight:800;">${c.name}</h3>
-              <span style="font-size:12px; color:var(--muted);">${studentCount} طلاب • الأستاذ: ${teacherName}</span>
-            </div>
-          </div>
-          <div style="display:flex; align-items:center; gap:10px;" onclick="event.stopPropagation()">
-            <button type="button" class="btn-circle-edit" onclick="openEditCircleModal(event, ${c.id}, '${escapedName}', '${escapedDesc}', ${c.teacher_id || 'null'})" title="تعديل أو حذف الحلقة">
-              <i data-lucide="edit-3" style="width:17px; height:17px;"></i>
-            </button>
-          </div>
-        </div>
-      `;
-    } else if (viewMode === "small_icons") {
-      return `
-        <div class="circle-card" onclick="selectCircle(${c.id}, '${escapedName}')" style="padding:16px 12px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px;">
-          <div style="position:absolute; top:8px; left:8px;" onclick="event.stopPropagation()">
-            <button type="button" class="btn-circle-edit" style="width:30px; height:30px; min-width:30px; min-height:30px;" onclick="openEditCircleModal(event, ${c.id}, '${escapedName}', '${escapedDesc}', ${c.teacher_id || 'null'})" title="تعديل أو حذف الحلقة">
-              <i data-lucide="edit-3" style="width:14px; height:14px;"></i>
-            </button>
-          </div>
-          <div class="circle-icon-emblem" style="width:40px; height:40px;">${emblemSvg}</div>
-          <h3 style="margin:0; font-size:14.5px; font-weight:800; color:#0f172a; line-height:1.3;">${c.name}</h3>
-          <span class="student-count-badge" style="font-size:10.5px; padding:2px 8px;">${studentCount} طلاب</span>
-        </div>
-      `;
-    } else if (viewMode === "large_icons") {
-      return `
-        <div class="circle-card" onclick="selectCircle(${c.id}, '${escapedName}')" style="padding:28px 18px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px;">
-          <div style="position:absolute; top:12px; left:12px;" onclick="event.stopPropagation()">
-            <button type="button" class="btn-circle-edit" onclick="openEditCircleModal(event, ${c.id}, '${escapedName}', '${escapedDesc}', ${c.teacher_id || 'null'})" title="تعديل أو حذف الحلقة">
-              <i data-lucide="edit-3" style="width:18px; height:18px;"></i>
-            </button>
-          </div>
-          <div class="circle-icon-emblem" style="width:58px; height:58px; border-radius:18px;">${emblemSvg}</div>
-          <h3 style="margin:0; font-size:18px; font-weight:800; color:#0f172a;">${c.name}</h3>
-          <span class="student-count-badge" style="font-size:12px; padding:4px 12px;">${studentCount} طالباً</span>
-          <div class="circle-teacher-pill" style="font-size:12px;">
-            <i data-lucide="user-check" style="width:14px; height:14px;"></i> ${teacherName}
-          </div>
-        </div>
-      `;
-    } else {
-      // Default "boards" - High-End UI/UX Pro Max Card
-      return `
-        <div class="circle-card" onclick="selectCircle(${c.id}, '${escapedName}')">
-          <div class="circle-card-top">
-            <div class="circle-card-title-group">
-              <div class="circle-icon-emblem">
-                ${emblemSvg}
-              </div>
-              <div class="circle-card-title-text">
-                <h3>${c.name}</h3>
-                <span class="student-count-badge">
-                  <i data-lucide="users" style="width:13px; height:13px;"></i>
-                  ${studentCount} طلاب
-                </span>
-              </div>
-            </div>
-            <button type="button" class="btn-circle-edit" onclick="openEditCircleModal(event, ${c.id}, '${escapedName}', '${escapedDesc}', ${c.teacher_id || 'null'})" title="تعديل أو حذف الحلقة">
-              <i data-lucide="edit-3" style="width:18px; height:18px;"></i>
-            </button>
-          </div>
-
-          <div class="circle-teacher-pill">
-            <i data-lucide="user-check" style="width:15px; height:15px;"></i>
-            الأستاذ: ${teacherName}
-          </div>
-
-          <p class="circle-desc">${c.description || 'حلقة قرآنية تعليمية لمتابعة الحفظ والمراجعة والسرد.'}</p>
-
-          <div class="circle-card-footer">
-            <div class="circle-enter-cue">
-              <span>دخول لسجل طلاب الحلقة</span>
-              <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
-            </div>
-          </div>
-        </div>
-      `;
-    }
   }).join("");
-  
+
   if (window.lucide) lucide.createIcons();
 
   // Teacher role handling: "حلقتي" (single circle) vs "حلقاتي" (multiple circles)
   const isTeacher = currentUserData && (currentUserData.role === "teacher" || currentUserData.role === "معلم");
-  
-  if (isTeacher && circles.length === 1) {
-    const single = circles[0];
+
+  if (isTeacher && fullCount === 1 && uniqueCircles.length === 1) {
+    const single = uniqueCircles[0];
     const navLabel = document.querySelector('#mobileNavCircles .bottom-nav-label, .bottom-nav-item[data-page="circles"] .bottom-nav-label');
     if (navLabel) navLabel.textContent = "حلقتي";
 
@@ -853,7 +852,7 @@ function renderCirclesGrid(circles) {
       initialCircleAutoSelected = true;
       selectCircle(single.id, single.name);
     }
-  } else if (isTeacher && circles.length > 1) {
+  } else if (isTeacher && fullCount > 1) {
     const navLabel = document.querySelector('#mobileNavCircles .bottom-nav-label, .bottom-nav-item[data-page="circles"] .bottom-nav-label');
     if (navLabel) navLabel.textContent = "حلقاتي";
 
@@ -877,7 +876,7 @@ function renderCirclesGrid(circles) {
     const urlParams = new URLSearchParams(window.location.search);
     const paramCircleId = urlParams.get("circle_id");
     if (paramCircleId) {
-      const matched = circles.find(c => String(c.id) === String(paramCircleId));
+      const matched = uniqueCircles.find(c => String(c.id) === String(paramCircleId));
       if (matched) {
         initialCircleAutoSelected = true;
         selectCircle(matched.id, matched.name);
@@ -3653,11 +3652,15 @@ window.addEventListener("albayan:db-synced", handleCirclesSyncRefresh);
 window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
 
 // ============================================================================
-// Live Search Filtering & WhatsApp Top App Bar Interactions
+// WhatsApp UI Style – Blue Edition Controller
+// (Three-Dot Menu, Dynamic Description Filters & Live Search Filtering)
 // ============================================================================
-(function initCirclesTopBarSearch() {
+(function initCirclesWhatsAppUI() {
+  const ALL_FILTER = "__ALL__";
   const circleStudentsIndex = new Map();
   let lastIndexedSignature = "";
+  let activeDescriptionFilter = ALL_FILTER;
+  let latestSourceCircles = [];
 
   function normalizeArabicSearch(value) {
     return String(value || "")
@@ -3744,17 +3747,81 @@ window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
 
     const searchInput = document.getElementById("circlesSearchInput");
     if (searchInput && searchInput.value.trim()) {
-      applySearchFilterToGrid(false);
+      applyFiltersAndRenderGrid();
     }
   }
 
-  function matchesCircleSearch(circle, normalizedQuery) {
+  function extractDistinctDescriptions(circleList) {
+    const seen = new Set();
+    const descriptions = [];
+    (circleList || []).forEach((c) => {
+      if (!c || c.description === null || c.description === undefined) return;
+      const rawDesc = typeof c.description === "string" ? c.description : String(c.description);
+      const trimmed = rawDesc.trim();
+      if (!trimmed || seen.has(trimmed)) return;
+      seen.add(trimmed);
+      descriptions.push(trimmed);
+    });
+    return descriptions;
+  }
+
+  function renderDescriptionFilters(sourceCircles) {
+    const container = document.getElementById("circlesDescFilters");
+    if (!container) return;
+
+    const descriptions = extractDistinctDescriptions(sourceCircles);
+    if (activeDescriptionFilter !== ALL_FILTER && !descriptions.includes(activeDescriptionFilter)) {
+      activeDescriptionFilter = ALL_FILTER;
+    }
+
+    container.innerHTML = "";
+
+    const createChip = (label, filterKey, isSelected) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "wa-filter-pill" + (isSelected ? " active" : "");
+      if (filterKey === ALL_FILTER) {
+        btn.id = "pillFilterCircles";
+      }
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", isSelected ? "true" : "false");
+      btn.dataset.descFilter = filterKey;
+      btn.title = label;
+
+      const span = document.createElement("span");
+      span.className = "wa-filter-pill-label";
+      span.textContent = label;
+      btn.appendChild(span);
+
+      btn.addEventListener("click", () => {
+        activeDescriptionFilter = filterKey;
+        applyFiltersAndRenderGrid();
+      });
+      return btn;
+    };
+
+    container.appendChild(createChip("الكل", ALL_FILTER, activeDescriptionFilter === ALL_FILTER));
+    descriptions.forEach((desc) => {
+      container.appendChild(createChip(desc, desc, activeDescriptionFilter === desc));
+    });
+  }
+
+  function matchesDescriptionFilter(circle) {
+    if (activeDescriptionFilter === ALL_FILTER) return true;
+    if (!circle || circle.description === null || circle.description === undefined) return false;
+    const desc = (typeof circle.description === "string" ? circle.description : String(circle.description)).trim();
+    return desc === activeDescriptionFilter;
+  }
+
+  function matchesCircleSearch(circle, normalizedQuery, cachedUsers) {
     if (!normalizedQuery) return true;
     if (!circle) return false;
 
+    const resolvedTeacher = resolveCircleTeacherName(circle, cachedUsers);
     const haystacks = [
       circle.name,
       circle.teacher_name,
+      resolvedTeacher,
       circle.description
     ];
     for (let i = 0; i < haystacks.length; i++) {
@@ -3779,9 +3846,12 @@ window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
     : (typeof renderCirclesGrid === "function" ? renderCirclesGrid : null);
 
   function renderFilteredCircles(sourceCircles) {
-    const list = Array.isArray(sourceCircles) ? sourceCircles : [];
-    collectSyncStudentCaches(list);
-    hydrateStudentsIndexFromDB(list).catch(() => {});
+    const dedupedSource = deduplicateCirclesList(Array.isArray(sourceCircles) ? sourceCircles : []);
+    latestSourceCircles = dedupedSource;
+
+    collectSyncStudentCaches(dedupedSource);
+    hydrateStudentsIndexFromDB(dedupedSource).catch(() => {});
+    renderDescriptionFilters(dedupedSource);
 
     const searchInput = document.getElementById("circlesSearchInput");
     const clearBtn = document.getElementById("circlesSearchClearBtn");
@@ -3792,44 +3862,61 @@ window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
       clearBtn.classList.toggle("visible", rawQuery.trim().length > 0);
     }
 
-    const filtered = normQuery
-      ? list.filter((circle) => matchesCircleSearch(circle, normQuery))
-      : list;
+    let cachedUsers = [];
+    try {
+      cachedUsers = JSON.parse(localStorage.getItem("cached_users_list") || "[]");
+    } catch (e) {}
+
+    const filtered = dedupedSource.filter((circle) => {
+      return matchesDescriptionFilter(circle) && matchesCircleSearch(circle, normQuery, cachedUsers);
+    });
 
     if (baseRenderCirclesGrid) {
-      baseRenderCirclesGrid(filtered);
+      baseRenderCirclesGrid(filtered, dedupedSource.length);
     }
 
-    if (normQuery && list.length > 0 && filtered.length === 0) {
+    const hasActiveFilterOrSearch = Boolean(normQuery) || activeDescriptionFilter !== ALL_FILTER;
+    if (hasActiveFilterOrSearch && dedupedSource.length > 0 && filtered.length === 0) {
       const grid = document.getElementById("circlesGrid");
       if (grid) {
-        grid.innerHTML = `
-          <div class="wa-empty-search-state">
-            <div style="font-size: 16px; font-weight: 800; margin-bottom: 6px;">لا توجد نتائج مطابقة</div>
-            <div style="font-size: 13px; opacity: 0.85; margin-bottom: 14px;">لم يتم العثور على حلقات أو طلاب يطابقون "${rawQuery.trim().replace(/[&<>"']/g, "")}"</div>
-            <button type="button" class="wa-filter-pill active" onclick="window.clearCirclesSearch && window.clearCirclesSearch()">عرض جميع الحلقات</button>
-          </div>
-        `;
+        const emptyBox = document.createElement("div");
+        emptyBox.className = "wa-empty-search-state";
+
+        const titleEl = document.createElement("div");
+        titleEl.style.fontSize = "15.5px";
+        titleEl.style.fontWeight = "800";
+        titleEl.textContent = "لا توجد حلقات مطابقة";
+
+        const descEl = document.createElement("p");
+        descEl.textContent = normQuery
+          ? `لم يتم العثور على نتائج مطابقة لـ "${rawQuery.trim()}" ضمن التصفية الحالية.`
+          : `لا توجد حلقات بوصف "${activeDescriptionFilter}" حالياً.`;
+
+        const resetBtn = document.createElement("button");
+        resetBtn.type = "button";
+        resetBtn.className = "wa-filter-pill active";
+        resetBtn.textContent = "إعادة ضبط البحث والفلتر";
+        resetBtn.addEventListener("click", () => {
+          activeDescriptionFilter = ALL_FILTER;
+          const inp = document.getElementById("circlesSearchInput");
+          if (inp) inp.value = "";
+          applyFiltersAndRenderGrid();
+        });
+
+        emptyBox.appendChild(titleEl);
+        emptyBox.appendChild(descEl);
+        emptyBox.appendChild(resetBtn);
+        grid.innerHTML = "";
+        grid.appendChild(emptyBox);
       }
     }
   }
 
-  function applySearchFilterToGrid(syncRosterFab = true) {
+  function applyFiltersAndRenderGrid() {
     const source = Array.isArray(cachedCircles) && cachedCircles.length > 0
       ? cachedCircles
-      : (Array.isArray(circles) ? circles : []);
+      : latestSourceCircles;
     renderFilteredCircles(source);
-    if (syncRosterFab) {
-      syncFabVisibility();
-    }
-  }
-
-  function syncFabVisibility() {
-    const fab = document.getElementById("addCircleFab");
-    const rosterSec = document.getElementById("circleRosterSection");
-    if (!fab) return;
-    const isRosterVisible = rosterSec && window.getComputedStyle(rosterSec).display !== "none";
-    fab.style.display = isRosterVisible ? "none" : "inline-flex";
   }
 
   window.clearCirclesSearch = function () {
@@ -3838,8 +3925,54 @@ window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
       searchInput.value = "";
       searchInput.focus();
     }
-    applySearchFilterToGrid();
+    applyFiltersAndRenderGrid();
   };
+
+  window.setCirclesDescriptionFilter = function (filterValue) {
+    activeDescriptionFilter = filterValue || ALL_FILTER;
+    applyFiltersAndRenderGrid();
+  };
+
+  window.getActiveCirclesDescriptionFilter = function () {
+    return activeDescriptionFilter;
+  };
+
+  // Three-Dot Menu Controls
+  function closeCirclesMoreMenu() {
+    const dropdown = document.getElementById("circlesMoreMenuDropdown");
+    const btn = document.getElementById("circlesMoreMenuBtn");
+    if (dropdown) dropdown.classList.remove("open");
+    if (btn) btn.setAttribute("aria-expanded", "false");
+  }
+
+  function openCirclesMoreMenu() {
+    const dropdown = document.getElementById("circlesMoreMenuDropdown");
+    const btn = document.getElementById("circlesMoreMenuBtn");
+    if (!dropdown) return;
+    dropdown.classList.add("open");
+    if (btn) btn.setAttribute("aria-expanded", "true");
+    if (typeof window.albayanPushOverlayHistory === "function") {
+      window.albayanPushOverlayHistory();
+    }
+  }
+
+  function toggleCirclesMoreMenu(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const dropdown = document.getElementById("circlesMoreMenuDropdown");
+    if (!dropdown) return;
+    if (dropdown.classList.contains("open")) {
+      closeCirclesMoreMenu();
+    } else {
+      openCirclesMoreMenu();
+    }
+  }
+
+  window.openCirclesMoreMenu = openCirclesMoreMenu;
+  window.closeCirclesMoreMenu = closeCirclesMoreMenu;
+  window.toggleCirclesMoreMenu = toggleCirclesMoreMenu;
 
   if (baseRenderCirclesGrid) {
     const wrappedRender = function (circleList) {
@@ -3854,28 +3987,47 @@ window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
   document.addEventListener("DOMContentLoaded", () => {
     const searchInput = document.getElementById("circlesSearchInput");
     const clearBtn = document.getElementById("circlesSearchClearBtn");
-    const pillAll = document.getElementById("pillFilterCircles");
+    const moreBtn = document.getElementById("circlesMoreMenuBtn");
+    const menuWrap = document.getElementById("circlesMoreMenuWrap");
+    const addCircleItem = document.getElementById("menuItemAddCircle");
+    const circleStatsItem = document.getElementById("menuItemCircleStats");
+    const studentStatsItem = document.getElementById("menuItemStudentStats");
 
     if (searchInput) {
-      searchInput.addEventListener("input", () => applySearchFilterToGrid());
+      searchInput.addEventListener("input", () => applyFiltersAndRenderGrid());
     }
     if (clearBtn) {
       clearBtn.addEventListener("click", () => window.clearCirclesSearch());
     }
-    if (pillAll) {
-      pillAll.addEventListener("click", () => {
-        if (searchInput && searchInput.value.trim()) {
-          searchInput.value = "";
-        }
-        applySearchFilterToGrid();
-        const grid = document.getElementById("circlesGrid");
-        if (grid && typeof grid.scrollIntoView === "function") {
-          grid.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (moreBtn) {
+      moreBtn.addEventListener("click", toggleCirclesMoreMenu);
+    }
+    if (addCircleItem) {
+      addCircleItem.addEventListener("click", () => {
+        closeCirclesMoreMenu();
+        if (typeof window.openCreateCircleModal === "function") {
+          window.openCreateCircleModal();
         }
       });
     }
+    if (circleStatsItem) {
+      circleStatsItem.addEventListener("click", () => closeCirclesMoreMenu());
+    }
+    if (studentStatsItem) {
+      studentStatsItem.addEventListener("click", () => closeCirclesMoreMenu());
+    }
 
-    syncFabVisibility();
+    document.addEventListener("click", (e) => {
+      if (menuWrap && !menuWrap.contains(e.target)) {
+        closeCirclesMoreMenu();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeCirclesMoreMenu();
+      }
+    });
   });
 
   window.addEventListener("albayan:db-synced", () => {
