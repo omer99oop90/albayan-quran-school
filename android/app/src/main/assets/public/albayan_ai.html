@@ -7,7 +7,7 @@
   <script src="theme-init.js"></script>
   <link rel="stylesheet" href="style.css?v=2.7">
   <link rel="stylesheet" href="dark_theme.css?v=3.0">
-  <link rel="stylesheet" href="albayan_ai.css?v=2.0">
+  <link rel="stylesheet" href="albayan_ai.css?v=3.0">
 </head>
 <body class="ai-page">
   <div class="ai-shell" id="aiAppShell">
@@ -70,7 +70,15 @@
             </svg>
           </div>
           <h2>مساعد البيان الإداري</h2>
-          <p>إدارة الحلقات والطلاب، استخراج الإحصائيات الفعلية، واكتشاف الأخطاء في بيانات المدرسة.</p>
+          <p>إدارة الحلقات والطلاب، تعديل كافة خانات السجل، واستخراج الإحصائيات الفعلية واكتشاف الأخطاء.</p>
+
+          <div class="ai-setup-banner" id="aiSetupApiPromptCard" style="display:none;">
+            <div class="ai-setup-banner-copy">
+              <strong>الوضع المحلي مفعّل حالياً (أوامر محددة)</strong>
+              <span>لتشغيل ذكاء اصطناعي حقيقي يضيف الطلاب ويعدّل أي خانة في السجل بذكاء، اربط مفتاح API (مثل Gemini المجاني أو Groq أو OpenAI).</span>
+            </div>
+            <button type="button" class="ai-btn-primary ai-setup-banner-btn" id="aiWelcomeConnectBtn">ربط الذكاء الاصطناعي (مفتاح API)</button>
+          </div>
 
           <div class="ai-suggestions-grid" id="aiSuggestionsGrid">
             <button type="button" class="ai-suggestion-card" data-prompt="كم عدد الحلقات القرآنية المسجلة؟">
@@ -147,7 +155,7 @@
       </div>
 
       <div id="aiNonAdminNotice" class="ai-fallback-banner" style="display:none;">
-        صلاحية تعديل إعدادات المزود ومفاتيح API مخصصة لمدير النظام فقط. يمكنك عرض الحالة الحالية هنا.
+        صلاحية تعديل إعدادات المزود ومفاتيح API متاحة لطاقم المدرسة فقط.
       </div>
 
       <div class="ai-usage-box" id="aiUsageBox" style="display:none;">
@@ -160,15 +168,18 @@
         <label for="aiCfgProvider">مزود الذكاء الاصطناعي</label>
         <select id="aiCfgProvider" class="ai-form-control">
           <option value="builtin">محرك البيان المحلي (بدون سحابة ذكاء اصطناعي)</option>
-          <option value="gemini">Google Gemini API</option>
-          <option value="openai">OpenAI API</option>
+          <option value="gemini">Google Gemini API (موصى به — سريع ومجاني)</option>
+          <option value="groq">Groq Cloud (سريع جداً — Llama / Qwen)</option>
+          <option value="openai">OpenAI API (GPT-4o / GPT-4.1)</option>
+          <option value="openrouter">OpenRouter API (متعدد النماذج)</option>
+          <option value="deepseek">DeepSeek API (DeepSeek V3 / R1)</option>
           <option value="anthropic">Anthropic Claude API</option>
           <option value="custom">مزود متوافق مع OpenAI (Custom URL)</option>
         </select>
       </div>
 
       <div id="aiLocalProviderHint" class="ai-info-hint" style="display:none;">
-        هذا الخيار محلي بالكامل (قواعد لغوية + قاعدة بيانات المدرسة) ولا يتصل بأي نموذج ذكاء اصطناعي خارجي.
+        هذا الخيار محلي بالكامل (قواعد محدودة بدون نموذج سحابي). اختر <strong>Google Gemini</strong> أو <strong>Groq</strong> أو <strong>OpenAI</strong> وأضف مفتاح API لتشغيل الذكاء الاصطناعي الحقيقي.
       </div>
 
       <div class="ai-form-group">
@@ -226,7 +237,7 @@
   <script src="albayan_dialog.js?v=2.0"></script>
   <script src="mobile-db.js?v=3.0"></script>
   <script src="firebase-client.js?v=4.0"></script>
-  <script src="albayan_ai_engine.js?v=2.0"></script>
-  <script src="albayan_ai.js?v=2.0"></script>
+  <script src="albayan_ai_engine.js?v=3.0"></script>
+  <script src="albayan_ai.js?v=3.0"></script>
 </body>
 </html>

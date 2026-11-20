@@ -158,6 +158,7 @@
   async function updateStatusHeader() {
     const dot = document.getElementById('aiStatusDot');
     const txt = document.getElementById('aiStatusText');
+    const setupBanner = document.getElementById('aiSetupApiPromptCard');
     if (!window.AlbayanAI || !txt) return;
 
     const cfg = await window.AlbayanAI.Providers.loadConfig();
@@ -166,7 +167,8 @@
 
     if (cfg.provider === 'builtin') {
       if (dot) dot.className = 'ai-status-dot local';
-      txt.textContent = 'محرك محلي • بدون نموذج سحابي';
+      txt.textContent = 'وضع محلي • بدون مفتاح AI';
+      if (setupBanner) setupBanner.style.display = 'flex';
       return;
     }
 
@@ -176,8 +178,11 @@
     if (cat.requiresKey && !keyStat.configured) {
       if (dot) dot.className = 'ai-status-dot offline';
       txt.textContent = `${cat.shortLabel} • بانتظار مفتاح API`;
+      if (setupBanner) setupBanner.style.display = 'flex';
       return;
     }
+
+    if (setupBanner) setupBanner.style.display = 'none';
 
     if (cfg.provider === 'custom' && (!cfg.customEndpoint || !cfg.customEndpoint.trim())) {
       if (dot) dot.className = 'ai-status-dot error';
@@ -746,7 +751,7 @@
 
     const isLocal = providerId === 'builtin';
     const showKey = !isLocal;
-    const showEndpoint = !isLocal;
+    const showEndpoint = providerId === 'custom';
     const keyGroup = document.getElementById('aiCfgKeyGroup');
     if (keyGroup) keyGroup.style.display = showKey ? 'block' : 'none';
     const epGroup = document.getElementById('aiCfgEndpointGroup');
@@ -774,13 +779,17 @@
     lbl.textContent = stat.configured ? `(محفوظ بأمان: ${stat.maskedKey})` : '(غير مهيأ بعد)';
   }
 
-  async function openProviderSettingsModal() {
+  async function openProviderSettingsModal(preferredProvider = null) {
     const modal = document.getElementById('aiProviderSettingsModal');
     if (!modal) return;
 
     const canEdit = window.AlbayanAI.Security.canConfigureProvider();
     const cfg = await window.AlbayanAI.Providers.loadConfig();
     const usage = await window.AlbayanAI.Providers.loadUsageStats();
+    const initialProvider = (typeof preferredProvider === 'string' && preferredProvider && cfg.provider === 'builtin')
+      ? preferredProvider
+      : cfg.provider;
+    const initialModel = initialProvider === cfg.provider ? cfg.model : '';
 
     const usageBox = document.getElementById('aiUsageBox');
     const costWrap = document.getElementById('aiUsageCostWrap');
@@ -811,9 +820,9 @@
     const testBtn = document.getElementById('aiTestConnBtn');
     const resBox = document.getElementById('aiTestResultBox');
 
-    if (pSel) pSel.value = cfg.provider;
-    syncModelOptions(cfg.provider, cfg.model);
-    if (epEl) epEl.value = cfg.customEndpoint || '';
+    if (pSel) pSel.value = initialProvider;
+    syncModelOptions(initialProvider, initialModel);
+    if (epEl) epEl.value = initialProvider === 'custom' ? (cfg.customEndpoint || '') : '';
     if (tempEl) tempEl.value = cfg.temperature ?? 0.2;
     if (thinkEl) thinkEl.value = cfg.thinkingBudget ?? 1024;
     if (maxEl) maxEl.value = cfg.maxTokens ?? 2048;
@@ -822,7 +831,7 @@
     if (keyInput) keyInput.value = '';
     if (resBox) resBox.style.display = 'none';
 
-    await refreshKeyStatusLabel(cfg.provider);
+    await refreshKeyStatusLabel(initialProvider);
 
     if (nonAdminNotice) nonAdminNotice.style.display = canEdit ? 'none' : 'block';
     ['aiCfgProvider', 'aiCfgModelSelect', 'aiCfgModelCustom', 'aiCfgApiKey', 'aiCfgEndpoint', 'aiCfgTemp', 'aiCfgThinking', 'aiCfgMaxTokens', 'aiCfgDailyLimit', 'aiCfgFallbackBuiltin'].forEach(id => {
@@ -884,7 +893,8 @@
     document.getElementById('aiOpenHistoryBtn')?.addEventListener('click', openHistoryDrawer);
     document.getElementById('aiCloseHistoryBtn')?.addEventListener('click', closeHistoryDrawer);
     document.getElementById('aiHistoryBackdrop')?.addEventListener('click', closeHistoryDrawer);
-    document.getElementById('aiOpenSettingsBtn')?.addEventListener('click', openProviderSettingsModal);
+    document.getElementById('aiOpenSettingsBtn')?.addEventListener('click', () => openProviderSettingsModal());
+    document.getElementById('aiWelcomeConnectBtn')?.addEventListener('click', () => openProviderSettingsModal('gemini'));
     document.getElementById('aiCloseSettingsBtn')?.addEventListener('click', closeProviderSettingsModal);
     document.getElementById('aiProviderSettingsModal')?.addEventListener('click', (e) => {
       if (e.target.id === 'aiProviderSettingsModal') closeProviderSettingsModal();
@@ -899,6 +909,8 @@
 
     document.getElementById('aiCfgProvider')?.addEventListener('change', async (e) => {
       const p = e.target.value;
+      const epEl = document.getElementById('aiCfgEndpoint');
+      if (epEl && p !== 'custom') epEl.value = '';
       syncModelOptions(p);
       await refreshKeyStatusLabel(p);
       const resBox = document.getElementById('aiTestResultBox');
@@ -912,7 +924,7 @@
       return {
         provider: p,
         model: customModel || selModel,
-        customEndpoint: document.getElementById('aiCfgEndpoint')?.value.trim() || '',
+        customEndpoint: p === 'custom' ? (document.getElementById('aiCfgEndpoint')?.value.trim() || '') : '',
         temperature: Number(document.getElementById('aiCfgTemp')?.value ?? 0.2),
         thinkingBudget: Number(document.getElementById('aiCfgThinking')?.value ?? 1024),
         maxTokens: Number(document.getElementById('aiCfgMaxTokens')?.value ?? 2048),

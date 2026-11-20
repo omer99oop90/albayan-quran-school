@@ -552,6 +552,7 @@ public class AlbayanExportPlugin extends Plugin {
                 conn.setReadTimeout(timeoutMs);
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("User-Agent", "AlbayanSchoolApp/3.0");
 
                 if (extraHeaders != null) {
                     Iterator<String> keys = extraHeaders.keys();
@@ -632,7 +633,7 @@ public class AlbayanExportPlugin extends Plugin {
     private static String sanitizeAiProvider(String raw) {
         if (raw == null) return "";
         String p = raw.trim().toLowerCase();
-        if ("gemini".equals(p) || "openai".equals(p) || "anthropic".equals(p) || "custom".equals(p)) {
+        if ("gemini".equals(p) || "openai".equals(p) || "anthropic".equals(p) || "groq".equals(p) || "openrouter".equals(p) || "deepseek".equals(p) || "custom".equals(p)) {
             return p;
         }
         return "";

@@ -412,7 +412,7 @@
       if (isAdminKeyword && code === "123456") {
         saveSessionAndRedirect(
           username,
-          selectedStaffRole === "supervisor" ? "admin" : selectedStaffRole,
+          "admin",
           username,
           "staff_token_" + Date.now()
         );

@@ -15,7 +15,7 @@
   'use strict';
 
   const DEFAULT_CONFIG = {
-    provider: 'builtin', // 'builtin' | 'gemini' | 'openai' | 'anthropic' | 'custom'
+    provider: 'builtin', // 'builtin' | 'gemini' | 'openai' | 'groq' | 'openrouter' | 'deepseek' | 'anthropic' | 'custom'
     model: 'albayan-local-v1',
     customEndpoint: '',
     temperature: 0.2,
@@ -33,6 +33,7 @@
       shortLabel: 'محرك محلي',
       requiresKey: false,
       requiresEndpoint: false,
+      defaultEndpoint: '',
       defaultModel: 'albayan-local-v1',
       models: [
         { id: 'albayan-local-v1', label: 'محرك الأوامر المحلي v1 (قواعد ذكية + بيانات المدرسة)' }
@@ -45,6 +46,7 @@
       shortLabel: 'Gemini',
       requiresKey: true,
       requiresEndpoint: false,
+      defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
       defaultModel: 'gemini-2.5-flash',
       models: [
         { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
@@ -60,6 +62,7 @@
       shortLabel: 'OpenAI',
       requiresKey: true,
       requiresEndpoint: false,
+      defaultEndpoint: 'https://api.openai.com/v1/chat/completions',
       defaultModel: 'gpt-4o-mini',
       models: [
         { id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
@@ -69,6 +72,52 @@
         { id: 'o4-mini', label: 'o4-mini' }
       ]
     },
+    groq: {
+      id: 'groq',
+      isLocal: false,
+      label: 'Groq Cloud (سريع جداً - Llama / Qwen)',
+      shortLabel: 'Groq',
+      requiresKey: true,
+      requiresEndpoint: false,
+      defaultEndpoint: 'https://api.groq.com/openai/v1/chat/completions',
+      defaultModel: 'llama-3.3-70b-versatile',
+      models: [
+        { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B Versatile' },
+        { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
+        { id: 'qwen/qwen3-32b', label: 'Qwen 3 32B' },
+        { id: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B' }
+      ]
+    },
+    openrouter: {
+      id: 'openrouter',
+      isLocal: false,
+      label: 'OpenRouter API (متعدد النماذج)',
+      shortLabel: 'OpenRouter',
+      requiresKey: true,
+      requiresEndpoint: false,
+      defaultEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
+      defaultModel: 'google/gemini-2.5-flash',
+      models: [
+        { id: 'google/gemini-2.5-flash', label: 'Google Gemini 2.5 Flash' },
+        { id: 'openai/gpt-4o-mini', label: 'OpenAI GPT-4o Mini' },
+        { id: 'anthropic/claude-3.5-haiku', label: 'Anthropic Claude 3.5 Haiku' },
+        { id: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B (Free)' }
+      ]
+    },
+    deepseek: {
+      id: 'deepseek',
+      isLocal: false,
+      label: 'DeepSeek API',
+      shortLabel: 'DeepSeek',
+      requiresKey: true,
+      requiresEndpoint: false,
+      defaultEndpoint: 'https://api.deepseek.com/chat/completions',
+      defaultModel: 'deepseek-chat',
+      models: [
+        { id: 'deepseek-chat', label: 'DeepSeek Chat (V3)' },
+        { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner (R1)' }
+      ]
+    },
     anthropic: {
       id: 'anthropic',
       isLocal: false,
@@ -76,6 +125,7 @@
       shortLabel: 'Claude',
       requiresKey: true,
       requiresEndpoint: false,
+      defaultEndpoint: 'https://api.anthropic.com/v1/messages',
       defaultModel: 'claude-3-5-haiku-latest',
       models: [
         { id: 'claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku' },
@@ -90,6 +140,7 @@
       shortLabel: 'Custom API',
       requiresKey: false,
       requiresEndpoint: true,
+      defaultEndpoint: '',
       defaultModel: 'deepseek-chat',
       models: [
         { id: 'deepseek-chat', label: 'DeepSeek Chat' },
@@ -110,6 +161,9 @@
     'gpt-4.1-mini': { in: 0.40, out: 1.60 },
     'gpt-4.1': { in: 2.00, out: 8.00 },
     'o4-mini': { in: 1.10, out: 4.40 },
+    'llama-3.3-70b-versatile': { in: 0.59, out: 0.79 },
+    'deepseek-chat': { in: 0.27, out: 1.10 },
+    'deepseek-reasoner': { in: 0.55, out: 2.19 },
     'claude-3-5-haiku-latest': { in: 0.80, out: 4.00 },
     'claude-sonnet-4-20250514': { in: 3.00, out: 15.00 },
     'claude-3-7-sonnet-latest': { in: 3.00, out: 15.00 }
@@ -342,7 +396,8 @@
     }
 
     function canConfigureProvider(user = null) {
-      return isAdmin(user);
+      const u = user || getCurrentUser();
+      return !!(u && u.role !== 'student');
     }
 
     function authorizeTool(toolName, args = {}, context = {}) {
@@ -666,18 +721,29 @@
     }
 
     function getActivePeriod() {
+      let savedMonth = '';
+      let savedYear = '';
+      try {
+        savedMonth = localStorage.getItem('albayan_active_month') || '';
+        savedYear = localStorage.getItem('albayan_active_year') || '';
+      } catch (e) {}
+
       if (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.getConfig === 'function') {
         const cfg = window.AlbayanCycleEngine.getConfig();
+        const pType = cfg.mode || cfg.periodType || 'monthly';
         const opts = window.AlbayanCycleEngine.buildPeriodOptionsList(cfg);
         const firstOpt = opts && Array.isArray(opts.options) && opts.options.length > 0 ? opts.options[0] : null;
+        const defaultMonth = pType === 'monthly'
+          ? (savedMonth || 'صفر')
+          : ((firstOpt && firstOpt.value) ? firstOpt.value : 'صفر');
         return {
-          period_type: cfg.mode || cfg.periodType || 'monthly',
-          year: '1448',
-          month: (firstOpt && firstOpt.value) ? firstOpt.value : 'صفر',
+          period_type: pType,
+          year: savedYear || '1448',
+          month: defaultMonth,
           record_date: ''
         };
       }
-      return { period_type: 'monthly', year: '1448', month: 'صفر', record_date: '' };
+      return { period_type: 'monthly', year: savedYear || '1448', month: savedMonth || 'صفر', record_date: '' };
     }
 
     async function cachedLoad(slot, loaderFn, force = false) {
@@ -1036,6 +1102,68 @@
       return { exact: partial.length === 1 ? partial[0] : null, candidates: partial };
     }
 
+    function getSurahList() {
+      return (window.AlbayanDataNormalizer && Array.isArray(window.AlbayanDataNormalizer.SURAH_LIST))
+        ? window.AlbayanDataNormalizer.SURAH_LIST
+        : [];
+    }
+
+    function normalizeSurahName(raw) {
+      if (raw === null || raw === undefined) return { ok: true, value: '' };
+      const str = String(raw).trim();
+      if (!str) return { ok: true, value: '' };
+      const surahs = getSurahList();
+      if (!surahs.length) return { ok: true, value: str };
+
+      if (/^\d+$/.test(str)) {
+        const byNum = surahs.find(s => Number(s.id) === Number(str));
+        if (byNum) return { ok: true, value: byNum.name, surah: byNum };
+        return { ok: false, message: `رقم السورة "${str}" غير صالح (السور من 1 إلى 114).` };
+      }
+
+      const q = normAr(str).replace(/^(?:سوره|سورة)\s+/g, '').trim();
+      const qNoAl = q.replace(/^ال/, '');
+      const exact = surahs.filter(s => {
+        const sn = normAr(s.name);
+        return sn === q || sn.replace(/^ال/, '') === qNoAl;
+      });
+      if (exact.length === 1) return { ok: true, value: exact[0].name, surah: exact[0] };
+
+      const partial = surahs.filter(s => normAr(s.name).includes(q));
+      if (partial.length === 1) return { ok: true, value: partial[0].name, surah: partial[0] };
+      if (partial.length > 1) {
+        return { ok: false, message: `اسم السورة "${raw}" غامض؛ يرجى التحديد بدقة مثل: ${partial.slice(0, 3).map(s => s.name).join('، ')}.` };
+      }
+      return { ok: false, message: `اسم السورة "${raw}" غير معروف، يرجى كتابة اسم سورة صحيح من القرآن الكريم.` };
+    }
+
+    function computeRecordMetrics(row = {}) {
+      const absent = Number(row.absent_days || 0);
+      const attendanceMark = Math.max(0, 30 - absent * 0.5);
+      const mGrade = parseFloat(row.memo_grade);
+      const rGrade = parseFloat(row.rev_grade);
+      const aMark = parseFloat(row.activity_mark);
+      const extra = ['fiqh', 'tafsir', 'adhkar', 'seerah'].reduce((acc, k) => {
+        const v = parseFloat(row[k]);
+        return acc + (!isNaN(v) && v > 0 ? v : 0);
+      }, 0);
+      const totalScore = Math.round((
+        (!isNaN(mGrade) && mGrade > 0 ? mGrade : 0) +
+        (!isNaN(rGrade) && rGrade > 0 ? rGrade : 0) +
+        attendanceMark +
+        (!isNaN(aMark) && aMark > 0 ? aMark : 0) +
+        extra
+      ) * 10) / 10;
+      return {
+        memo_pages: Number(row.memo_pages || 0),
+        sard_pages: Number(row.sard_pages || 0),
+        absent_days: absent,
+        attendance_mark: attendanceMark,
+        total_score_out_of_200: totalScore,
+        percentage: Math.round((totalScore / 200) * 1000) / 10
+      };
+    }
+
     function validateRecordFields(fields) {
       if (!fields || typeof fields !== 'object') return { ok: false, message: 'حقول السجل غير صالحة.' };
       const bounds = [
@@ -1060,6 +1188,69 @@
         }
       }
       return { ok: true };
+    }
+
+    function normalizeRegisterFields(rawFields, currentRecord = {}) {
+      const allowedKeys = Object.keys(RECORD_FIELDS_SCHEMA.properties);
+      const fields = {};
+      Object.keys(rawFields || {}).forEach(k => {
+        if (allowedKeys.includes(k) && rawFields[k] !== undefined) {
+          fields[k] = rawFields[k];
+        }
+      });
+
+      const surahKeys = ['from_surah', 'to_surah', 'rev_from_surah', 'rev_to_surah'];
+      for (const sk of surahKeys) {
+        if (fields[sk] !== undefined && fields[sk] !== null) {
+          const res = normalizeSurahName(fields[sk]);
+          if (!res.ok) return { ok: false, message: res.message };
+          fields[sk] = res.value;
+        }
+      }
+
+      const surahs = getSurahList();
+      const ayahPairs = [
+        ['from_ayah', 'from_surah', 'آية بداية الحفظ'],
+        ['to_ayah', 'to_surah', 'آية نهاية الحفظ'],
+        ['rev_from_ayah', 'rev_from_surah', 'آية بداية المراجعة'],
+        ['rev_to_ayah', 'rev_to_surah', 'آية نهاية المراجعة']
+      ];
+      for (const [ak, sk, label] of ayahPairs) {
+        if (fields[ak] !== undefined && fields[ak] !== '' && fields[ak] !== null) {
+          const num = Math.floor(Number(fields[ak]));
+          if (!isFinite(num) || num < 1) {
+            return { ok: false, message: `قيمة "${label}" غير صالحة (${fields[ak]}). يجب أن تكون رقماً صحيحاً يبدأ من 1.` };
+          }
+          const targetSurah = fields[sk] !== undefined ? fields[sk] : currentRecord[sk];
+          if (targetSurah && surahs.length) {
+            const sObj = surahs.find(s => s.name === targetSurah || normAr(s.name) === normAr(targetSurah));
+            if (sObj && num > sObj.ayahs) {
+              return { ok: false, message: `رقم الآية (${num}) يتجاوز عدد آيات سورة ${sObj.name} (${sObj.ayahs} آية).` };
+            }
+          }
+          fields[ak] = num;
+        }
+      }
+
+      const valCheck = validateRecordFields(fields);
+      if (!valCheck.ok) return { ok: false, message: valCheck.message };
+
+      if (
+        (fields.from_surah !== undefined || fields.to_surah !== undefined || fields.from_ayah !== undefined || fields.to_ayah !== undefined) &&
+        fields.memo_pages === undefined
+      ) {
+        const fSurah = fields.from_surah !== undefined ? fields.from_surah : currentRecord.from_surah;
+        const fAyah = fields.from_ayah !== undefined ? fields.from_ayah : currentRecord.from_ayah;
+        const tSurah = fields.to_surah !== undefined ? fields.to_surah : currentRecord.to_surah;
+        const tAyah = fields.to_ayah !== undefined ? fields.to_ayah : currentRecord.to_ayah;
+        if (fSurah && tSurah && Number(tAyah) > 0 && window.AlbayanDataNormalizer && typeof window.AlbayanDataNormalizer.calcQuranPages === 'function') {
+          fields.memo_pages = window.AlbayanDataNormalizer.calcQuranPages(fSurah, Number(fAyah) || 1, tSurah, Number(tAyah));
+        } else if (fSurah === '' || tSurah === '') {
+          fields.memo_pages = 0;
+        }
+      }
+
+      return { ok: true, fields };
     }
 
     const RECORD_FIELDS_SCHEMA = {
@@ -1713,14 +1904,19 @@
       name: 'create_student',
       category: 'الطلاب',
       label: 'إضافة طالب إلى حلقة',
-      description: 'يضيف طالباً جديداً إلى حلقة قرآنية حقيقية بعد التحقق من وجود الحلقة وعدم تكرار الاسم.',
+      description: 'يضيف طالباً جديداً إلى حلقة قرآنية حقيقية، مع إمكانية تعبئة حقول السجل الأولية (الحفظ، المراجعة، الغياب، الدرجات) دفعة واحدة.',
       parameters: {
         type: 'object',
         properties: {
           name: { type: 'string', description: 'اسم الطالب الكامل (مطلوب)' },
           circle_id: { type: 'string' },
           circle_name: { type: 'string', description: 'اسم الحلقة المستهدفة' },
-          force_duplicate: { type: 'boolean', description: 'متابعة الإضافة حتى مع تشابه الاسم' }
+          force_duplicate: { type: 'boolean', description: 'متابعة الإضافة حتى مع تشابه الاسم' },
+          period_type: { type: 'string', description: 'نوع الفترة: monthly أو weekly أو daily' },
+          month: { type: 'string', description: 'الشهر الهجري (مثل صفر)' },
+          year: { type: 'string', description: 'السنة الهجرية (مثل 1448)' },
+          record_date: { type: 'string', description: 'تاريخ اليوم في النظام اليومي' },
+          fields: RECORD_FIELDS_SCHEMA
         },
         required: ['name']
       },
@@ -1758,10 +1954,28 @@
           };
         }
 
+        // Collect & validate optional initial register fields (nested or flat)
+        const allowedKeys = Object.keys(RECORD_FIELDS_SCHEMA.properties);
+        const rawFields = { ...(args.fields && typeof args.fields === 'object' ? args.fields : {}) };
+        allowedKeys.forEach(k => {
+          if (args[k] !== undefined && rawFields[k] === undefined) rawFields[k] = args[k];
+        });
+        const normRes = normalizeRegisterFields(rawFields, {});
+        if (!normRes.ok) return { ok: false, message: normRes.message };
+        const initialFields = normRes.fields;
+
+        const period = {
+          ...snap.activePeriod,
+          ...(args.period_type ? { period_type: args.period_type } : {}),
+          ...(args.year ? { year: String(args.year) } : {}),
+          ...(args.month ? { month: args.month } : {}),
+          ...(args.record_date ? { record_date: args.record_date } : {})
+        };
+
         if (!window.RosterService || typeof window.RosterService.addStudent !== 'function') {
           return { ok: false, message: 'خدمة الطلاب (RosterService) غير متاحة حالياً.' };
         }
-        const res = await window.RosterService.addStudent(circle.id, cleanName, snap.activePeriod, {});
+        const res = await window.RosterService.addStudent(circle.id, cleanName, period, initialFields);
         if (!res || !res.ok) {
           return { ok: false, message: (res && res.error && res.error.message) || 'تعذر إضافة الطالب.' };
         }
@@ -1779,17 +1993,24 @@
         });
 
         window.dispatchEvent(new CustomEvent('albayan:cloud_updated'));
+        const changes = [
+          { field: 'الطالب', before: '—', after: res.student.name },
+          { field: 'الحلقة', before: '—', after: circle.name },
+          { field: 'الفترة', before: '—', after: `${period.month} ${period.year}` }
+        ];
+        Object.keys(initialFields).forEach(k => {
+          changes.push({ field: k, before: 'فارغ', after: String(initialFields[k]) });
+        });
         return {
           ok: true,
           synced: res.synced,
           student: res.student,
+          period,
+          metrics: computeRecordMetrics(res.student),
           operationCard: {
             title: 'تمت إضافة الطالب بنجاح',
             entity: res.student.name,
-            changes: [
-              { field: 'الطالب', before: '—', after: res.student.name },
-              { field: 'الحلقة', before: '—', after: circle.name }
-            ],
+            changes,
             synced: res.synced
           }
         };
@@ -2203,20 +2424,41 @@
         const formatted = recs.slice(0, limit).map(r => {
           const st = stuMap.get(String(normStudentId(r.student_id)));
           const cObj = snap.circleById.get(String(normCircleId(r.circle_id || (st && st.circle_id))));
+          const metrics = computeRecordMetrics(r);
           return {
             record_id: r.id || r._fbKey,
             student_id: normStudentId(r.student_id),
             student_name: r.student_name || (st && st.name) || 'غير معروف',
             circle_name: cObj ? cObj.name : 'غير محدد',
+            period_type: r.period_type || 'monthly',
+            record_date: r.record_date || '',
             month: r.month || '',
             year: r.year || '',
+            from_surah: r.from_surah || '',
+            from_ayah: r.from_ayah || '',
+            to_surah: r.to_surah || '',
+            to_ayah: r.to_ayah || '',
             memo_range: (r.from_surah && r.to_surah) ? `${r.from_surah} (${r.from_ayah || 1}) -> ${r.to_surah} (${r.to_ayah || 1})` : '—',
             memo_pages: Number(r.memo_pages || 0),
-            memo_grade: r.memo_grade || '',
+            memo_grade: r.memo_grade ?? '',
+            rev_from_surah: r.rev_from_surah || '',
+            rev_from_ayah: r.rev_from_ayah || '',
+            rev_to_surah: r.rev_to_surah || '',
+            rev_to_ayah: r.rev_to_ayah || '',
+            rev_range: (r.rev_from_surah && r.rev_to_surah) ? `${r.rev_from_surah} (${r.rev_from_ayah || 1}) -> ${r.rev_to_surah} (${r.rev_to_ayah || 1})` : '—',
             sard_pages: Number(r.sard_pages || 0),
-            rev_grade: r.rev_grade || '',
+            rev_grade: r.rev_grade ?? '',
             absent_days: Number(r.absent_days || 0),
-            activity_mark: r.activity_mark || ''
+            attendance_mark: metrics.attendance_mark,
+            activity_mark: r.activity_mark ?? '',
+            fiqh: r.fiqh ?? '',
+            tafsir: r.tafsir ?? '',
+            adhkar: r.adhkar ?? '',
+            seerah: r.seerah ?? '',
+            exam_title: r.exam_title || '',
+            exam_grade: r.exam_grade || '',
+            total_score_out_of_200: metrics.total_score_out_of_200,
+            percentage: metrics.percentage
           };
         });
         return { ok: true, total: recs.length, records: formatted };
@@ -2228,15 +2470,17 @@
       name: 'create_student_record',
       category: 'السجلات',
       label: 'إضافة سجل جديد لطالب',
-      description: 'ينشئ سجلاً شهرياً/دورياً لطالب محدد مع الحفظ والمراجعة والغياب والدرجات.',
+      description: 'ينشئ سجلاً شهرياً/أسبوعياً/يومياً لطالب محدد مع كافة خانات السجل (الحفظ، المراجعة، السرد، الغياب، النشاط، المصاحبة، الاختبار).',
       parameters: {
         type: 'object',
         properties: {
           student_id: { type: 'string' },
           student_name: { type: 'string' },
           circle_name: { type: 'string' },
-          month: { type: 'string' },
-          year: { type: 'string' },
+          period_type: { type: 'string', description: 'monthly أو weekly أو daily' },
+          month: { type: 'string', description: 'الشهر الهجري مثل صفر' },
+          year: { type: 'string', description: 'السنة مثل 1448' },
+          record_date: { type: 'string', description: 'تاريخ اليوم إن كان النظام يومياً' },
           fields: RECORD_FIELDS_SCHEMA
         }
       },
@@ -2251,15 +2495,17 @@
       name: 'update_student_record',
       category: 'السجلات',
       label: 'تعديل سجل طالب',
-      description: 'يعدّل سجل طالب معين بدقة مع التحقق من هويته وحدود الدرجات وعرض القيم القديمة والجديدة.',
+      description: 'يعدّل أي خانة في سجل الطالب (الحفظ من سورة/آية إلى سورة/آية، المراجعة، السرد، الغياب، النشاط، الفقه، التفسير، الأذكار، السيرة، الاختبار) مع التحقق التلقائي وحساب أوجه الحفظ والمجموع.',
       parameters: {
         type: 'object',
         properties: {
           student_id: { type: 'string' },
           student_name: { type: 'string' },
           circle_name: { type: 'string' },
-          month: { type: 'string' },
-          year: { type: 'string' },
+          period_type: { type: 'string', description: 'monthly أو weekly أو daily' },
+          month: { type: 'string', description: 'الشهر الهجري مثل صفر' },
+          year: { type: 'string', description: 'السنة مثل 1448' },
+          record_date: { type: 'string', description: 'تاريخ اليوم إن كان النظام يومياً' },
           fields: RECORD_FIELDS_SCHEMA,
           preview_only: { type: 'boolean', description: 'لعرض التعديلات المقترحة قبل الحفظ' }
         }
@@ -2292,9 +2538,19 @@
 
         const period = {
           ...snap.activePeriod,
+          ...(args.period_type ? { period_type: args.period_type } : {}),
           ...(args.month ? { month: args.month } : {}),
-          ...(args.year ? { year: args.year } : {})
+          ...(args.year ? { year: String(args.year) } : {}),
+          ...(args.record_date ? { record_date: args.record_date } : {})
         };
+
+        const currentRecord = snap.records.find(r => {
+          if (String(normStudentId(r.student_id)) !== String(student.id)) return false;
+          if (period.record_date && r.record_date) return r.record_date === period.record_date;
+          const sameMonth = normAr(r.month || snap.activePeriod.month) === normAr(period.month);
+          const sameYear = !r.year || !period.year || String(r.year) === String(period.year);
+          return sameMonth && sameYear;
+        }) || {};
 
         // Accept either nested fields object or flat record fields
         const allowedKeys = Object.keys(RECORD_FIELDS_SCHEMA.properties);
@@ -2303,21 +2559,17 @@
           if (args[k] !== undefined && rawFields[k] === undefined) rawFields[k] = args[k];
         });
 
-        const fields = {};
-        Object.keys(rawFields).forEach(k => {
-          if (allowedKeys.includes(k)) fields[k] = rawFields[k];
-        });
-        if (Object.keys(fields).length === 0) {
+        if (Object.keys(rawFields).length === 0) {
           return { ok: false, message: 'يرجى تحديد الحقول والقيم المراد تحديثها في السجل.' };
         }
 
-        const valCheck = validateRecordFields(fields);
-        if (!valCheck.ok) return { ok: false, message: valCheck.message };
+        const normRes = normalizeRegisterFields(rawFields, currentRecord);
+        if (!normRes.ok) return { ok: false, message: normRes.message };
+        const fields = normRes.fields;
 
-        const currentRecord = snap.records.find(r =>
-          String(normStudentId(r.student_id)) === String(student.id) &&
-          normAr(r.month || snap.activePeriod.month) === normAr(period.month)
-        ) || {};
+        if (Object.keys(fields).length === 0) {
+          return { ok: false, message: 'يرجى تحديد الحقول والقيم الصالحة المراد تحديثها في السجل.' };
+        }
 
         const changes = [];
         const beforeFields = {};
@@ -2330,13 +2582,16 @@
           });
         });
 
+        const nextMetrics = computeRecordMetrics({ ...currentRecord, ...fields });
+
         if (args.preview_only) {
           return {
             ok: true,
             previewOnly: true,
             student: { id: student.id, name: student.name },
             period,
-            proposedChanges: changes
+            proposedChanges: changes,
+            metrics: nextMetrics
           };
         }
 
@@ -2372,6 +2627,8 @@
           ok: true,
           synced: updRes.synced,
           auditId: auditRec.id,
+          period,
+          metrics: nextMetrics,
           operationCard: {
             title: args.is_new_record ? 'تم إنشاء سجل الطالب بنجاح' : 'تم تحديث سجل الطالب بنجاح',
             entity: `${student.name} (${period.month} ${period.year})`,
@@ -3402,6 +3659,14 @@
       }
     }
 
+    function resolveOpenAICompatEndpoint(cfg) {
+      const p = (cfg && cfg.provider) || 'openai';
+      if (p === 'custom') return (cfg.customEndpoint || '').trim();
+      if (cfg && cfg.customEndpoint && cfg.customEndpoint.trim()) return cfg.customEndpoint.trim();
+      const cat = PROVIDER_CATALOG[p];
+      return (cat && cat.defaultEndpoint) || 'https://api.openai.com/v1/chat/completions';
+    }
+
     function buildSystemPrompt(user) {
       return [
         'أنت "مساعد البيان الذكي" داخل منظومة مدرسة البيان لتعليم القرآن الكريم.',
@@ -3411,9 +3676,15 @@
         'قواعد التوجيه الذكي للطلبات (إلزامية):',
         '1. المحادثة العادية (التحيات مثل "مرحباً"، الشكر، الأسئلة العامة حول قدراتك): أجب بلطف واختصار مباشرةً دون استدعاء أي أداة قاعدة بيانات.',
         '2. استرجاع البيانات المحدد: عند السؤال عن عدد الحلقات أو الطلاب أو المعلمين أو سجل طالب، استدعِ فقط الأداة المحددة المطلوبة (مثل get_all_halaqat أو get_statistics أو get_student_history) ولا تقم بفحص شامل للمدرسة دون طلب.',
-        '3. العمليات الإدارية (إضافة/تعديل/نقل/حذف): تحقق من اكتمال البيانات المطلوبة. إذا كانت ناقصة أو كان الاسم غامضاً، اسأل المستخدم ولا تخمّن ولا تنفذ عملية ناقصة.',
-        '4. التحليل الشامل وفحص الأخطاء: استدعِ analyze_statistics أو detect_data_anomalies أو generate_report فقط عندما يطلب المستخدم فحص المدرسة أو اكتشاف الأخطاء أو مقارنة الإحصائيات أو تقريراً شاملاً.',
-        '5. الصدق والدقة: لا تخترع أرقاماً أو أسماء طلاب أو نتائج لم ترد في مخرجات الأدوات. العمليات الحساسة (الحذف أو تغيير الأدوار) تتطلب confirm_token من المستخدم.'
+        '3. إضافة طالب وتسجيل أي خانة في السجل: يمكنك إضافة طالب مع تعبئة سجله دفعة واحدة عبر create_student (بتمرير fields)، أو تعديل/إنشاء أي خانة في السجل عبر update_student_record / create_student_record.',
+        '   خانات السجل (السجل الشهري الافتراضي: صفر 1448 ما لم يُحدد شهر/سنة أو تاريخ يومي):',
+        '   - الحفظ: from_surah، from_ayah، to_surah، to_ayah، memo_pages (تُحسب تلقائياً عند تحديد نطاق السور والآيات)، memo_grade (0-40).',
+        '   - المراجعة والسرد: rev_from_surah، rev_from_ayah، rev_to_surah، rev_to_ayah، sard_pages، rev_grade (0-30).',
+        '   - الحضور والنشاط والمناهج المصاحبة: absent_days (0-31)، activity_mark (0-20)، fiqh (0-20)، tafsir (0-20)، adhkar (0-20)، seerah (0-20).',
+        '   - الاختبارات: exam_title، exam_grade.',
+        '4. التحقق قبل التنفيذ: إذا نقصت بيانات إلزامية (مثل الحلقة عند إضافة طالب) أو تشابهت الأسماء، اسأل المستخدم ولا تخمّن.',
+        '5. التحليل الشامل وفحص الأخطاء: استدعِ analyze_statistics أو detect_data_anomalies أو generate_report فقط عندما يطلب المستخدم فحص المدرسة أو اكتشاف الأخطاء أو مقارنة الإحصائيات أو تقريراً شاملاً.',
+        '6. الصدق والدقة: لا تخترع أرقاماً أو أسماء طلاب أو نتائج لم ترد في مخرجات الأدوات. العمليات الحساسة (الحذف أو تغيير الأدوار) تتطلب confirm_token من المستخدم.'
       ].join('\n');
     }
 
@@ -3446,11 +3717,12 @@
       });
       contents.push({ role: 'user', parts: [{ text: userPrompt }] });
 
-      const functionDeclarations = AlbayanAIToolRegistry.listDeclarations().map(d => ({
-        name: d.name,
-        description: d.description,
-        parameters: d.parameters
-      }));
+      const functionDeclarations = AlbayanAIToolRegistry.listDeclarations().map(d => {
+        const hasProps = d.parameters && d.parameters.properties && Object.keys(d.parameters.properties).length > 0;
+        return hasProps
+          ? { name: d.name, description: d.description, parameters: d.parameters }
+          : { name: d.name, description: d.description };
+      });
 
       const executedTools = [];
       const operationCards = [];
@@ -3592,13 +3864,12 @@
     // Adapter 2 & 4: OpenAI / OpenAI-Compatible API
     // ------------------------------------------------------------------------
     async function runOpenAITurn(cfg, historyMessages, userPrompt, context) {
-      const model = cfg.model || 'gpt-4o-mini';
+      const cat = PROVIDER_CATALOG[cfg.provider] || PROVIDER_CATALOG.openai;
+      const model = cfg.model || cat.defaultModel || 'gpt-4o-mini';
       if (cfg.provider === 'custom' && (!cfg.customEndpoint || !cfg.customEndpoint.trim())) {
         throw new ProviderRequestError('config', 'يرجى تحديد عنوان API (Endpoint URL) للمزود المخصص في الإعدادات.');
       }
-      const url = (cfg.provider === 'custom')
-        ? cfg.customEndpoint.trim()
-        : 'https://api.openai.com/v1/chat/completions';
+      const url = resolveOpenAICompatEndpoint(cfg);
 
       const isReasoning = /^o[134]/i.test(model);
       const messages = [{ role: 'system', content: buildSystemPrompt(context.user) }];
@@ -4053,10 +4324,10 @@
         };
       }
 
-      // E. Add Student
+      // E. Add Student (optionally with initial register fields)
       if (hasAnyKw(q, ['أضف', 'اضف', 'سجل', 'إضافة']) && hasAnyKw(q, ['طالب'])) {
         const sMatch = raw.match(/(?:طالباً|طالب|الطالب)\s+(?:اسمه|باسم)?\s*["«]?([^"»،,]+?)["»]?(?=\s+(?:إلى|الى|في)\s+|$)/);
-        const cMatch = raw.match(/(?:إلى|الى|في)\s+["«]?([^"»،.\n]+)["»]?/);
+        const cMatch = raw.match(/(?:إلى|الى|في)\s+(?:حلقة\s+)?["«]?([^"»،.\n]+?)["»]?(?=\s+(?:درجة|غياب|نشاط|سرد|من\s+سورة|فقه|تفسير|أذكار|سيرة)|$)/);
         const sName = sMatch ? sMatch[1].trim() : '';
         const cName = cMatch ? cMatch[1].trim() : '';
         if (!sName || !cName) {
@@ -4068,37 +4339,65 @@
         const addRes = await invokeTool('create_student', { name: sName, circle_name: cName });
         return {
           text: addRes.ok
-            ? `تمت إضافة الطالب **"${addRes.student.name}"** بنجاح والتحقق من الحفظ.`
+            ? `تمت إضافة الطالب **"${addRes.student.name}"** بنجاح والتحقق من الحفظ في سجل (${addRes.period?.month || 'صفر'} ${addRes.period?.year || '1448'}).`
             : (addRes.message || addRes.error),
           executedTools, tables, operationCards, confirmations
         };
       }
 
-      // F. Update Student Record (e.g. memo_grade, rev_grade, absent_days, activity_mark)
-      if (hasAnyKw(q, ['عدل', 'تعديل', 'رصد']) && hasAnyKw(q, ['طالب', 'درجة', 'علامة', 'غياب'])) {
-        const numMatch = raw.match(/(?:إلى|الى|=|:)\s*(\d+(?:\.\d+)?)/);
-        const stuMatch = raw.match(/(?:للطالب|لطالب|الطالب|طالب)\s+["«]?([^"»،,]+?)["»]?(?=\s+(?:إلى|الى|في|بـ|=|:|درجة|علامة|غياب)|$)/);
-        if (numMatch && stuMatch) {
-          const val = Number(numMatch[1]);
+      // F. Update Student Record (surah ranges & all register grades/fields)
+      if (hasAnyKw(q, ['عدل', 'تعديل', 'رصد', 'سجل']) && hasAnyKw(q, ['طالب', 'درجة', 'علامة', 'غياب', 'حفظ', 'مراجعة', 'فقه', 'تفسير', 'أذكار', 'سيرة', 'سرد', 'نشاط', 'سورة'])) {
+        const stuMatch = raw.match(/(?:للطالب|لطالب|الطالب|طالب)\s+["«]?([^"»،,]+?)["»]?(?=\s+(?:إلى|الى|في|بـ|=|:|درجة|علامة|غياب|فقه|تفسير|أذكار|سيرة|سرد|نشاط|من\s+سورة)|$)/);
+        const surahRange = raw.match(/من\s+(?:سورة\s+)?([^\s،,]+(?:\s+[^\s،,]+)?)\s*(?:آية|ايه|اية)?\s*(\d+)?\s*(?:إلى|الى)\s+(?:سورة\s+)?([^\s،,]+(?:\s+[^\s،,]+)?)\s*(?:آية|ايه|اية)?\s*(\d+)/);
+        const numMatch = raw.match(/(?:إلى|الى|=|:|\s)(\d+(?:\.\d+)?)\s*$/);
+        if (stuMatch && (surahRange || numMatch)) {
           const fields = {};
-          if (hasAnyKw(q, ['مراجعة', 'مراجع'])) fields.rev_grade = val;
-          else if (hasAnyKw(q, ['نشاط'])) fields.activity_mark = val;
-          else if (hasAnyKw(q, ['غياب'])) fields.absent_days = val;
-          else fields.memo_grade = val;
+          if (surahRange) {
+            const isRev = hasAnyKw(q, ['مراجعة', 'مراجع']);
+            if (isRev) {
+              fields.rev_from_surah = surahRange[1].trim();
+              if (surahRange[2]) fields.rev_from_ayah = Number(surahRange[2]);
+              fields.rev_to_surah = surahRange[3].trim();
+              fields.rev_to_ayah = Number(surahRange[4]);
+            } else {
+              fields.from_surah = surahRange[1].trim();
+              if (surahRange[2]) fields.from_ayah = Number(surahRange[2]);
+              fields.to_surah = surahRange[3].trim();
+              fields.to_ayah = Number(surahRange[4]);
+            }
+          }
+          if (numMatch && !surahRange) {
+            const val = Number(numMatch[1]);
+            if (hasAnyKw(q, ['فقه'])) fields.fiqh = val;
+            else if (hasAnyKw(q, ['تفسير'])) fields.tafsir = val;
+            else if (hasAnyKw(q, ['أذكار', 'اذكار'])) fields.adhkar = val;
+            else if (hasAnyKw(q, ['سيرة'])) fields.seerah = val;
+            else if (hasAnyKw(q, ['سرد'])) fields.sard_pages = val;
+            else if (hasAnyKw(q, ['أوجه الحفظ', 'اوجه الحفظ'])) fields.memo_pages = val;
+            else if (hasAnyKw(q, ['مراجعة', 'مراجع'])) fields.rev_grade = val;
+            else if (hasAnyKw(q, ['نشاط'])) fields.activity_mark = val;
+            else if (hasAnyKw(q, ['غياب'])) fields.absent_days = val;
+            else fields.memo_grade = val;
+          }
 
-          const updRes = await invokeTool('update_student_record', { student_name: stuMatch[1].trim(), fields });
-          return {
-            text: updRes.ok
-              ? `تم تحديث سجل الطالب **"${stuMatch[1].trim()}"** بنجاح.`
-              : (updRes.message || updRes.error),
-            executedTools, tables, operationCards, confirmations
-          };
+          if (Object.keys(fields).length > 0) {
+            const updRes = await invokeTool('update_student_record', { student_name: stuMatch[1].trim(), fields });
+            return {
+              text: updRes.ok
+                ? `تم تحديث سجل الطالب **"${stuMatch[1].trim()}"** بنجاح.`
+                : (updRes.message || updRes.error),
+              executedTools, tables, operationCards, confirmations
+            };
+          }
         }
         return {
           text: [
-            'لتعديل سجل طالب بدقة، حدد اسم الطالب والحقل والقيمة، مثال:',
+            'لتعديل سجل طالب بالمحرك المحلي، حدد اسم الطالب والحقل والقيمة، مثال:',
             '- *"عدّل درجة حفظ الطالب خالد إلى 38"*',
-            '- *"عدّل غياب الطالب سعيد إلى 1"*'
+            '- *"رصد غياب الطالب سعيد إلى 1"*',
+            '- *"سجل حفظ الطالب خالد من سورة البقرة آية 1 إلى البقرة آية 20"*',
+            '',
+            'لإدخال بيانات معقدة بجمل حرة، اربط **مفتاح AI حقيقي** (مثل **Gemini** أو **Groq**) من الإعدادات.'
           ].join('\n'),
           executedTools, tables, operationCards, confirmations
         };
@@ -4369,7 +4668,7 @@
 
     async function testConnection(tempConfig = {}, overrideKey = '') {
       if (!AlbayanAISecurity.canConfigureProvider()) {
-        return { ok: false, category: 'auth', message: 'اختبار وتعديل إعدادات المزود متاح لمدير النظام فقط.' };
+        return { ok: false, category: 'auth', message: 'اختبار وتعديل إعدادات المزود متاح لطاقم المدرسة المسجل فقط.' };
       }
       const p = tempConfig.provider || 'builtin';
       if (p === 'builtin') {
@@ -4404,9 +4703,7 @@
             max_tokens: 16
           }, { overrideKey, timeoutMs: 12000, model });
         } else {
-          const url = (p === 'custom')
-            ? tempConfig.customEndpoint.trim()
-            : 'https://api.openai.com/v1/chat/completions';
+          const url = resolveOpenAICompatEndpoint(tempConfig);
           const isReasoning = /^o[134]/i.test(model);
           await performHttp(p, url, {
             model,
@@ -4436,7 +4733,15 @@
       setConnectionState,
       sendPrompt,
       testConnection,
-      _adapters: { runGeminiTurn, runOpenAITurn, runAnthropicTurn, runBuiltinAgentTurn, isOrdinaryConversation, classifyProviderHttpError }
+      _adapters: {
+        runGeminiTurn,
+        runOpenAITurn,
+        runAnthropicTurn,
+        runBuiltinAgentTurn,
+        isOrdinaryConversation,
+        classifyProviderHttpError,
+        resolveOpenAICompatEndpoint
+      }
     };
   })();
 
