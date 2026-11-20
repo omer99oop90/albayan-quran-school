@@ -45,7 +45,7 @@
           <strong>كادر المشرفين</strong>
           <small>تحليل الأداء والإحصاء</small>
         </div>
-        <button type="button" class="btn-danger-outline" onclick="location.href='login.html'">تسجيل الخروج <i data-lucide="log-out" style="width:16px; height:16px;"></i></button>
+        <button type="button" class="btn-danger-outline" onclick="logout()">تسجيل الخروج <i data-lucide="log-out" style="width:16px; height:16px;"></i></button>
       </div>
     </aside>
 
@@ -63,7 +63,7 @@
       </header>
 
       <!-- Main Analytics Navigation Tabs -->
-      <div class="analytics-view-tabs no-print" style="display:flex; gap:12px; margin-bottom:24px; border-bottom:2px solid var(--line); padding-bottom:12px;">
+      <div class="analytics-view-tabs no-print" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:24px; border-bottom:2px solid var(--line); padding-bottom:12px;">
         <button type="button" id="tabBtnCircles" class="analytics-tab-btn active" onclick="switchAnalyticsView('circles')">
           <svg style="width:18px; height:18px; vertical-align:middle; fill:currentColor; margin-left:6px;" viewBox="0 0 100 100"><circle cx="50" cy="22" r="14"/><path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/><path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
           إحصائيات الحلقات القرآنية
@@ -91,24 +91,12 @@
           <div class="student-filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 280px));">
             <div class="filter-item">
               <label><i data-lucide="calendar" style="width:14px; height:14px;"></i> السنة الدراسية</label>
-              <input type="number" id="filterCirclesYear" onchange="syncAndLoadAnalytics('circles')" value="" min="2020" max="2050" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: #fff;">
+              <input type="number" id="filterCirclesYear" onchange="syncAndLoadAnalytics('circles')" value="" min="1400" max="2100" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: var(--card-bg, #fff);">
             </div>
             <div class="filter-item">
-              <label><i data-lucide="clock" style="width:14px; height:14px;"></i> شهر التقييم</label>
-              <select id="filterCirclesMonth" onchange="syncAndLoadAnalytics('circles')" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: #fff; cursor: pointer;">
-                <option value="all">جميع الأشهر (السجل التراكمي)</option>
-                <option value="يناير">يناير</option>
-                <option value="فبراير">فبراير</option>
-                <option value="مارس">مارس</option>
-                <option value="أبريل">أبريل</option>
-                <option value="مايو">مايو</option>
-                <option value="يونيو">يونيو</option>
-                <option value="يوليو">يوليو</option>
-                <option value="أغسطس">أغسطس</option>
-                <option value="سبتمبر">سبتمبر</option>
-                <option value="أكتوبر">أكتوبر</option>
-                <option value="نوفمبر">نوفمبر</option>
-                <option value="ديسمبر">ديسمبر</option>
+              <label><i data-lucide="clock" style="width:14px; height:14px;"></i> شهر / فترة التقييم</label>
+              <select id="filterCirclesMonth" onchange="syncAndLoadAnalytics('circles')" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: var(--card-bg, #fff); cursor: pointer;">
+                <option value="all">جميع الفترات (السجل التراكمي)</option>
               </select>
             </div>
           </div>
@@ -376,24 +364,12 @@
             </div>
             <div class="filter-item">
               <label><i data-lucide="calendar" style="width:14px; height:14px;"></i> السنة</label>
-              <input type="number" id="filterStudentsYear" onchange="syncAndLoadAnalytics('students')" value="" min="2020" max="2050" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: #fff;">
+              <input type="number" id="filterStudentsYear" onchange="syncAndLoadAnalytics('students')" value="" min="1400" max="2100" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: var(--card-bg, #fff);">
             </div>
             <div class="filter-item">
-              <label><i data-lucide="clock" style="width:14px; height:14px;"></i> الشهر</label>
-              <select id="filterStudentsMonth" onchange="syncAndLoadAnalytics('students')" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: #fff; cursor: pointer;">
-                <option value="all">جميع الأشهر (السجل التراكمي)</option>
-                <option value="يناير">يناير</option>
-                <option value="فبراير">فبراير</option>
-                <option value="مارس">مارس</option>
-                <option value="أبريل">أبريل</option>
-                <option value="مايو">مايو</option>
-                <option value="يونيو">يونيو</option>
-                <option value="يوليو">يوليو</option>
-                <option value="أغسطس">أغسطس</option>
-                <option value="سبتمبر">سبتمبر</option>
-                <option value="أكتوبر">أكتوبر</option>
-                <option value="نوفمبر">نوفمبر</option>
-                <option value="ديسمبر">ديسمبر</option>
+              <label><i data-lucide="clock" style="width:14px; height:14px;"></i> الفترة</label>
+              <select id="filterStudentsMonth" onchange="syncAndLoadAnalytics('students')" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: var(--card-bg, #fff); cursor: pointer;">
+                <option value="all">جميع الفترات (السجل التراكمي)</option>
               </select>
             </div>
           </div>
@@ -686,15 +662,6 @@
     </div>
   </div>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const y = new Date().getFullYear();
-      ["filterCirclesYear", "filterStudentsYear"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && !el.value) el.value = y;
-      });
-    });
-  </script>
   <!-- Back to Top Button -->
   <button id="backTopBtn" aria-label="العودة إلى الأعلى" title="العودة إلى الأعلى" style="
     position: fixed;
@@ -721,8 +688,8 @@
   <script src="mobile-db.js?v=2.0"></script>
   <script src="hijri_date.js?v=1.0"></script>
   <script src="mobile_bottom_nav.js?v=1.0"></script>
-  <script src="analytics.js?v=2.1"></script>
   <script src="firebase-client.js?v=3.0"></script>
+  <script src="analytics.js?v=2.2"></script>
   <script>if(window.safeCreateIcons) safeCreateIcons(); else if(window.lucide) lucide.createIcons();</script>
 </body>
 </html>

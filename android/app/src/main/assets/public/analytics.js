@@ -7,6 +7,153 @@ function csrfHeaders(extra = {}) {
   return Object.assign({"Content-Type": "application/json", "X-CSRF-Token": getCsrfToken()}, extra);
 }
 
+// Shared Helpers (XSS, ID Normalization, Grade Categorization, Exam Status)
+function escapeHtml(val) {
+  return String(val == null ? "" : val)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normalizeEntityId(val, prefix = "") {
+  if (val === undefined || val === null) return "";
+  let s = String(val).trim();
+  if (prefix && s.startsWith(prefix)) s = s.slice(prefix.length);
+  return s;
+}
+
+function normalizeArabicSearch(str) {
+  return String(str || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/[\u064B-\u065F]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function getDefaultAcademicYear() {
+  if (window.HijriDate && typeof window.HijriDate.getCurrentHijriYear === "function") {
+    const hy = window.HijriDate.getCurrentHijriYear();
+    if (hy) return String(hy);
+  }
+  return "1448";
+}
+
+function getPreferredCurrentPeriodValue(selectEl) {
+  if (window.HijriDate && typeof window.HijriDate.getCurrentHijriMonth === "function") {
+    const hm = window.HijriDate.getCurrentHijriMonth();
+    if (hm && selectEl && Array.from(selectEl.options).some(o => o.value === hm)) {
+      return hm;
+    }
+  }
+  if (selectEl && Array.from(selectEl.options).some(o => o.value === "active_cycle")) {
+    return "active_cycle";
+  }
+  return "all";
+}
+
+function categorizeGrade(grade, maxMark = 40) {
+  if (grade === undefined || grade === null || grade === "" || grade === 0 || grade === "0") {
+    return "غير محدد";
+  }
+  const g = String(grade).trim();
+  const num = Number(g);
+  if (g !== "" && !Number.isNaN(num)) {
+    const effectiveMax = Number(maxMark) > 0 ? Number(maxMark) : 40;
+    const pct = (num / effectiveMax) * 100;
+    if (pct >= 90) return "ممتاز";
+    if (pct >= 80) return "جيد جداً";
+    if (pct >= 65) return "جيد";
+    if (pct >= 50) return "مقبول";
+    return "يحتاج متابعة";
+  }
+  const norm = normalizeArabicSearch(g);
+  if (["ممتاز", "ممتازه", "ممتاز مرتفع"].includes(norm)) return "ممتاز";
+  if (["جيد جدا"].includes(norm)) return "جيد جداً";
+  if (norm === "جيد") return "جيد";
+  if (norm === "مقبول") return "مقبول";
+  if (["ضعيف", "يحتاج متابعه", "يحتاج الي متابعه", "متابعه"].includes(norm)) return "يحتاج متابعة";
+  return "غير محدد";
+}
+
+function getGradeBadgeClass(gradeCat) {
+  if (gradeCat === "ممتاز") return "badge-star";
+  if (gradeCat === "جيد جداً") return "badge-blue";
+  if (gradeCat === "جيد") return "badge-yellow";
+  if (gradeCat === "مقبول" || gradeCat === "يحتاج متابعة") return "badge-red";
+  return "badge-blue";
+}
+
+function getExamResultTotalQuestions(r) {
+  if (!r || typeof r !== "object") return 0;
+  const raw = Number(r.total_questions != null ? r.total_questions : (r.total != null ? r.total : (Array.isArray(r.answers) ? r.answers.length : 0)));
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
+}
+
+function getExamResultPercentage(r) {
+  if (!r || typeof r !== "object") return 0;
+  if (r.percentage !== undefined && r.percentage !== null && r.percentage !== "") {
+    const p = Number(r.percentage);
+    if (Number.isFinite(p)) return Math.round(p);
+  }
+  const sc = Number(r.score) || 0;
+  const tot = getExamResultTotalQuestions(r);
+  return tot > 0 ? Math.round((sc / tot) * 100) : 0;
+}
+
+function isExamResultPassed(r) {
+  if (!r || typeof r !== "object") return false;
+  if (r.passed === 1 || r.passed === true || String(r.passed) === "1") return true;
+  if (r.passed === 0 || r.passed === false || String(r.passed) === "0") return false;
+  return getExamResultPercentage(r) >= 50;
+}
+
+function getCurrentAnalyticsUser() {
+  if (window.AlbayanPermissions && typeof window.AlbayanPermissions.getCurrentUser === "function") {
+    const u = window.AlbayanPermissions.getCurrentUser();
+    if (u) return u;
+  }
+  if (_analyticsAuthUser) return _analyticsAuthUser;
+  try {
+    const raw = localStorage.getItem("albayan_logged_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function filterCirclesByPermission(circlesList, usersList = []) {
+  if (!Array.isArray(circlesList)) return [];
+  const u = getCurrentAnalyticsUser();
+  if (!u) return circlesList;
+  const canAll = window.AlbayanPermissions
+    ? window.AlbayanPermissions.hasPermission("all_circles", u)
+    : (u.is_superadmin === 1 || u.role === "admin" || (Array.isArray(u.permissions) && u.permissions.includes("all_circles")));
+  if (canAll) return circlesList;
+
+  const myId = normalizeEntityId(u.id, "users_");
+  const myName = normalizeArabicSearch(u.username || u.display_name || "");
+  const usersMap = new Map();
+  (usersList || []).forEach(usr => {
+    if (!usr) return;
+    const uid = normalizeEntityId(usr.id, "users_");
+    if (uid) usersMap.set(uid, usr);
+  });
+
+  return circlesList.filter(c => {
+    if (!c) return false;
+    const tid = normalizeEntityId(c.teacher_id, "users_");
+    if (myId && tid && tid === myId) return true;
+    const userObj = tid ? usersMap.get(tid) : null;
+    const resolvedTeacher = normalizeArabicSearch(c.teacher_name || c.teacher || (userObj && (userObj.username || userObj.display_name)) || "");
+    return Boolean(myName && resolvedTeacher === myName);
+  });
+}
+
 // Back-to-Top Button Logic
 function initBackToTop() {
   const btn = document.getElementById("backTopBtn");
@@ -19,12 +166,17 @@ function initBackToTop() {
 }
 
 let analyticsCache = null;
+let currentFilteredExamStudents = [];
+let currentFilteredCircleStudents = [];
+let currentAnalyticsView = "circles";
+let _analyticsAuthUser = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileSidebar();
   initBackToTop();
   await checkAuth();
-  // Check if opened with exam_id parameter or exams tab request
+
+  // Check if opened with exam_id parameter or view request
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.has("exam_id") || urlParams.get("view") === "exams") {
     switchAnalyticsView("exams");
@@ -32,38 +184,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     switchAnalyticsView("students");
   }
 
-  const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-  const currentMonth = months[new Date().getMonth()];
-  const currentYear = new Date().getFullYear().toString();
-  
+  const defaultYear = getDefaultAcademicYear();
   const cy = document.getElementById("filterCirclesYear");
   const cm = document.getElementById("filterCirclesMonth");
   const sy = document.getElementById("filterStudentsYear");
   const sm = document.getElementById("filterStudentsMonth");
-  
-  if (cy) cy.value = currentYear;
-  if (sy) sy.value = currentYear;
+
+  if (cy && !cy.value) cy.value = defaultYear;
+  if (sy && !sy.value) sy.value = defaultYear;
   if (cm) cm.value = "all";
   if (sm) sm.value = "all";
 
+  adaptAnalyticsFilters({});
   loadAnalyticsData();
 
   window.addEventListener("albayan:record-period-updated", () => {
-    hasAdaptedFilters = false;
+    lastAdaptedSignature = "";
     loadAnalyticsData();
   });
   window.addEventListener("albayan:cycle-updated", () => {
-    hasAdaptedFilters = false;
+    lastAdaptedSignature = "";
     loadAnalyticsData();
   });
   window.addEventListener("albayan:cycle-archived", () => {
-    hasAdaptedFilters = false;
+    lastAdaptedSignature = "";
     loadAnalyticsData();
   });
 });
 
+function isStandaloneRuntime() {
+  const loc = window.location || {};
+  return Boolean(
+    window.IS_CAPACITOR_APP ||
+    loc.protocol === "file:" ||
+    String(loc.origin || "").includes("capacitor://") ||
+    (loc.hostname === "localhost" && (!loc.port || loc.port === "80"))
+  );
+}
+
 async function checkAuth() {
-  const isStandalone = window.IS_CAPACITOR_APP || window.location.protocol === 'file:' || window.location.origin.includes('capacitor://') || (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80'));
+  const isStandalone = isStandaloneRuntime();
 
   try {
     const controller = new AbortController();
@@ -79,8 +239,9 @@ async function checkAuth() {
         return;
       }
     } else {
+      _analyticsAuthUser = data;
       const userElem = document.getElementById("loggedUsername");
-      if (userElem) userElem.textContent = data.username;
+      if (userElem) userElem.textContent = data.username || "الكادر التعليمي";
     }
     const canAccessCv = window.AlbayanPermissions
       ? window.AlbayanPermissions.hasPermission("student_cv", data)
@@ -93,13 +254,17 @@ async function checkAuth() {
       : (data.is_superadmin === 1 || data.role === "admin" || (Array.isArray(data.permissions) && data.permissions.includes("users")));
     const usersLink = document.getElementById("usersMenuLink");
     if (usersLink) usersLink.style.display = canAccessUsers ? "flex" : "none";
-    if (window.AlbayanPermissions) window.AlbayanPermissions.applyNavPermissions(data);
+    if (window.AlbayanPermissions) {
+      window.AlbayanPermissions.applyNavPermissions(data);
+      window.AlbayanPermissions.enforcePageAccess(data);
+    }
   } catch (err) {
     let username = "الكادر التعليمي";
     try {
       const cached = localStorage.getItem("albayan_logged_user");
       if (cached) {
         const u = JSON.parse(cached);
+        _analyticsAuthUser = u;
         if (u && u.username) username = u.username;
         if (u && window.AlbayanPermissions) {
           window.AlbayanPermissions.applyNavPermissions(u);
@@ -112,24 +277,8 @@ async function checkAuth() {
   }
 }
 
-
-function syncAndLoadAnalytics(source) {
-  loadAnalyticsData();
-}
-
-function resetCirclesDateFilter() {
-  const cy = document.getElementById("filterCirclesYear");
-  const cm = document.getElementById("filterCirclesMonth");
-  if (cy) cy.value = new Date().getFullYear().toString();
-  if (cm) cm.value = "all";
-  loadAnalyticsData();
-}
-
-window.syncAndLoadAnalytics = syncAndLoadAnalytics;
-window.resetCirclesDateFilter = resetCirclesDateFilter;
-
-
 function switchAnalyticsView(viewType) {
+  currentAnalyticsView = viewType || "circles";
   const circlesSec = document.getElementById("viewCirclesAnalytics");
   const studentsSec = document.getElementById("viewStudentsAnalytics");
   const examsSec = document.getElementById("viewExamsAnalytics");
@@ -162,7 +311,8 @@ window.switchAnalyticsView = switchAnalyticsView;
 
 async function buildServerlessAnalytics(year, month, requestedExamId) {
   const rtdbBase = "https://bayan-56e77-default-rtdb.asia-southeast1.firebasedatabase.app";
-  
+  const normalizer = window.AlbayanDataNormalizer || null;
+
   // 1. Parallel fetch from Firebase RTDB (with fast timeout)
   let rawCircles = null;
   let rawStudents = null;
@@ -170,18 +320,20 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
   let rawExams = null;
   let rawResults = null;
   let rawSettings = null;
+  let rawUsers = null;
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const [cRes, sRes, recRes, eRes, rRes, setRes] = await Promise.all([
+    const [cRes, sRes, recRes, eRes, rRes, setRes, uRes] = await Promise.all([
       fetch(`${rtdbBase}/circles.json`, { signal: controller.signal }).catch(() => null),
       fetch(`${rtdbBase}/students.json`, { signal: controller.signal }).catch(() => null),
       fetch(`${rtdbBase}/student_records.json`, { signal: controller.signal }).catch(() => null),
       fetch(`${rtdbBase}/exams.json`, { signal: controller.signal }).catch(() => null),
       fetch(`${rtdbBase}/results.json`, { signal: controller.signal }).catch(() => null),
-      fetch(`${rtdbBase}/settings.json`, { signal: controller.signal }).catch(() => null)
+      fetch(`${rtdbBase}/settings.json`, { signal: controller.signal }).catch(() => null),
+      fetch(`${rtdbBase}/users.json`, { signal: controller.signal }).catch(() => null)
     ]);
     clearTimeout(timeoutId);
 
@@ -191,12 +343,42 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
     if (eRes && eRes.ok) rawExams = await eRes.json().catch(() => null);
     if (rRes && rRes.ok) rawResults = await rRes.json().catch(() => null);
     if (setRes && setRes.ok) rawSettings = await setRes.json().catch(() => null);
+    if (uRes && uRes.ok) rawUsers = await uRes.json().catch(() => null);
   } catch (err) {}
 
-  // 2. Fallbacks from AlbayanLocalDB & localStorage
+  let deletedCircles = [];
+  let deletedStudents = [];
+  try { deletedCircles = JSON.parse(localStorage.getItem("deleted_circles") || "[]").map(id => normalizeEntityId(id, "circles_")); } catch (e) {}
+  try { deletedStudents = JSON.parse(localStorage.getItem("deleted_students") || "[]").map(id => normalizeEntityId(id, "students_")); } catch (e) {}
+
+  // Users lookup (for resolving circle teacher_name)
+  let usersList = [];
+  if (rawUsers) {
+    usersList = normalizer && normalizer.normalizeCollectionEntries
+      ? normalizer.normalizeCollectionEntries(rawUsers, { idPrefix: "users_" })
+      : (Array.isArray(rawUsers) ? rawUsers.filter(Boolean) : Object.values(rawUsers));
+  } else if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getUsers === "function") {
+    try { usersList = await window.AlbayanLocalDB.getUsers(); } catch (e) {}
+  }
+  if (!usersList || usersList.length === 0) {
+    try {
+      const rawU = localStorage.getItem("cached_users_list");
+      if (rawU) usersList = JSON.parse(rawU);
+    } catch (e) {}
+  }
+  const userById = new Map();
+  (usersList || []).forEach(u => {
+    if (!u || u.deleted) return;
+    const uid = normalizeEntityId(u.id, "users_");
+    if (uid) userById.set(uid, u);
+  });
+
+  // 2. Circles with normalizer & LocalDB/localStorage fallbacks
   let circles = [];
   if (rawCircles) {
-    circles = Array.isArray(rawCircles) ? rawCircles.filter(Boolean) : Object.values(rawCircles);
+    circles = normalizer && normalizer.resolveCircles
+      ? (normalizer.resolveCircles(rawCircles).circles || [])
+      : (Array.isArray(rawCircles) ? rawCircles.filter(Boolean) : Object.values(rawCircles));
   } else if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalCircles === "function") {
     try { circles = await window.AlbayanLocalDB.getLocalCircles(); } catch(e) {}
   }
@@ -207,11 +389,45 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
     } catch(e) {}
   }
 
+  circles = (circles || [])
+    .filter(c => c && !c.deleted && c.is_deleted !== 1 && c.is_deleted !== true)
+    .map((c, idx) => {
+      const normId = normalizeEntityId(c.id !== undefined ? c.id : idx + 1, "circles_");
+      const tid = normalizeEntityId(c.teacher_id, "users_");
+      const teacherObj = tid ? userById.get(tid) : null;
+      return {
+        ...c,
+        id: normId || String(idx + 1),
+        name: c.name || `حلقة ${idx + 1}`,
+        teacher_name: c.teacher_name || c.teacher || (teacherObj && (teacherObj.username || teacherObj.display_name)) || "كادر تعليمي"
+      };
+    })
+    .filter(c => !deletedCircles.includes(String(c.id)));
+
+  // Scope circles by user permissions (teachers without all_circles see their own circles)
+  circles = filterCirclesByPermission(circles, usersList);
+  const allowedCircleIds = new Set(circles.map(c => String(c.id)));
+  const allowedCircleNames = new Set(circles.map(c => normalizeArabicSearch(c.name)));
+  const circleById = new Map();
+  const circleByName = new Map();
+  circles.forEach(c => {
+    circleById.set(String(c.id), c);
+    circleByName.set(normalizeArabicSearch(c.name), c);
+  });
+
+  // Students with normalizer & per-circle LocalDB fallback
   let students = [];
   if (rawStudents) {
-    students = Array.isArray(rawStudents) ? rawStudents.filter(Boolean) : Object.values(rawStudents);
-  } else if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalStudents === "function") {
-    try { students = await window.AlbayanLocalDB.getLocalStudents(); } catch(e) {}
+    students = normalizer && normalizer.resolveStudents
+      ? (normalizer.resolveStudents(rawStudents).students || [])
+      : (Array.isArray(rawStudents) ? rawStudents.filter(Boolean) : Object.values(rawStudents));
+  } else if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalStudents === "function" && circles.length > 0) {
+    try {
+      const perCircle = await Promise.all(
+        circles.map(c => window.AlbayanLocalDB.getLocalStudents(c.id, { month: month || "all", year: year || "" }).catch(() => []))
+      );
+      students = perCircle.flat();
+    } catch(e) {}
   }
   if (!students || students.length === 0) {
     try {
@@ -222,7 +438,9 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
 
   let exams = [];
   if (rawExams) {
-    exams = Array.isArray(rawExams) ? rawExams.filter(Boolean) : Object.values(rawExams);
+    exams = normalizer && normalizer.normalizeCollectionEntries
+      ? normalizer.normalizeCollectionEntries(rawExams, { idPrefix: "exams_" })
+      : (Array.isArray(rawExams) ? rawExams.filter(Boolean) : Object.values(rawExams));
   } else if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalExams === "function") {
     try { exams = await window.AlbayanLocalDB.getLocalExams(); } catch(e) {}
   }
@@ -235,99 +453,196 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
 
   let results = [];
   if (rawResults) {
-    results = Array.isArray(rawResults) ? rawResults.filter(Boolean) : Object.values(rawResults);
-  } else if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalResults === "function") {
-    try { results = await window.AlbayanLocalDB.getLocalResults(); } catch(e) {}
-  }
-  if (!results || results.length === 0) {
+    results = normalizer && normalizer.normalizeCollectionEntries
+      ? normalizer.normalizeCollectionEntries(rawResults, { idPrefix: "results_" })
+      : (Array.isArray(rawResults) ? rawResults.filter(Boolean) : Object.values(rawResults));
+  } else {
     try {
-      const raw = localStorage.getItem("cached_results_list");
+      const raw = localStorage.getItem("cached_results_list") || localStorage.getItem("albayan_cached_results");
       if (raw) results = JSON.parse(raw);
     } catch(e) {}
   }
 
-  // Normalize ID and structures
-  circles = (circles || []).filter(c => c && !c.deleted).map((c, idx) => ({ ...c, id: c.id !== undefined ? c.id : idx + 1, name: c.name || `حلقة ${idx + 1}` }));
-  students = (students || []).filter(s => s && !s.deleted).map((s, idx) => ({ ...s, id: s.id !== undefined ? s.id : idx + 1, name: s.name || `طالب ${idx + 1}` }));
-  exams = (exams || []).map((e, idx) => ({ ...e, id: e.id !== undefined ? e.id : idx + 1, title: e.title || `اختبار ${idx + 1}` }));
-  results = (results || []).map((r, idx) => ({ ...r, id: r.id !== undefined ? r.id : idx + 1 }));
+  // Normalize & enrich Students, Exams, Results
+  const canAllCircles = (() => {
+    const u = getCurrentAnalyticsUser();
+    if (!u) return true;
+    return window.AlbayanPermissions
+      ? window.AlbayanPermissions.hasPermission("all_circles", u)
+      : (u.is_superadmin === 1 || u.role === "admin" || (Array.isArray(u.permissions) && u.permissions.includes("all_circles")));
+  })();
+
+  students = (students || [])
+    .filter(s => s && !s.deleted && s.is_deleted !== 1 && s.is_deleted !== true)
+    .map((s, idx) => {
+      const sid = normalizeEntityId(s.id !== undefined ? s.id : (s.student_id !== undefined ? s.student_id : idx + 1), "students_");
+      const cid = normalizeEntityId(s.circle_id, "circles_");
+      const matchedCircle = (cid && circleById.get(cid)) || (s.circle_name && circleByName.get(normalizeArabicSearch(s.circle_name))) || null;
+      return {
+        ...s,
+        id: sid || String(idx + 1),
+        circle_id: matchedCircle ? matchedCircle.id : cid,
+        circle_name: s.circle_name || (matchedCircle && matchedCircle.name) || "حلقة عامة",
+        teacher_name: s.teacher_name || (matchedCircle && matchedCircle.teacher_name) || "كادر تعليمي",
+        name: s.name || `طالب ${idx + 1}`
+      };
+    })
+    .filter(s => {
+      if (deletedStudents.includes(String(s.id))) return false;
+      if (!canAllCircles) {
+        return allowedCircleIds.has(String(s.circle_id)) || allowedCircleNames.has(normalizeArabicSearch(s.circle_name));
+      }
+      return true;
+    });
+
+  exams = (exams || [])
+    .filter(e => e && !e.deleted && e.is_deleted !== 1 && e.is_deleted !== true)
+    .map((e, idx) => ({
+      ...e,
+      id: normalizeEntityId(e.id !== undefined ? e.id : idx + 1, "exams_") || String(idx + 1),
+      title: e.title || `اختبار ${idx + 1}`
+    }));
+
+  results = (results || [])
+    .filter(r => r && !r.deleted && r.is_deleted !== 1 && r.is_deleted !== true)
+    .map((r, idx) => {
+      const totalQ = getExamResultTotalQuestions(r);
+      const pct = getExamResultPercentage(r);
+      const pass = isExamResultPassed(r) ? 1 : 0;
+      return {
+        ...r,
+        id: r.id !== undefined ? r.id : idx + 1,
+        student_name: r.student_name || r.name || "طالب غير معروف",
+        score: Number(r.score) || 0,
+        total_questions: totalQ,
+        percentage: pct,
+        passed: pass
+      };
+    });
 
   // Cycle & Record Filtering Integration (AlbayanCycleEngine)
   const cycleEngine = window.AlbayanCycleEngine || null;
   const activeCycleCfg = cycleEngine ? cycleEngine.getConfig() : null;
   const activeArchives = cycleEngine ? cycleEngine.getArchives() : [];
+  const cleanYear = year ? String(year).trim() : "";
+
   if (month && String(month).startsWith("archive:") && activeArchives.length > 0) {
     const arcId = String(month).slice("archive:".length);
     const matchedArchive = activeArchives.find(a => a && a.id === arcId);
     if (matchedArchive && Array.isArray(matchedArchive.studentSnapshots)) {
-      students = matchedArchive.studentSnapshots.map((snap, idx) => ({
-        id: snap.student_id || idx + 1,
-        name: snap.name,
-        circle_id: snap.circle_id,
-        circle_name: snap.circle_name,
-        teacher_name: snap.teacher_name,
-        from_surah: snap.from_surah || "",
-        to_surah: snap.to_surah || "",
-        memo_pages: Number(snap.memo_pages) || 0,
-        rev_pages: Number(snap.sard_pages) || 0,
-        sard_pages: Number(snap.sard_pages) || 0,
-        memo_grade: snap.memo_grade || "",
-        rev_grade: snap.rev_grade || "",
-        absent_days: Number(snap.absent_days) || 0
-      }));
+      students = matchedArchive.studentSnapshots
+        .map((snap, idx) => {
+          const cid = normalizeEntityId(snap.circle_id, "circles_");
+          const matchedCircle = (cid && circleById.get(cid)) || (snap.circle_name && circleByName.get(normalizeArabicSearch(snap.circle_name))) || null;
+          return {
+            id: normalizeEntityId(snap.student_id || idx + 1, "students_"),
+            name: snap.name || `طالب ${idx + 1}`,
+            circle_id: matchedCircle ? matchedCircle.id : cid,
+            circle_name: snap.circle_name || (matchedCircle && matchedCircle.name) || "حلقة عامة",
+            teacher_name: snap.teacher_name || (matchedCircle && matchedCircle.teacher_name) || "كادر تعليمي",
+            from_surah: snap.from_surah || "",
+            to_surah: snap.to_surah || "",
+            memo_pages: Number(snap.memo_pages) || 0,
+            rev_pages: Number(snap.sard_pages != null ? snap.sard_pages : snap.rev_pages) || 0,
+            sard_pages: Number(snap.sard_pages != null ? snap.sard_pages : snap.rev_pages) || 0,
+            memo_grade: snap.memo_grade || "",
+            rev_grade: snap.rev_grade || "",
+            absent_days: Number(snap.absent_days) || 0,
+            record_month: matchedArchive.periodLabel || "الأرشيف"
+          };
+        })
+        .filter(s => canAllCircles || allowedCircleIds.has(String(s.circle_id)) || allowedCircleNames.has(normalizeArabicSearch(s.circle_name)));
     }
   } else {
     let recList = [];
     if (rawRecords) {
-      recList = Array.isArray(rawRecords) ? rawRecords.filter(Boolean) : Object.values(rawRecords);
+      recList = normalizer && normalizer.normalizeCollectionEntries
+        ? normalizer.normalizeCollectionEntries(rawRecords, {})
+        : (Array.isArray(rawRecords) ? rawRecords.filter(Boolean) : Object.values(rawRecords));
     }
     if (recList.length > 0) {
-      let filteredRecs = recList.filter(r => r && !r.deleted);
+      let filteredRecs = recList.filter(r => r && !r.deleted && r.is_deleted !== 1 && r.is_deleted !== true);
       if (month === "active_cycle" && cycleEngine) {
         filteredRecs = cycleEngine.filterRecordsByActiveCycle(filteredRecs, activeCycleCfg);
       } else if (month && month !== "all" && month !== "active_cycle") {
         filteredRecs = filteredRecs.filter(r => {
-          if (window.AlbayanDataNormalizer && r.month) {
-            return window.AlbayanDataNormalizer.isSameMonth(r.month, month);
+          const yearMatches = !cleanYear || !r.year || String(r.year).trim() === cleanYear;
+          if (!yearMatches) return false;
+          if (normalizer && r.month) {
+            return normalizer.isSameMonth(r.month, month);
           }
           return String(r.month || "").trim() === String(month).trim();
         });
-      } else if (cycleEngine && activeCycleCfg) {
-        filteredRecs = cycleEngine.filterRecordsByActiveCycle(filteredRecs, activeCycleCfg);
+      } else if (cleanYear) {
+        // Cumulative mode ("all"): respect year filter when records carry an explicit year
+        filteredRecs = filteredRecs.filter(r => !r.year || String(r.year).trim() === cleanYear);
       }
 
       const recByStudent = new Map();
       filteredRecs.forEach(r => {
-        const sid = String(r.student_id || "").replace(/^students_/, "").trim();
+        const sid = normalizeEntityId(r.student_id, "students_");
         if (!sid) return;
         const prev = recByStudent.get(sid);
-        const sCurr = (window.AlbayanDataNormalizer && window.AlbayanDataNormalizer.scoreRecordCompleteness) ? window.AlbayanDataNormalizer.scoreRecordCompleteness(r) : 0;
-        const sPrev = (prev && window.AlbayanDataNormalizer && window.AlbayanDataNormalizer.scoreRecordCompleteness) ? window.AlbayanDataNormalizer.scoreRecordCompleteness(prev) : -1;
-        if (!prev || sCurr >= sPrev) recByStudent.set(sid, r);
+        const sCurr = (normalizer && normalizer.scoreRecordCompleteness) ? normalizer.scoreRecordCompleteness(r) : 0;
+        const sPrev = (prev && normalizer && normalizer.scoreRecordCompleteness) ? normalizer.scoreRecordCompleteness(prev) : -1;
+        if (!prev || sCurr > sPrev) {
+          recByStudent.set(sid, r);
+        } else if (sCurr === sPrev) {
+          const tCurr = new Date(r.updated_at || r.created_at || 0).getTime() || 0;
+          const tPrev = new Date(prev.updated_at || prev.created_at || 0).getTime() || 0;
+          if (tCurr >= tPrev) recByStudent.set(sid, r);
+        }
       });
 
+      const isSpecificMonthFilter = Boolean(month && month !== "all" && month !== "active_cycle");
       students = students.map(s => {
-        const sid = String(s.id || "").replace(/^students_/, "").trim();
+        const sid = normalizeEntityId(s.id, "students_");
         const r = recByStudent.get(sid);
         if (!r) {
-          return (month && month !== "all" && month !== "active_cycle")
-            ? { ...s, memo_pages: 0, rev_pages: 0, sard_pages: 0, absent_days: 0, memo_grade: "", rev_grade: "" }
+          return isSpecificMonthFilter
+            ? { ...s, from_surah: "", to_surah: "", rev_from_surah: "", rev_to_surah: "", memo_pages: 0, rev_pages: 0, sard_pages: 0, absent_days: 0, memo_grade: "", rev_grade: "", record_month: month }
             : s;
         }
         return {
           ...s,
           from_surah: r.from_surah || s.from_surah || "",
           to_surah: r.to_surah || s.to_surah || "",
+          rev_from_surah: r.rev_from_surah || s.rev_from_surah || "",
+          rev_to_surah: r.rev_to_surah || s.rev_to_surah || "",
           memo_pages: r.memo_pages !== undefined ? r.memo_pages : (s.memo_pages || 0),
           rev_pages: r.sard_pages !== undefined ? r.sard_pages : (r.rev_pages !== undefined ? r.rev_pages : (s.sard_pages || s.rev_pages || 0)),
           sard_pages: r.sard_pages !== undefined ? r.sard_pages : (s.sard_pages || 0),
           memo_grade: r.memo_grade !== undefined ? r.memo_grade : (s.memo_grade || ""),
           rev_grade: r.rev_grade !== undefined ? r.rev_grade : (s.rev_grade || ""),
-          absent_days: r.absent_days !== undefined ? r.absent_days : (s.absent_days || 0)
+          absent_days: r.absent_days !== undefined ? r.absent_days : (s.absent_days || 0),
+          exam_grade: r.exam_grade !== undefined ? r.exam_grade : (s.exam_grade || ""),
+          record_month: r.month || s.record_month || ""
         };
       });
     }
   }
+
+  // Enrich students with latest online exam result if available
+  const latestResultByStudentId = new Map();
+  const latestResultByName = new Map();
+  results.forEach(r => {
+    const rsid = normalizeEntityId(r.student_id, "students_");
+    const rname = normalizeArabicSearch(r.student_name);
+    if (rsid) latestResultByStudentId.set(rsid, r);
+    if (rname) latestResultByName.set(rname, r);
+  });
+  students = students.map(s => {
+    const matchedRes = latestResultByStudentId.get(String(s.id)) || latestResultByName.get(normalizeArabicSearch(s.name));
+    if (!matchedRes || s.online_exam_score) return s;
+    const scoreTxt = matchedRes.total_questions > 0
+      ? `${matchedRes.score}/${matchedRes.total_questions} (${matchedRes.percentage}%)`
+      : `${matchedRes.percentage}%`;
+    return {
+      ...s,
+      online_exam_score: scoreTxt,
+      online_exam_title: matchedRes.exam_title || "اختبار إلكتروني"
+    };
+  });
 
   // Filter exams list
   const examsList = exams.map(e => ({
@@ -342,14 +657,18 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
   let selectedExam = null;
   let selectedExamId = null;
   if (requestedExamId && requestedExamId !== "all") {
-    selectedExam = examsList.find(e => String(e.id) === String(requestedExamId)) || null;
+    const cleanReqExam = normalizeEntityId(requestedExamId, "exams_");
+    selectedExam = examsList.find(e => String(e.id) === String(requestedExamId) || String(e.id) === cleanReqExam) || null;
     if (selectedExam) selectedExamId = selectedExam.id;
   }
 
   // Filter results for selected exam
   let filteredResults = results;
   if (selectedExam) {
-    filteredResults = results.filter(r => String(r.exam_id) === String(selectedExam.id) || (r.exam_title && r.exam_title.trim() === selectedExam.title.trim()));
+    filteredResults = results.filter(r =>
+      normalizeEntityId(r.exam_id, "exams_") === String(selectedExam.id) ||
+      (r.exam_title && r.exam_title.trim() === selectedExam.title.trim())
+    );
   }
 
   // Online Exams Statistics
@@ -362,9 +681,8 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
 
   filteredResults.forEach(r => {
     const sc = Number(r.score) || 0;
-    const pct = Number(r.percentage) || (r.total_questions ? Math.round((sc / r.total_questions) * 100) : 0);
-    const pass = (r.passed === 1 || r.passed === true || pct >= 50);
-    if (pass) passedCount++;
+    const pct = getExamResultPercentage(r);
+    if (isExamResultPassed(r)) passedCount++;
     totalScoreSum += sc;
     totalPercentSum += pct;
     if (sc > maxScore) maxScore = sc;
@@ -381,8 +699,9 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
   // Question stats breakdown
   const questionMap = {};
   filteredResults.forEach(r => {
-    const answers = r.answers || [];
+    const answers = Array.isArray(r.answers) ? r.answers : [];
     answers.forEach(a => {
+      if (!a) return;
       const qText = (a.question_text || a.title || "").trim();
       if (!qText) return;
       if (!questionMap[qText]) {
@@ -434,42 +753,30 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
   const memoCounts = { "ممتاز": 0, "جيد جداً": 0, "جيد": 0, "يحتاج متابعة": 0, "غير محدد": 0 };
   const revCounts = { "ممتاز": 0, "جيد جداً": 0, "جيد": 0, "يحتاج متابعة": 0, "غير محدد": 0 };
 
-  const categorizeGrade = (grade) => {
-    if (!grade || grade === "0" || grade === 0) return "غير محدد";
-    const g = String(grade).trim();
-    const num = parseFloat(g);
-    if (!isNaN(num)) {
-      if (num >= 36) return "ممتاز";
-      if (num >= 30) return "جيد جداً";
-      if (num >= 24) return "جيد";
-      return "يحتاج متابعة";
-    }
-    if (["ممتاز", "ممتازة", "ممتاز مرتفع"].includes(g)) return "ممتاز";
-    if (["جيد جدا", "جيد جداً"].includes(g)) return "جيد جداً";
-    if (["جيد"].includes(g)) return "جيد";
-    if (["ضعيف", "مقبول", "يحتاج متابعة"].includes(g)) return "يحتاج متابعة";
-    return "غير محدد";
-  };
-
-  // Group students by circle
-  const circleStudentsMap = {};
+  // Group students by normalized circle id & normalized circle name
+  const circleStudentsById = {};
+  const circleStudentsByName = {};
   circles.forEach(c => {
-    circleStudentsMap[c.id] = [];
-    circleStudentsMap[c.name] = circleStudentsMap[c.id];
+    const arr = [];
+    circleStudentsById[String(c.id)] = arr;
+    circleStudentsByName[normalizeArabicSearch(c.name)] = arr;
   });
 
   students.forEach(s => {
     const abs = Number(s.absent_days) || 0;
     totalAbsentDays += abs;
 
-    const mgCat = categorizeGrade(s.memo_grade);
-    const rgCat = categorizeGrade(s.rev_grade);
-    memoCounts[mgCat] = (memoCounts[mgCat] || 0) + 1;
-    revCounts[rgCat] = (revCounts[rgCat] || 0) + 1;
+    const rawMgCat = categorizeGrade(s.memo_grade, 40);
+    const rawRgCat = categorizeGrade(s.rev_grade, 30);
+    const mgBucket = rawMgCat === "مقبول" ? "يحتاج متابعة" : rawMgCat;
+    const rgBucket = rawRgCat === "مقبول" ? "يحتاج متابعة" : rawRgCat;
+    memoCounts[mgBucket] = (memoCounts[mgBucket] || 0) + 1;
+    revCounts[rgBucket] = (revCounts[rgBucket] || 0) + 1;
 
-    if (mgCat === "ممتاز") excellentMemoCount++;
+    if (rawMgCat === "ممتاز") excellentMemoCount++;
 
-    const cTarget = circleStudentsMap[s.circle_id] || circleStudentsMap[s.circle_name];
+    const normCid = normalizeEntityId(s.circle_id, "circles_");
+    const cTarget = circleStudentsById[normCid] || circleStudentsByName[normalizeArabicSearch(s.circle_name)];
     if (cTarget) {
       cTarget.push(s);
     }
@@ -495,24 +802,24 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
 
   // Circle Rankings
   const circleRankings = circles.map(c => {
-    const cStudents = circleStudentsMap[c.id] || [];
+    const cStudents = circleStudentsById[String(c.id)] || [];
     const count = cStudents.length;
     const cAbsent = cStudents.reduce((acc, st) => acc + (Number(st.absent_days) || 0), 0);
     const cAvgAbsent = count > 0 ? (cAbsent / count).toFixed(1) : 0;
     const cTotalMemoPages = cStudents.reduce((acc, st) => acc + (Number(st.memo_pages) || 0), 0);
     const cTotalRevPages = cStudents.reduce((acc, st) => acc + (Number(st.rev_pages) || 0), 0);
-    const cExcellentCount = cStudents.filter(st => categorizeGrade(st.memo_grade) === "ممتاز").length;
+    const cExcellentCount = cStudents.filter(st => categorizeGrade(st.memo_grade, 40) === "ممتاز").length;
     const cMemoIndex = count > 0 ? Math.round((cExcellentCount / count) * 100) : 0;
 
     let statusBadge = "🌟 حلقة متميزة";
     let statusClass = "pass";
-    if (cMemoIndex >= 80 && cAvgAbsent <= 1) {
+    if (count > 0 && cMemoIndex >= 80 && Number(cAvgAbsent) <= 1) {
       statusBadge = "🏆 الصدارة الذهبية";
       statusClass = "platinum";
     } else if (cMemoIndex >= 50) {
       statusBadge = "⭐ أداء ممتاز";
       statusClass = "gold";
-    } else if (cAvgAbsent > 3) {
+    } else if (Number(cAvgAbsent) > 3) {
       statusBadge = "⚠️ بحاجة لمتابعة";
       statusClass = "danger";
     } else {
@@ -539,20 +846,23 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
 
   // Top Insights
   const topCircle = circleRankings[0] || null;
-  const mostDisciplinedCircle = [...circleRankings].sort((a, b) => a.avg_absent - b.avg_absent)[0] || null;
+  const mostDisciplinedCircle = [...circleRankings].sort((a, b) => Number(a.avg_absent) - Number(b.avg_absent))[0] || null;
   const topMemoCircle = [...circleRankings].sort((a, b) => b.memo_index - a.memo_index)[0] || null;
 
   // Top Students Achievers
   const topMemoStudent = [...students].sort((a, b) => (Number(b.memo_pages) || 0) - (Number(a.memo_pages) || 0))[0] || null;
   const topRevStudent = [...students].sort((a, b) => (Number(b.rev_pages) || 0) - (Number(a.rev_pages) || 0))[0] || null;
-  const topMasteryStudent = students.find(s => categorizeGrade(s.memo_grade) === "ممتاز") || students[0] || null;
+  const topMasteryStudent = students.find(s => categorizeGrade(s.memo_grade, 40) === "ممتاز") || students[0] || null;
   const mostDisciplinedStudent = [...students].sort((a, b) => (Number(a.absent_days) || 0) - (Number(b.absent_days) || 0))[0] || null;
 
   // Honor Board (Students with 'ممتاز' and absent <= 1)
-  const honorBoard = students.filter(s => categorizeGrade(s.memo_grade) === "ممتاز" && (Number(s.absent_days) || 0) <= 1).slice(0, 15);
+  const honorBoard = students.filter(s => categorizeGrade(s.memo_grade, 40) === "ممتاز" && (Number(s.absent_days) || 0) <= 1).slice(0, 15);
 
-  // Followup List (Students with absent >= 3 or 'يحتاج متابعة')
-  const followupList = students.filter(s => (Number(s.absent_days) || 0) >= 3 || categorizeGrade(s.memo_grade) === "يحتاج متابعة").slice(0, 15);
+  // Followup List (Students with absent >= 3 or 'يحتاج متابعة'/'مقبول')
+  const followupList = students.filter(s => {
+    const mg = categorizeGrade(s.memo_grade, 40);
+    return (Number(s.absent_days) || 0) >= 3 || mg === "يحتاج متابعة" || mg === "مقبول";
+  }).slice(0, 15);
 
   return {
     exams_list: examsList,
@@ -639,10 +949,25 @@ function buildOfflineAnalyticsData() {
 
 async function loadAnalyticsData() {
   try {
-    const yearEl = document.getElementById("filterCirclesYear") || document.getElementById("filterStudentsYear");
-    const monthEl = document.getElementById("filterCirclesMonth") || document.getElementById("filterStudentsMonth");
+    const useStudentsFilter = currentAnalyticsView === "students";
+    const yearEl = (useStudentsFilter ? document.getElementById("filterStudentsYear") : document.getElementById("filterCirclesYear"))
+      || document.getElementById("filterCirclesYear")
+      || document.getElementById("filterStudentsYear");
+    const monthEl = (useStudentsFilter ? document.getElementById("filterStudentsMonth") : document.getElementById("filterCirclesMonth"))
+      || document.getElementById("filterCirclesMonth")
+      || document.getElementById("filterStudentsMonth");
     const examSelect = document.getElementById("filterAnalyticsExamSelect");
-    
+
+    // Keep synced inputs aligned with active tab before reading
+    if (yearEl && monthEl) {
+      const otherYear = document.getElementById(useStudentsFilter ? "filterCirclesYear" : "filterStudentsYear");
+      const otherMonth = document.getElementById(useStudentsFilter ? "filterCirclesMonth" : "filterStudentsMonth");
+      if (otherYear) otherYear.value = yearEl.value;
+      if (otherMonth && Array.from(otherMonth.options).some(o => o.value === monthEl.value)) {
+        otherMonth.value = monthEl.value;
+      }
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     let requestedExamId = urlParams.get("exam_id");
     if (examSelect && examSelect.value && examSelect.value !== "all") {
@@ -654,12 +979,12 @@ async function loadAnalyticsData() {
     if (yearEl && yearEl.value) params.append("year", yearEl.value);
     if (monthEl && monthEl.value && monthEl.value !== "all") params.append("month", monthEl.value);
     if (requestedExamId && requestedExamId !== "all") params.append("exam_id", requestedExamId);
-    
+
     if (params.toString()) url += "?" + params.toString();
 
     let fetched = false;
     let data = null;
-    const isStandalone = window.IS_CAPACITOR_APP || window.location.protocol === 'file:' || window.location.origin.includes('capacitor://') || (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80'));
+    const isStandalone = isStandaloneRuntime();
 
     try {
       const controller = new AbortController();
@@ -679,7 +1004,6 @@ async function loadAnalyticsData() {
     if (!fetched) {
       data = await buildServerlessAnalytics(yearEl ? yearEl.value : null, monthEl ? monthEl.value : null, requestedExamId);
     }
-
 
     analyticsCache = data;
 
@@ -764,20 +1088,18 @@ function onAnalyticsExamChange(newExamId) {
 
 window.onAnalyticsExamChange = onAnalyticsExamChange;
 
-let hasAdaptedFilters = false;
+let lastAdaptedSignature = "";
 function adaptAnalyticsFilters(settings) {
-  if (hasAdaptedFilters) return;
-  hasAdaptedFilters = true;
-
   const cycEng = window.AlbayanCycleEngine || null;
   const cfg = cycEng ? cycEng.getConfig() : null;
   const stats = cycEng ? cycEng.computeCycleStats(cfg) : null;
   const archives = cycEng ? cycEng.getArchives() : [];
 
-  const periodType = cfg ? cfg.periodType : (settings && settings.record_period_type) || "monthly";
-  const isCustom = periodType === "custom";
-  const monthsCount = (settings && settings.custom_period_months) || 6;
-  const totalTerms = Math.max(1, Math.floor(12 / monthsCount));
+  const periodType = cfg ? (cfg.mode || cfg.periodType || "monthly") : ((settings && settings.record_period_type) || "monthly");
+  const termMonths = (cfg && cfg.termMonths) || (settings && settings.custom_period_months) || 3;
+  const sig = `${periodType}|${termMonths}|${cfg ? (cfg.yearNumber || cfg.cycleIndex || 1) : 1}|${archives.length}`;
+  if (lastAdaptedSignature === sig) return;
+  lastAdaptedSignature = sig;
 
   // Inject subtle Year Cycle Banner inside #viewCirclesAnalytics (Blue brand palette)
   const circlesSec = document.getElementById("viewCirclesAnalytics");
@@ -789,12 +1111,23 @@ function adaptAnalyticsFilters(settings) {
       banner.style.cssText = "display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:11px 16px; border-radius:14px; background:#EFF6FF; border:1px solid rgba(37,99,235,0.28); color:#1D4ED8; font-size:13px; font-weight:700; margin-bottom:16px;";
       circlesSec.insertBefore(banner, circlesSec.firstChild);
     }
-    const modeTitle = stats.config.periodType === "term" ? `فصلي (${stats.config.termMonths || 3} أشهر)` : stats.meta.label;
+    const modeTitle = (stats.config.periodType === "term" || stats.config.mode === "term")
+      ? `فصلي (${stats.config.termMonths || 3} أشهر)`
+      : stats.meta.label;
     banner.innerHTML = `
-      <span>النظام المعتمد: <strong>${modeTitle}</strong> (السنة الحالية #${stats.config.yearNumber || stats.config.cycleIndex || 1})</span>
+      <span>النظام المعتمد: <strong>${escapeHtml(modeTitle)}</strong> (السنة الحالية #${stats.config.yearNumber || stats.config.cycleIndex || 1})</span>
       <span>متبقي ${stats.remainingDays} يوماً • سنوات مؤرشفة: ${archives.length}</span>
     `;
   }
+
+  const periodData = (cycEng && typeof cycEng.buildPeriodOptionsList === "function")
+    ? cycEng.buildPeriodOptionsList(cfg)
+    : {
+        options: [
+          "محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى", "جمادى الآخرة",
+          "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة"
+        ].map(m => ({ value: m, label: `شهر ${m}`, isYearly: false }))
+      };
 
   const monthSelects = [
     document.getElementById("filterCirclesMonth"),
@@ -803,35 +1136,39 @@ function adaptAnalyticsFilters(settings) {
 
   monthSelects.forEach(select => {
     if (!select) return;
-    const currentVal = select.value;
-    if (isCustom) {
-      let optionsHtml = `<option value="all">جميع الفصول (السجل التراكمي)</option>`;
-      for (let i = 1; i <= totalTerms; i++) {
-        optionsHtml += `<option value="الفصل ${i} (${monthsCount} أشهر)">الفصل ${i} (${monthsCount} أشهر)</option>`;
-      }
-      select.innerHTML = optionsHtml;
-      const label = select.previousElementSibling;
-      if (label) label.innerHTML = `<i data-lucide="clock" style="width:14px; height:14px;"></i> الفصل المخصص`;
-    } else if (cfg) {
-      // Remove any previously injected cycle/archive options cleanly before adding fresh ones
-      Array.from(select.querySelectorAll('option[data-cycle-opt="1"]')).forEach(o => o.remove());
-      const activeOpt = document.createElement("option");
-      activeOpt.value = "active_cycle";
-      activeOpt.dataset.cycleOpt = "1";
-      activeOpt.textContent = `السنة الحالية (#${cfg.yearNumber || cfg.cycleIndex || 1} - ${stats ? stats.meta.badge : 'الحالية'})`;
-      select.insertBefore(activeOpt, select.firstChild);
+    const currentVal = select.value || "all";
 
+    let optionsHtml = `<option value="all">جميع الفترات (السجل التراكمي)</option>`;
+    if (cfg) {
+      optionsHtml += `<option value="active_cycle" data-cycle-opt="1">${escapeHtml(`السنة الحالية (#${cfg.yearNumber || cfg.cycleIndex || 1} - ${stats ? stats.meta.badge : 'الحالية'})`)}</option>`;
+    }
+
+    (periodData.options || []).forEach(opt => {
+      optionsHtml += `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`;
+    });
+
+    if (archives.length > 0) {
       archives.slice(0, 12).forEach(arc => {
         if (!arc || !arc.id) return;
-        const opt = document.createElement("option");
-        opt.value = `archive:${arc.id}`;
-        opt.dataset.cycleOpt = "1";
-        opt.textContent = `أرشيف ${arc.periodLabel || ('السنة #' + arc.cycleNumber)} (${arc.startDate || ''})`;
-        select.appendChild(opt);
+        const label = `أرشيف ${arc.periodLabel || ('السنة #' + arc.cycleNumber)} (${arc.startDate || ''})`;
+        optionsHtml += `<option value="${escapeHtml(`archive:${arc.id}`)}" data-cycle-opt="1">${escapeHtml(label)}</option>`;
       });
     }
+
+    select.innerHTML = optionsHtml;
+
+    const labelEl = select.previousElementSibling;
+    if (labelEl) {
+      const labelTitle = periodType === "term" || periodType === "custom"
+        ? "الفصل التقييمي"
+        : (periodType === "weekly" ? "الأسبوع التقييمي" : (periodType === "yearly" ? "الفترة السنوية" : "شهر / فترة التقييم"));
+      labelEl.innerHTML = `<i data-lucide="clock" style="width:14px; height:14px;"></i> ${labelTitle}`;
+    }
+
     if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
       select.value = currentVal;
+    } else {
+      select.value = "all";
     }
   });
 }
@@ -862,82 +1199,82 @@ function renderCirclesSummary(summary) {
 }
 
 function renderCirclesInsights(insights, topStudents) {
-  if (insights) {
-    if (insights.top_circle) {
-      const elName = document.getElementById("topCircleName");
-      if (elName) elName.textContent = `🕌 ${insights.top_circle.name}`;
-      const elSub = document.getElementById("topCircleSub");
-      if (elSub) elSub.textContent = `الأستاذ: ${insights.top_circle.teacher_name || 'غير محدد'} | عدد الطلاب: ${insights.top_circle.student_count || 0}`;
-      const elBadge = document.getElementById("topCircleBadge");
-      if (elBadge) elBadge.textContent = `${insights.top_circle.memo_index || 0}% إتقان`;
-    }
-    
-    if (insights.most_disciplined) {
-      const elName = document.getElementById("disciplinedCircleName");
-      if (elName) elName.textContent = `🕌 ${insights.most_disciplined.name}`;
-      const elSub = document.getElementById("disciplinedCircleSub");
-      if (elSub) elSub.textContent = `الأستاذ: ${insights.most_disciplined.teacher_name || 'غير محدد'} | غياب: ${insights.most_disciplined.total_absent || 0} يوم`;
-      const elBadge = document.getElementById("disciplinedCircleBadge");
-      if (elBadge) elBadge.textContent = `${insights.most_disciplined.avg_absent || 0} متوسط/طالب`;
-    }
-    
-    if (insights.top_memo) {
-      const elName = document.getElementById("topMemoCircleName");
-      if (elName) elName.textContent = `🕌 ${insights.top_memo.name}`;
-      const elSub = document.getElementById("topMemoCircleSub");
-      if (elSub) elSub.textContent = `الأستاذ: ${insights.top_memo.teacher_name || 'غير محدد'} | المتميزون: ${insights.top_memo.excellent_count || 0} طالب`;
-      const elBadge = document.getElementById("topMemoCircleBadge");
-      if (elBadge) elBadge.textContent = `${insights.top_memo.memo_index || 0}% إتقان`;
-    }
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+
+  if (insights && insights.top_circle) {
+    setText("topCircleName", `🕌 ${insights.top_circle.name}`);
+    setText("topCircleSub", `الأستاذ: ${insights.top_circle.teacher_name || 'غير محدد'} | عدد الطلاب: ${insights.top_circle.student_count || 0}`);
+    setText("topCircleBadge", `${insights.top_circle.memo_index || 0}% إتقان`);
+  } else {
+    setText("topCircleName", "لا توجد بيانات كافية");
+    setText("topCircleSub", "الأستاذ: -- | عدد الطلاب: 0");
+    setText("topCircleBadge", "0% إتقان");
+  }
+
+  if (insights && insights.most_disciplined) {
+    setText("disciplinedCircleName", `🕌 ${insights.most_disciplined.name}`);
+    setText("disciplinedCircleSub", `الأستاذ: ${insights.most_disciplined.teacher_name || 'غير محدد'} | غياب: ${insights.most_disciplined.total_absent || 0} يوم`);
+    setText("disciplinedCircleBadge", `${insights.most_disciplined.avg_absent || 0} متوسط/طالب`);
+  } else {
+    setText("disciplinedCircleName", "لا توجد بيانات كافية");
+    setText("disciplinedCircleSub", "الأستاذ: -- | غياب: 0 يوم");
+    setText("disciplinedCircleBadge", "0 متوسط/طالب");
+  }
+
+  if (insights && insights.top_memo) {
+    setText("topMemoCircleName", `🕌 ${insights.top_memo.name}`);
+    setText("topMemoCircleSub", `الأستاذ: ${insights.top_memo.teacher_name || 'غير محدد'} | المتميزون: ${insights.top_memo.excellent_count || 0} طالب`);
+    setText("topMemoCircleBadge", `${insights.top_memo.memo_index || 0}% إتقان`);
+  } else {
+    setText("topMemoCircleName", "لا توجد بيانات كافية");
+    setText("topMemoCircleSub", "الأستاذ: -- | المتميزون: 0 طالب");
+    setText("topMemoCircleBadge", "0% إتقان");
   }
 
   // Render Top 4 Student Achievers Cards
-  if (topStudents) {
-    // 1. Top Memo
-    if (topStudents.top_memo) {
-      const elName = document.getElementById("topMemoStudentName");
-      if (elName) elName.textContent = `👤 ${topStudents.top_memo.name || 'غير محدد'}`;
-      const elPages = document.getElementById("topMemoStudentPages");
-      if (elPages) {
-        const pages = Math.round(Number(topStudents.top_memo.pages || 0));
-        elPages.textContent = pages > 0 ? `${pages} وجه` : `0 وجه`;
-      }
-      const elSub = document.getElementById("topMemoStudentSub");
-      if (elSub) elSub.textContent = `الحلقة: ${topStudents.top_memo.circle_name || 'عامة'} | المعلم: ${topStudents.top_memo.teacher_name || 'غير محدد'}`;
-    }
+  if (topStudents && topStudents.top_memo) {
+    setText("topMemoStudentName", `👤 ${topStudents.top_memo.name || 'غير محدد'}`);
+    const pages = Math.round(Number(topStudents.top_memo.pages || 0));
+    setText("topMemoStudentPages", pages > 0 ? `${pages} وجه` : `0 وجه`);
+    setText("topMemoStudentSub", `الحلقة: ${topStudents.top_memo.circle_name || 'عامة'} | المعلم: ${topStudents.top_memo.teacher_name || 'غير محدد'}`);
+  } else {
+    setText("topMemoStudentName", "لا توجد بيانات كافية");
+    setText("topMemoStudentPages", "0 وجه");
+    setText("topMemoStudentSub", "الحلقة: -- | المعلم: --");
+  }
 
-    // 2. Top Rev
-    if (topStudents.top_rev) {
-      const elName = document.getElementById("topRevStudentName");
-      if (elName) elName.textContent = `👤 ${topStudents.top_rev.name || 'غير محدد'}`;
-      const elPages = document.getElementById("topRevStudentPages");
-      if (elPages) {
-        const pages = Math.round(Number(topStudents.top_rev.pages || 0));
-        elPages.textContent = pages > 0 ? `${pages} وجه` : `0 وجه`;
-      }
-      const elSub = document.getElementById("topRevStudentSub");
-      if (elSub) elSub.textContent = `الحلقة: ${topStudents.top_rev.circle_name || 'عامة'} | المعلم: ${topStudents.top_rev.teacher_name || 'غير محدد'}`;
-    }
+  if (topStudents && topStudents.top_rev) {
+    setText("topRevStudentName", `👤 ${topStudents.top_rev.name || 'غير محدد'}`);
+    const pages = Math.round(Number(topStudents.top_rev.pages || 0));
+    setText("topRevStudentPages", pages > 0 ? `${pages} وجه` : `0 وجه`);
+    setText("topRevStudentSub", `الحلقة: ${topStudents.top_rev.circle_name || 'عامة'} | المعلم: ${topStudents.top_rev.teacher_name || 'غير محدد'}`);
+  } else {
+    setText("topRevStudentName", "لا توجد بيانات كافية");
+    setText("topRevStudentPages", "0 وجه");
+    setText("topRevStudentSub", "الحلقة: -- | المعلم: --");
+  }
 
-    // 3. Top Mastery
-    if (topStudents.top_mastery) {
-      const elName = document.getElementById("topMasteryStudentName");
-      if (elName) elName.textContent = `👤 ${topStudents.top_mastery.name || 'غير محدد'}`;
-      const elBadge = document.getElementById("topMasteryStudentBadge");
-      if (elBadge) elBadge.textContent = `${topStudents.top_mastery.grade || 'ممتاز'}`;
-      const elSub = document.getElementById("topMasteryStudentSub");
-      if (elSub) elSub.textContent = `الحلقة: ${topStudents.top_mastery.circle_name || 'عامة'} | التقييم: ${topStudents.top_mastery.score_text || 'ممتاز'}`;
-    }
+  if (topStudents && topStudents.top_mastery) {
+    setText("topMasteryStudentName", `👤 ${topStudents.top_mastery.name || 'غير محدد'}`);
+    setText("topMasteryStudentBadge", `${topStudents.top_mastery.grade || 'ممتاز'}`);
+    setText("topMasteryStudentSub", `الحلقة: ${topStudents.top_mastery.circle_name || 'عامة'} | التقييم: ${topStudents.top_mastery.score_text || 'ممتاز'}`);
+  } else {
+    setText("topMasteryStudentName", "لا توجد بيانات كافية");
+    setText("topMasteryStudentBadge", "ممتاز");
+    setText("topMasteryStudentSub", "الحلقة: -- | التقييم: --");
+  }
 
-    // 4. Most Disciplined Student
-    if (topStudents.most_disciplined) {
-      const elName = document.getElementById("mostDisciplinedStudentName");
-      if (elName) elName.textContent = `👤 ${topStudents.most_disciplined.name || 'غير محدد'}`;
-      const elBadge = document.getElementById("mostDisciplinedStudentBadge");
-      if (elBadge) elBadge.textContent = `${topStudents.most_disciplined.absent_days || 0} أيام غياب`;
-      const elSub = document.getElementById("mostDisciplinedStudentSub");
-      if (elSub) elSub.textContent = `الحلقة: ${topStudents.most_disciplined.circle_name || 'عامة'} | انضباط تام`;
-    }
+  if (topStudents && topStudents.most_disciplined) {
+    setText("mostDisciplinedStudentName", `👤 ${topStudents.most_disciplined.name || 'غير محدد'}`);
+    setText("mostDisciplinedStudentBadge", `${topStudents.most_disciplined.absent_days || 0} أيام غياب`);
+    setText("mostDisciplinedStudentSub", `الحلقة: ${topStudents.most_disciplined.circle_name || 'عامة'} | انضباط تام`);
+  } else {
+    setText("mostDisciplinedStudentName", "لا توجد بيانات كافية");
+    setText("mostDisciplinedStudentBadge", "0 أيام غياب");
+    setText("mostDisciplinedStudentSub", "الحلقة: -- | انضباط تام");
   }
 }
 
@@ -1023,7 +1360,7 @@ function renderCircleRankings(rankings) {
   if (!tbody) return;
 
   if (!rankings || rankings.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:16px; color:var(--muted)">لا تتوفر معلومات الحلقات بعد.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:16px; color:var(--muted)">لا تتوفر معلومات الحلقات بعد.</td></tr>`;
     return;
   }
 
@@ -1046,11 +1383,11 @@ function renderCircleRankings(rankings) {
         <td>${rankBadge}</td>
         <td>
           <div style="display:flex; flex-direction:column; gap:2px;">
-            <strong style="font-size:15px; color:var(--text);">🕌 ${c.name}</strong>
-            <small style="color:var(--muted); font-size:12px;"><i data-lucide="user" style="width:12px; height:12px; vertical-align:-1px;"></i> الأستاذ: ${c.teacher_name || 'غير محدد'}</small>
+            <strong style="font-size:15px; color:var(--text);">🕌 ${escapeHtml(c.name)}</strong>
+            <small style="color:var(--muted); font-size:12px;"><i data-lucide="user" style="width:12px; height:12px; vertical-align:-1px;"></i> الأستاذ: ${escapeHtml(c.teacher_name || 'غير محدد')}</small>
           </div>
         </td>
-        <td><span style="background:#f8fafc; padding:4px 10px; border-radius:8px; border:1px solid var(--line); font-weight:700;">${c.student_count || 0} طلاب</span></td>
+        <td><span style="background:var(--surface, #f8fafc); padding:4px 10px; border-radius:8px; border:1px solid var(--line); font-weight:700;">${c.student_count || 0} طلاب</span></td>
         <td><strong>${c.total_memo_pages || 0}</strong> <span style="font-size:11px; color:var(--muted);">وجه</span></td>
         <td><strong>${c.total_rev_pages || 0}</strong> <span style="font-size:11px; color:var(--muted);">وجه</span></td>
         <td>
@@ -1069,7 +1406,7 @@ function renderCircleRankings(rankings) {
         </td>
         <td>
           <span style="padding:6px 12px; border-radius:999px; font-size:13px; font-weight:800; display:inline-block; ${badgeCss}">
-            ${statusBadge}
+            ${escapeHtml(statusBadge)}
           </span>
         </td>
         <td>
@@ -1093,15 +1430,15 @@ function renderHonorAndFollowupBoards(honorBoard, followupList) {
       honorContainer.innerHTML = `<div style="text-align:center; padding:24px; color:var(--muted);">لا توجد قائمة شرف مسجلة حالياً.</div>`;
     } else {
       honorContainer.innerHTML = honorBoard.map(s => `
-        <div style="border:1px solid #fde68a; background:#ffffff; padding:12px 16px; border-radius:14px; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; box-shadow:0 2px 8px rgba(245, 158, 11, 0.05);">
+        <div style="border:1px solid #fde68a; background:var(--card-bg, #ffffff); padding:12px 16px; border-radius:14px; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; box-shadow:none !important;">
           <div>
-            <strong style="font-size:15px; color:#1e293b; display:block;">🌟 ${s.name}</strong>
-            <small style="color:var(--muted); font-size:12px;">🕌 ${s.circle_name || 'حلقة قرآنية'} | الأستاذ: ${s.teacher_name || '--'}</small>
-            <div style="font-size:12px; color:#0f766e; margin-top:4px;">📖 حفظ: من ${s.from_surah || '--'} إلى ${s.to_surah || '--'}</div>
+            <strong style="font-size:15px; color:var(--text, #1e293b); display:block;">🌟 ${escapeHtml(s.name)}</strong>
+            <small style="color:var(--muted); font-size:12px;">🕌 ${escapeHtml(s.circle_name || 'حلقة قرآنية')} | الأستاذ: ${escapeHtml(s.teacher_name || '--')}</small>
+            <div style="font-size:12px; color:#0f766e; margin-top:4px;">📖 حفظ: من ${escapeHtml(s.from_surah || '--')} إلى ${escapeHtml(s.to_surah || '--')}</div>
           </div>
           <div style="text-align:left;">
-            <span style="background:#dcfce7; color:#15803d; font-weight:800; padding:4px 10px; border-radius:8px; font-size:12px; display:block; margin-bottom:4px;">حفظ: ${s.memo_grade || 'ممتاز'}</span>
-            <small style="color:#64748b; font-size:11px;">غياب: ${s.absent_days || 0} أيام</small>
+            <span style="background:#dcfce7; color:#15803d; font-weight:800; padding:4px 10px; border-radius:8px; font-size:12px; display:block; margin-bottom:4px;">حفظ: ${escapeHtml(s.memo_grade || 'ممتاز')}</span>
+            <small style="color:var(--muted, #64748b); font-size:11px;">غياب: ${s.absent_days || 0} أيام</small>
           </div>
         </div>
       `).join("");
@@ -1121,13 +1458,13 @@ function renderHonorAndFollowupBoards(honorBoard, followupList) {
       followContainer.innerHTML = followupList.map(s => `
         <div class="followup-student-item">
           <div class="followup-student-info">
-            <strong class="followup-student-name">⚠️ ${s.name}</strong>
-            <small class="followup-student-meta">🕌 ${s.circle_name || 'حلقة قرآنية'} | الأستاذ: ${s.teacher_name || '--'}</small>
+            <strong class="followup-student-name">⚠️ ${escapeHtml(s.name)}</strong>
+            <small class="followup-student-meta">🕌 ${escapeHtml(s.circle_name || 'حلقة قرآنية')} | الأستاذ: ${escapeHtml(s.teacher_name || '--')}</small>
             <div class="followup-absence-tag">سجل الغياب: ${s.absent_days || 0} يوم غياب متكرر</div>
           </div>
           <div class="followup-student-badges">
-            <span class="badge-grade-memo">حفظ: ${s.memo_grade || 'ضعيف'}</span>
-            <span class="badge-grade-rev">مراجعة: ${s.rev_grade || 'ضعيف'}</span>
+            <span class="badge-grade-memo">حفظ: ${escapeHtml(s.memo_grade || 'يحتاج متابعة')}</span>
+            <span class="badge-grade-rev">مراجعة: ${escapeHtml(s.rev_grade || 'غير محدد')}</span>
           </div>
         </div>
       `).join("");
@@ -1279,16 +1616,23 @@ function renderStudentsTable(students) {
   const badge = document.getElementById("studentCountBadge");
   if (!tbody) return;
 
-  if (!students || students.length === 0) {
+  const list = Array.isArray(students) ? students : [];
+  currentFilteredExamStudents = list;
+
+  if (list.length === 0) {
     if (badge) badge.textContent = "0 طالب";
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--muted);">لا توجد نتائج مسجلة في قاعدة البيانات حتى الآن.</td></tr>`;
     return;
   }
 
-  if (badge) badge.textContent = `${students.length} طالب ممتحن`;
+  if (badge) badge.textContent = `${list.length} طالب ممتحن`;
 
-  tbody.innerHTML = students.map((s, idx) => {
-    const isPassed = s.passed === 1;
+  tbody.innerHTML = list.map((s, idx) => {
+    const isPassed = isExamResultPassed(s);
+    const totalQ = getExamResultTotalQuestions(s);
+    const pct = getExamResultPercentage(s);
+    const scoreVal = Number(s.score) || 0;
+    const displayName = s.student_name || s.name || "طالب غير معروف";
     let dateFormattedHtml = "--";
     if (s.created_at) {
       if (window.HijriDate) {
@@ -1302,9 +1646,9 @@ function renderStudentsTable(students) {
     return `
       <tr>
         <td>${idx + 1}</td>
-        <td><strong>${s.student_name}</strong></td>
-        <td>${s.score} / ${s.total_questions}</td>
-        <td><strong>${s.percentage}%</strong></td>
+        <td><strong>${escapeHtml(displayName)}</strong></td>
+        <td>${scoreVal} / ${totalQ}</td>
+        <td><strong>${pct}%</strong></td>
         <td>
           <span class="status-badge ${isPassed ? 'pass' : 'fail'}">
             ${isPassed ? '🟢 ناجح' : '🔴 راسب'}
@@ -1322,14 +1666,15 @@ function renderStudentsTable(students) {
 function filterStudentsTable() {
   if (!analyticsCache || !analyticsCache.students) return;
 
-  const query = document.getElementById("searchStudent").value.trim().toLowerCase();
-  const statusFilter = document.getElementById("filterStatus").value;
+  const query = normalizeArabicSearch(document.getElementById("searchStudent")?.value || "");
+  const statusFilter = document.getElementById("filterStatus")?.value || "all";
 
   const filtered = analyticsCache.students.filter(s => {
-    const matchesName = s.student_name.toLowerCase().includes(query);
+    const matchesName = !query || normalizeArabicSearch(s.student_name || s.name || "").includes(query);
     let matchesStatus = true;
-    if (statusFilter === "passed") matchesStatus = (s.passed === 1);
-    if (statusFilter === "failed") matchesStatus = (s.passed === 0);
+    const passed = isExamResultPassed(s);
+    if (statusFilter === "passed") matchesStatus = passed;
+    if (statusFilter === "failed") matchesStatus = !passed;
 
     return matchesName && matchesStatus;
   });
@@ -1338,23 +1683,32 @@ function filterStudentsTable() {
 }
 
 function openStudentModal(studentIdx) {
-  if (!analyticsCache || !analyticsCache.students[studentIdx]) return;
-  const s = analyticsCache.students[studentIdx];
+  const sourceList = (currentFilteredExamStudents && currentFilteredExamStudents.length > 0)
+    ? currentFilteredExamStudents
+    : (analyticsCache && analyticsCache.students ? analyticsCache.students : []);
+  const s = sourceList[studentIdx];
+  if (!s) return;
 
-  document.getElementById("modalStudentName").textContent = `تفاصيل إجابات الطالب: ${s.student_name}`;
-  document.getElementById("modalStudentMeta").textContent = `الدرجة: ${s.score} من ${s.total_questions} (${s.percentage}%) | الحالة: ${s.passed === 1 ? 'ناجح ✅' : 'راسب ❌'}`;
+  const displayName = s.student_name || s.name || "طالب غير معروف";
+  const totalQ = getExamResultTotalQuestions(s);
+  const pct = getExamResultPercentage(s);
+  const passed = isExamResultPassed(s);
+
+  document.getElementById("modalStudentName").textContent = `تفاصيل إجابات الطالب: ${displayName}`;
+  document.getElementById("modalStudentMeta").textContent = `الدرجة: ${Number(s.score) || 0} من ${totalQ} (${pct}%) | الحالة: ${passed ? 'ناجح ✅' : 'راسب ❌'}`;
 
   const container = document.getElementById("modalAnswersList");
-  if (!s.answers || s.answers.length === 0) {
+  const answers = Array.isArray(s.answers) ? s.answers : [];
+  if (answers.length === 0) {
     container.innerHTML = `<div style="text-align:center; color:var(--muted)">لا توجد إجابات تفصيلية مسجلة.</div>`;
   } else {
-    container.innerHTML = s.answers.map((a, i) => {
-      const isCorrect = a.is_correct === 1;
+    container.innerHTML = answers.map((a, i) => {
+      const isCorrect = a && (a.is_correct === 1 || a.is_correct === true);
       return `
         <div class="modal-answer-item ${isCorrect ? 'correct' : 'wrong'}">
-          <div><strong>س${i + 1}: ${a.question_text}</strong></div>
-          <div>إجابة الطالب: <span>${a.selected_text}</span></div>
-          <div>الإجابة الصحيحة: <strong>${a.correct_text}</strong></div>
+          <div><strong>س${i + 1}: ${escapeHtml(a?.question_text || a?.title || "--")}</strong></div>
+          <div>إجابة الطالب: <span>${escapeHtml(a?.selected_text || "--")}</span></div>
+          <div>الإجابة الصحيحة: <strong>${escapeHtml(a?.correct_text || "--")}</strong></div>
         </div>
       `;
     }).join("");
@@ -1364,7 +1718,11 @@ function openStudentModal(studentIdx) {
 }
 
 function closeStudentModal(event) {
-  document.getElementById("studentModal").style.display = "none";
+  if (event && event.target !== event.currentTarget && !event.target.closest(".close-modal-btn")) {
+    return;
+  }
+  const modal = document.getElementById("studentModal");
+  if (modal) modal.style.display = "none";
 }
 
 /* Mobile Sidebar Drawer Controller */
@@ -1411,28 +1769,28 @@ function filterAndRenderStudentAnalytics() {
   const allStudents = analyticsCache.circle_students || (analyticsCache.circles_analytics && analyticsCache.circles_analytics.all_students) || [];
   const circles = analyticsCache.circle_rankings || [];
 
-  const nameQuery = (document.getElementById("filterStudentName")?.value || "").trim().toLowerCase();
+  const nameQuery = normalizeArabicSearch(document.getElementById("filterStudentName")?.value || "");
   const circleVal = document.getElementById("filterStudentCircle")?.value || "all";
   const memoVal = document.getElementById("filterStudentMemo")?.value || "all";
   const attendanceVal = document.getElementById("filterStudentAttendance")?.value || "all";
 
   const filtered = allStudents.filter(s => {
-    const matchesName = !nameQuery || (s.name || "").toLowerCase().includes(nameQuery) || (s.circle_name || "").toLowerCase().includes(nameQuery);
+    const matchesName = !nameQuery || normalizeArabicSearch(s.name || "").includes(nameQuery) || normalizeArabicSearch(s.circle_name || "").includes(nameQuery);
     const matchesCircle = circleVal === "all" || s.circle_name === circleVal;
-    
+
     let matchesMemo = true;
     if (memoVal !== "all") {
-      const mg = (s.memo_grade || "").trim();
-      if (memoVal === "ممتاز") matchesMemo = ["ممتاز", "ممتازة", "ممتاز مرتفع"].includes(mg);
-      else if (memoVal === "جيد جداً") matchesMemo = ["جيد جدا", "جيد جداً"].includes(mg);
-      else if (memoVal === "جيد") matchesMemo = ["جيد"].includes(mg);
-      else if (memoVal === "مقبول") matchesMemo = ["مقبول"].includes(mg);
-      else if (memoVal === "يحتاج متابعة") matchesMemo = ["ضعيف", "يحتاج متابعة", "غير محدد", ""].includes(mg);
-      else matchesMemo = mg === memoVal;
+      const mgCat = categorizeGrade(s.memo_grade, 40);
+      if (memoVal === "ممتاز") matchesMemo = mgCat === "ممتاز";
+      else if (memoVal === "جيد جداً") matchesMemo = mgCat === "جيد جداً";
+      else if (memoVal === "جيد") matchesMemo = mgCat === "جيد";
+      else if (memoVal === "مقبول") matchesMemo = mgCat === "مقبول";
+      else if (memoVal === "يحتاج متابعة") matchesMemo = (mgCat === "يحتاج متابعة" || mgCat === "غير محدد");
+      else matchesMemo = mgCat === memoVal;
     }
 
     let matchesAttendance = true;
-    const abs = s.absent_days || 0;
+    const abs = Number(s.absent_days) || 0;
     if (attendanceVal === "perfect") matchesAttendance = abs === 0;
     else if (attendanceVal === "light") matchesAttendance = abs >= 1 && abs <= 2;
     else if (attendanceVal === "heavy") matchesAttendance = abs >= 3;
@@ -1456,29 +1814,27 @@ function syncAndLoadAnalytics(source) {
 
   if (source === "circles") {
     if (sy && cy) sy.value = cy.value;
-    if (sm && cm) sm.value = cm.value;
+    if (sm && cm && Array.from(sm.options).some(o => o.value === cm.value)) sm.value = cm.value;
   } else if (source === "students") {
     if (cy && sy) cy.value = sy.value;
-    if (cm && sm) cm.value = sm.value;
+    if (cm && sm && Array.from(cm.options).some(o => o.value === sm.value)) cm.value = sm.value;
   }
   loadAnalyticsData();
 }
 
 function resetCirclesDateFilter() {
-  const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-  const currentMonth = months[new Date().getMonth()];
-  const currentYear = new Date().getFullYear().toString();
-  
+  const defaultYear = getDefaultAcademicYear();
   const cy = document.getElementById("filterCirclesYear");
   const cm = document.getElementById("filterCirclesMonth");
   const sy = document.getElementById("filterStudentsYear");
   const sm = document.getElementById("filterStudentsMonth");
-  
-  if (cy) cy.value = currentYear;
-  if (sy) sy.value = currentYear;
-  if (cm) cm.value = currentMonth;
-  if (sm) sm.value = currentMonth;
-  
+  const targetPeriod = getPreferredCurrentPeriodValue(cm || sm);
+
+  if (cy) cy.value = defaultYear;
+  if (sy) sy.value = defaultYear;
+  if (cm && Array.from(cm.options).some(o => o.value === targetPeriod)) cm.value = targetPeriod;
+  if (sm && Array.from(sm.options).some(o => o.value === targetPeriod)) sm.value = targetPeriod;
+
   loadAnalyticsData();
 }
 
@@ -1496,19 +1852,16 @@ function resetStudentFilters() {
   if (elMemo) elMemo.value = "all";
   if (elAtt) elAtt.value = "all";
 
-  const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-  const currentMonth = months[new Date().getMonth()];
-  const currentYear = new Date().getFullYear().toString();
-  
+  const defaultYear = getDefaultAcademicYear();
   const sy = document.getElementById("filterStudentsYear");
   const sm = document.getElementById("filterStudentsMonth");
   const cy = document.getElementById("filterCirclesYear");
   const cm = document.getElementById("filterCirclesMonth");
-  
-  if (sy) sy.value = currentYear;
-  if (cy) cy.value = currentYear;
-  if (sm) sm.value = currentMonth;
-  if (cm) cm.value = currentMonth;
+
+  if (sy) sy.value = defaultYear;
+  if (cy) cy.value = defaultYear;
+  if (sm) sm.value = "all";
+  if (cm) cm.value = "all";
 
   loadAnalyticsData();
 }
@@ -1528,14 +1881,14 @@ function renderStudentKPIs(students, totalCirclesCount) {
   let attentionCount = 0;
 
   students.forEach(s => {
-    const mg = (s.memo_grade || "").trim();
-    if (["ممتاز", "ممتازة", "ممتاز مرتفع", "جيد جدا", "جيد جداً"].includes(mg)) {
+    const mgCat = categorizeGrade(s.memo_grade, 40);
+    if (mgCat === "ممتاز" || mgCat === "جيد جداً") {
       excCount++;
     }
-    const abs = s.absent_days || 0;
+    const abs = Number(s.absent_days) || 0;
     totalAbsent += abs;
     if (abs === 0) perfectCount++;
-    if (abs >= 3 || ["ضعيف", "يحتاج متابعة"].includes(mg)) {
+    if (abs >= 3 || mgCat === "يحتاج متابعة" || mgCat === "مقبول") {
       attentionCount++;
     }
   });
@@ -1566,19 +1919,21 @@ function renderStudentHonorBoard(students) {
     return;
   }
 
-  // Score student for honor board
+  // Score student for honor board using unified memo (40) & rev (30) grade categorization
   const scoredStudents = students.map(s => {
     let score = 0;
-    const mg = (s.memo_grade || "").trim();
-    const rg = (s.rev_grade || "").trim();
-    const abs = s.absent_days || 0;
+    const mgCat = categorizeGrade(s.memo_grade, 40);
+    const rgCat = categorizeGrade(s.rev_grade, 30);
+    const abs = Number(s.absent_days) || 0;
 
-    if (["ممتاز", "ممتازة", "ممتاز مرتفع"].includes(mg)) score += 50;
-    else if (["جيد جدا", "جيد جداً"].includes(mg)) score += 35;
-    else if (mg === "جيد") score += 20;
+    if (mgCat === "ممتاز") score += 50;
+    else if (mgCat === "جيد جداً") score += 35;
+    else if (mgCat === "جيد") score += 20;
+    else if (mgCat === "مقبول") score += 10;
 
-    if (["ممتاز", "ممتازة", "ممتاز مرتفع"].includes(rg)) score += 30;
-    else if (["جيد جدا", "جيد جداً"].includes(rg)) score += 20;
+    if (rgCat === "ممتاز") score += 30;
+    else if (rgCat === "جيد جداً") score += 20;
+    else if (rgCat === "جيد") score += 10;
 
     score -= (abs * 5);
     if (s.online_exam_score) score += 20;
@@ -1588,22 +1943,24 @@ function renderStudentHonorBoard(students) {
 
   const topStudent = scoredStudents[0];
   const avatarChar = topStudent.name ? topStudent.name.charAt(0) : "🌟";
-  const memoText = (topStudent.from_surah && topStudent.to_surah) ? `من سورة ${topStudent.from_surah} إلى ${topStudent.to_surah}` : "مقرر الحفظ الشهري";
+  const memoText = (topStudent.from_surah && topStudent.to_surah)
+    ? `من سورة ${escapeHtml(topStudent.from_surah)} إلى ${escapeHtml(topStudent.to_surah)}`
+    : "مقرر الحفظ الشهري";
 
   container.innerHTML = `
     <div class="student-honor-item">
       <div class="honor-badge-tag">🏆 الطالب المثالي</div>
       <div class="honor-body">
-        <div class="honor-avatar">${avatarChar}</div>
+        <div class="honor-avatar">${escapeHtml(avatarChar)}</div>
         <div class="honor-details">
-          <h4>🌟 ${topStudent.name}</h4>
-          <p class="honor-info-line"><strong>🕌 الحلقة:</strong> ${topStudent.circle_name || "حلقة عامة"}</p>
-          <p class="honor-info-line"><strong>📖 إنجاز الحفظ:</strong> ${memoText} (${topStudent.memo_grade || "ممتاز"})</p>
+          <h4>🌟 ${escapeHtml(topStudent.name)}</h4>
+          <p class="honor-info-line"><strong>🕌 الحلقة:</strong> ${escapeHtml(topStudent.circle_name || "حلقة عامة")}</p>
+          <p class="honor-info-line"><strong>📖 إنجاز الحفظ:</strong> ${memoText} (${escapeHtml(topStudent.memo_grade || "غير محدد")})</p>
           <div class="honor-tags">
-            <span class="honor-tag">✨ حفظ: ${topStudent.memo_grade || "ممتاز"}</span>
-            <span class="honor-tag">🔄 مراجعة: ${topStudent.rev_grade || "ممتاز"}</span>
+            <span class="honor-tag">✨ حفظ: ${escapeHtml(topStudent.memo_grade || "غير محدد")}</span>
+            <span class="honor-tag">🔄 مراجعة: ${escapeHtml(topStudent.rev_grade || "غير محدد")}</span>
             <span class="honor-tag">📅 غياب: ${topStudent.absent_days || 0} أيام</span>
-            ${topStudent.online_exam_score ? `<span class="honor-tag tag-exam" style="background:#dcfce7; color:#166534; border-color:#86efac;">📝 التقييم: ${topStudent.online_exam_score}</span>` : ""}
+            ${topStudent.online_exam_score ? `<span class="honor-tag tag-exam" style="background:#dcfce7; color:#166534; border-color:#86efac;">📝 التقييم: ${escapeHtml(topStudent.online_exam_score)}</span>` : ""}
           </div>
         </div>
       </div>
@@ -1622,10 +1979,10 @@ function renderStudentGradesDistribution(students) {
 
   const counts = { "ممتاز": 0, "جيد جداً": 0, "جيد": 0, "يحتاج متابعة": 0 };
   students.forEach(s => {
-    const mg = (s.memo_grade || "").trim();
-    if (["ممتاز", "ممتازة", "ممتاز مرتفع"].includes(mg)) counts["ممتاز"]++;
-    else if (["جيد جدا", "جيد جداً"].includes(mg)) counts["جيد جداً"]++;
-    else if (mg === "جيد") counts["جيد"]++;
+    const mgCat = categorizeGrade(s.memo_grade, 40);
+    if (mgCat === "ممتاز") counts["ممتاز"]++;
+    else if (mgCat === "جيد جداً") counts["جيد جداً"]++;
+    else if (mgCat === "جيد") counts["جيد"]++;
     else counts["يحتاج متابعة"]++;
   });
 
@@ -1658,57 +2015,53 @@ function renderCircleStudentsTable(students) {
   const badge = document.getElementById("filteredStudentsBadge");
   if (!tbody || !badge) return;
 
-  if (!students || students.length === 0) {
+  const list = Array.isArray(students) ? students : [];
+  currentFilteredCircleStudents = list;
+
+  if (list.length === 0) {
     badge.textContent = "0 طالب";
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 28px; color: var(--muted);">لا توجد نتائج مسجلة تطابق خيارات التصفية الحالية.</td></tr>`;
     return;
   }
 
-  badge.textContent = `${students.length} طالب`;
+  badge.textContent = `${list.length} طالب`;
 
-  tbody.innerHTML = students.map((s, idx) => {
-    const mg = (s.memo_grade || "غير محدد").trim();
-    const rg = (s.rev_grade || "غير محدد").trim();
-    const abs = s.absent_days || 0;
+  tbody.innerHTML = list.map((s, idx) => {
+    const mg = s.memo_grade !== undefined && s.memo_grade !== null && String(s.memo_grade).trim() !== "" ? String(s.memo_grade).trim() : "غير محدد";
+    const rg = s.rev_grade !== undefined && s.rev_grade !== null && String(s.rev_grade).trim() !== "" ? String(s.rev_grade).trim() : "غير محدد";
+    const abs = Number(s.absent_days) || 0;
 
-    let memoBadgeClass = "badge-blue";
-    if (["ممتاز", "ممتازة", "ممتاز مرتفع"].includes(mg)) memoBadgeClass = "badge-star";
-    else if (["جيد جدا", "جيد جداً"].includes(mg)) memoBadgeClass = "badge-blue";
-    else if (mg === "جيد") memoBadgeClass = "badge-yellow";
-    else if (["ضعيف", "يحتاج متابعة", "مقبول"].includes(mg)) memoBadgeClass = "badge-red";
-
-    let revBadgeClass = "badge-blue";
-    if (["ممتاز", "ممتازة", "ممتاز مرتفع"].includes(rg)) revBadgeClass = "badge-star";
-    else if (["جيد جدا", "جيد جداً"].includes(rg)) revBadgeClass = "badge-blue";
-    else if (rg === "جيد") revBadgeClass = "badge-yellow";
-    else if (["ضعيف", "يحتاج متابعة", "مقبول"].includes(rg)) revBadgeClass = "badge-red";
+    const memoBadgeClass = getGradeBadgeClass(categorizeGrade(s.memo_grade, 40));
+    const revBadgeClass = getGradeBadgeClass(categorizeGrade(s.rev_grade, 30));
 
     let attBadgeHtml = `<span class="badge-star" style="background:#dcfce7; color:#15803d; border-color:#86efac;">🟢 ملتزم (0 غياب)</span>`;
     if (abs >= 1 && abs <= 2) attBadgeHtml = `<span class="badge-yellow">🟡 غياب محدود (${abs} أيام)</span>`;
     else if (abs >= 3) attBadgeHtml = `<span class="badge-red">🔴 غياب متكرر (${abs} أيام)</span>`;
 
-    const memoRangeText = (s.from_surah && s.to_surah) ? `من ${s.from_surah} إلى ${s.to_surah}` : "مقرر الحفظ الشهري";
-    const revRangeText = (s.rev_from_surah && s.rev_to_surah) ? `من ${s.rev_from_surah} إلى ${s.rev_to_surah}` : "مقرر المراجعة";
+    const memoRangeText = (s.from_surah && s.to_surah) ? `من ${escapeHtml(s.from_surah)} إلى ${escapeHtml(s.to_surah)}` : "مقرر الحفظ الشهري";
+    const revRangeText = (s.rev_from_surah && s.rev_to_surah) ? `من ${escapeHtml(s.rev_from_surah)} إلى ${escapeHtml(s.rev_to_surah)}` : "مقرر المراجعة";
 
-    const examDisplay = s.online_exam_score ? `<strong style="color:#16a34a;">${s.online_exam_score}</strong>` : `<span style="color:var(--muted);">${s.exam_grade || "لم يختبر بعد"}</span>`;
+    const examDisplay = s.online_exam_score
+      ? `<strong style="color:#16a34a;">${escapeHtml(s.online_exam_score)}</strong>`
+      : `<span style="color:var(--muted);">${escapeHtml(s.exam_grade || "لم يختبر بعد")}</span>`;
 
     return `
       <tr>
         <td><strong>#${idx + 1}</strong></td>
         <td>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="background:#eff6ff; color:#1d4ed8; width:32px; height:32px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${s.name ? s.name.charAt(0) : "👤"}</span>
-            <strong>${s.name}</strong>
+            <span style="background:#eff6ff; color:#1d4ed8; width:32px; height:32px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${s.name ? escapeHtml(s.name.charAt(0)) : "👤"}</span>
+            <strong>${escapeHtml(s.name)}</strong>
           </div>
         </td>
-        <td><strong>🕌 ${s.circle_name || "حلقة عامة"}</strong></td>
+        <td><strong>🕌 ${escapeHtml(s.circle_name || "حلقة عامة")}</strong></td>
         <td>
           <div style="font-size:13px; font-weight:700; margin-bottom:4px;">📖 ${memoRangeText}</div>
-          <span class="${memoBadgeClass}">${mg}</span>
+          <span class="${memoBadgeClass}">${escapeHtml(mg)}</span>
         </td>
         <td>
           <div style="font-size:13px; font-weight:700; margin-bottom:4px;">🔄 ${revRangeText}</div>
-          <span class="${revBadgeClass}">${rg}</span>
+          <span class="${revBadgeClass}">${escapeHtml(rg)}</span>
         </td>
         <td>${attBadgeHtml}</td>
         <td>${examDisplay}</td>
@@ -1721,45 +2074,23 @@ function renderCircleStudentsTable(students) {
 }
 
 function openStudentRecordModal(idx) {
-  if (!analyticsCache) return;
-  const allStudents = analyticsCache.circle_students || (analyticsCache.circles_analytics && analyticsCache.circles_analytics.all_students) || [];
-  
-  const elName = (document.getElementById("filterStudentName")?.value || "").trim().toLowerCase();
-  const circleVal = document.getElementById("filterStudentCircle")?.value || "all";
-  const memoVal = document.getElementById("filterStudentMemo")?.value || "all";
-  const attendanceVal = document.getElementById("filterStudentAttendance")?.value || "all";
-
-  const filtered = allStudents.filter(s => {
-    const matchesName = !elName || (s.name || "").toLowerCase().includes(elName) || (s.circle_name || "").toLowerCase().includes(elName);
-    const matchesCircle = circleVal === "all" || s.circle_name === circleVal;
-    let matchesMemo = true;
-    if (memoVal !== "all") {
-      const mg = (s.memo_grade || "").trim();
-      if (memoVal === "ممتاز") matchesMemo = ["ممتاز", "ممتازة", "ممتاز مرتفع"].includes(mg);
-      else if (memoVal === "جيد جداً") matchesMemo = ["جيد جدا", "جيد جداً"].includes(mg);
-      else if (memoVal === "جيد") matchesMemo = ["جيد"].includes(mg);
-      else if (memoVal === "مقبول") matchesMemo = ["مقبول"].includes(mg);
-      else if (memoVal === "يحتاج متابعة") matchesMemo = ["ضعيف", "يحتاج متابعة", "غير محدد", ""].includes(mg);
-      else matchesMemo = mg === memoVal;
-    }
-    let matchesAtt = true;
-    const abs = s.absent_days || 0;
-    if (attendanceVal === "perfect") matchesAtt = abs === 0;
-    else if (attendanceVal === "light") matchesAtt = abs >= 1 && abs <= 2;
-    else if (attendanceVal === "heavy") matchesAtt = abs >= 3;
-    return matchesName && matchesCircle && matchesMemo && matchesAtt;
-  });
-
-  const s = filtered[idx];
+  const sourceList = (currentFilteredCircleStudents && currentFilteredCircleStudents.length > 0)
+    ? currentFilteredCircleStudents
+    : (analyticsCache ? (analyticsCache.circle_students || (analyticsCache.circles_analytics && analyticsCache.circles_analytics.all_students) || []) : []);
+  const s = sourceList[idx];
   if (!s) return;
 
   document.getElementById("recordModalStudentName").textContent = `المستند الإحصائي للطالب: ${s.name}`;
   document.getElementById("recordModalStudentMeta").textContent = `الحلقة: ${s.circle_name || "حلقة عامة"} | المعلم المشرف: ${s.teacher_name || "كادر تعليمي"}`;
 
-  const memoText = (s.from_surah && s.to_surah) ? `من سورة ${s.from_surah} (آية ${s.from_ayah || 1}) إلى سورة ${s.to_surah} (آية ${s.to_ayah || 1})` : "مقرر الحفظ الشهري";
-  const revText = (s.rev_from_surah && s.rev_to_surah) ? `من سورة ${s.rev_from_surah} (آية ${s.rev_from_ayah || 1}) إلى سورة ${s.rev_to_surah} (آية ${s.rev_to_ayah || 1})` : "مقرر المراجعة الشهري";
+  const memoText = (s.from_surah && s.to_surah)
+    ? `من سورة ${escapeHtml(s.from_surah)} (آية ${escapeHtml(s.from_ayah || 1)}) إلى سورة ${escapeHtml(s.to_surah)} (آية ${escapeHtml(s.to_ayah || 1)})`
+    : "مقرر الحفظ الشهري";
+  const revText = (s.rev_from_surah && s.rev_to_surah)
+    ? `من سورة ${escapeHtml(s.rev_from_surah)} (آية ${escapeHtml(s.rev_from_ayah || 1)}) إلى سورة ${escapeHtml(s.rev_to_surah)} (آية ${escapeHtml(s.rev_to_ayah || 1)})`
+    : "مقرر المراجعة الشهري";
 
-  const abs = s.absent_days || 0;
+  const abs = Number(s.absent_days) || 0;
   let attStatus = "🟢 التزام ممتاز بالحضور";
   if (abs >= 1 && abs <= 2) attStatus = "🟡 غياب محدود يحتاج تنبيه بسيط";
   else if (abs >= 3) attStatus = "🔴 غياب متكرر يستدعي التواصل مع ولي الأمر";
@@ -1767,38 +2098,38 @@ function openStudentRecordModal(idx) {
   const examContent = s.online_exam_score ? `
     <div style="background:#f0fdf4; border:1px solid #86efac; padding:16px; border-radius:16px;">
       <h4 style="margin:0 0 8px; color:#166534; display:flex; align-items:center; gap:6px;"><i data-lucide="check-circle" style="width:18px; height:18px;"></i> النتيجة الدقيقة للاختبار الإلكتروني</h4>
-      <p style="margin:0; font-size:16px; color:#15803d; font-weight:800;">${s.online_exam_score} (${s.online_exam_title || "اختبار تقييمي"})</p>
+      <p style="margin:0; font-size:16px; color:#15803d; font-weight:800;">${escapeHtml(s.online_exam_score)} (${escapeHtml(s.online_exam_title || "اختبار تقييمي")})</p>
     </div>
   ` : `
-    <div style="background:#f8fafc; border:1px solid #cbd5e1; padding:16px; border-radius:16px;">
-      <h4 style="margin:0 0 8px; color:#334155;">📝 التقييم الشهري للاختبارات</h4>
-      <p style="margin:0; color:#64748b; font-weight:700;">${s.exam_grade || "لم يجرِ الطالب اختباراً إلكترونياً بعد"}</p>
+    <div style="background:var(--surface, #f8fafc); border:1px solid var(--line, #cbd5e1); padding:16px; border-radius:16px;">
+      <h4 style="margin:0 0 8px; color:var(--text, #334155);">📝 التقييم الشهري للاختبارات</h4>
+      <p style="margin:0; color:var(--muted, #64748b); font-weight:700;">${escapeHtml(s.exam_grade || "لم يجرِ الطالب اختباراً إلكترونياً بعد")}</p>
     </div>
   `;
 
   const container = document.getElementById("recordModalContent");
   container.innerHTML = `
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
       <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:16px; border-radius:16px;">
         <small style="color:#1e40af; font-weight:700;">📖 مقرر وتقدير الحفظ</small>
         <div style="font-size:15px; font-weight:800; color:#1e3a8a; margin:6px 0;">${memoText}</div>
-        <span class="badge-star" style="background:#ffffff; font-size:14px;">التقدير: ${s.memo_grade || "غير محدد"}</span>
+        <span class="badge-star" style="background:#ffffff; font-size:14px;">التقدير: ${escapeHtml(s.memo_grade || "غير محدد")}</span>
       </div>
       <div style="background:#fef9c3; border:1px solid #fde047; padding:16px; border-radius:16px;">
         <small style="color:#854d0e; font-weight:700;">🔄 مقرر وتقدير المراجعة</small>
         <div style="font-size:15px; font-weight:800; color:#713f12; margin:6px 0;">${revText}</div>
-        <span class="badge-yellow" style="background:#ffffff; font-size:14px;">التقدير: ${s.rev_grade || "غير محدد"}</span>
+        <span class="badge-yellow" style="background:#ffffff; font-size:14px;">التقدير: ${escapeHtml(s.rev_grade || "غير محدد")}</span>
       </div>
     </div>
-    <div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:16px; border-radius:16px;">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div style="background:var(--surface, #f1f5f9); border:1px solid var(--line, #cbd5e1); padding:16px; border-radius:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
         <div>
-          <h4 style="margin:0 0 4px; color:#0f172a;">📅 سجل الالتزام والحضور الشهر (${s.record_month || "الشهر الحالي"})</h4>
-          <span style="font-weight:700; color:#475569;">${attStatus}</span>
+          <h4 style="margin:0 0 4px; color:var(--text, #0f172a);">📅 سجل الالتزام والحضور (${escapeHtml(s.record_month || "الشهر الحالي")})</h4>
+          <span style="font-weight:700; color:var(--muted, #475569);">${attStatus}</span>
         </div>
-        <div style="background:#ffffff; border:2px solid #cbd5e1; padding:8px 16px; border-radius:12px; text-align:center;">
-          <small style="display:block; color:#64748b; font-size:11px;">أيام الغياب</small>
-          <strong style="font-size:20px; color:#0f172a;">${abs}</strong>
+        <div style="background:var(--card-bg, #ffffff); border:2px solid var(--line, #cbd5e1); padding:8px 16px; border-radius:12px; text-align:center;">
+          <small style="display:block; color:var(--muted, #64748b); font-size:11px;">أيام الغياب</small>
+          <strong style="font-size:20px; color:var(--text, #0f172a);">${abs}</strong>
         </div>
       </div>
     </div>
@@ -1810,7 +2141,11 @@ function openStudentRecordModal(idx) {
 }
 
 function closeStudentRecordModal(event) {
-  document.getElementById("studentRecordModal").style.display = "none";
+  if (event && event.target !== event.currentTarget && !event.target.closest(".close-modal-btn")) {
+    return;
+  }
+  const modal = document.getElementById("studentRecordModal");
+  if (modal) modal.style.display = "none";
 }
 
 
