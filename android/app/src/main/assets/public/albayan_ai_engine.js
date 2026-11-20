@@ -228,6 +228,89 @@
     return `${n} طالب`;
   }
 
+  const FIELD_LABELS_AR = {
+    from_surah: 'سورة بداية الحفظ',
+    from_ayah: 'آية بداية الحفظ',
+    to_surah: 'سورة نهاية الحفظ',
+    to_ayah: 'آية نهاية الحفظ',
+    memo_pages: 'أوجه الحفظ',
+    memo_grade: 'درجة الحفظ',
+    rev_from_surah: 'سورة بداية المراجعة',
+    rev_from_ayah: 'آية بداية المراجعة',
+    rev_to_surah: 'سورة نهاية المراجعة',
+    rev_to_ayah: 'آية نهاية المراجعة',
+    sard_pages: 'أوجه السرد',
+    rev_grade: 'درجة المراجعة',
+    absent_days: 'أيام الغياب',
+    activity_mark: 'درجة النشاط',
+    fiqh: 'الفقه',
+    tafsir: 'التفسير',
+    adhkar: 'الأذكار',
+    seerah: 'السيرة',
+    exam_grade: 'تقدير الاختبار',
+    exam_title: 'عنوان الاختبار',
+    phone: 'رقم الهاتف',
+    guardian_phone: 'رقم ولي الأمر',
+    study_level: 'المستوى الدراسي',
+    notes: 'ملاحظات',
+    strengths: 'نقاط القوة',
+    name: 'الاسم',
+    student_name: 'اسم الطالب',
+    student_id: 'معرّف الطالب',
+    circle_name: 'اسم الحلقة',
+    circle_id: 'الحلقة',
+    teacher_name: 'المعلم المسؤول',
+    teacher_id: 'المعلم المسؤول',
+    description: 'وصف الحلقة',
+    username: 'اسم المستخدم',
+    role: 'الدور الوظيفي',
+    new_role: 'الدور الوظيفي الجديد',
+    period_type: 'نوع الفترة',
+    month: 'الفترة / الشهر',
+    term: 'الفصل الدراسي',
+    year: 'السنة',
+    record_date: 'التاريخ',
+    عدد_الطلاب: 'عدد الطلاب',
+    الدور_الحالي: 'الدور الحالي',
+    الدور_الجديد: 'الدور الجديد'
+  };
+
+  const ROLE_LABELS_AR = {
+    admin: 'مدير النظام',
+    supervisor: 'مشرف',
+    teacher: 'معلم',
+    student: 'طالب',
+    staff: 'كادر'
+  };
+
+  const PERIOD_TYPE_LABELS_AR = {
+    monthly: 'النظام الشهري',
+    term: 'النظام الفصلي',
+    weekly: 'النظام الأسبوعي',
+    daily: 'النظام اليومي',
+    yearly: 'النظام السنوي'
+  };
+
+  function getFieldLabel(key) {
+    const raw = String(key || '').trim();
+    if (!raw) return '';
+    if (FIELD_LABELS_AR[raw]) return FIELD_LABELS_AR[raw];
+    // Clean up Arabic keys containing underscores (e.g. "عدد_الطلاب" -> "عدد الطلاب")
+    if (/[\u0600-\u06FF]/.test(raw)) return raw.replace(/_/g, ' ');
+    return raw;
+  }
+
+  function getRoleLabel(role) {
+    const raw = String(role || '').trim();
+    if (!raw) return 'كادر';
+    return ROLE_LABELS_AR[raw.toLowerCase()] || raw;
+  }
+
+  function getPeriodTypeLabel(periodType) {
+    const raw = String(periodType || '').trim().toLowerCase();
+    return PERIOD_TYPE_LABELS_AR[raw] || periodType || '';
+  }
+
   function categorizeGradeAr(grade) {
     if (grade === undefined || grade === null || grade === '' || grade === '0' || grade === 0 || grade === 'غير محدد') {
       return 'غير محدد';
@@ -416,9 +499,11 @@
 
       const adminOnlyTools = new Set(['create_halaqah', 'delete_halaqah', 'update_teacher']);
       if (adminOnlyTools.has(toolName) && !isAdmin(user) && !hasPermission('admin_ai', user) && !hasPermission('users', user)) {
+        const tDef = typeof AlbayanAIToolRegistry !== 'undefined' && AlbayanAIToolRegistry.get ? AlbayanAIToolRegistry.get(toolName) : null;
+        const tLabel = (tDef && tDef.label) ? tDef.label : 'هذه العملية';
         return {
           allowed: false,
-          reason: `صلاحيات حسابك (${user.role || 'كادر'}) لا تسمح بتنفيذ العملية "${toolName}". هذه العملية مخصصة لإدارة المدرسة.`
+          reason: `صلاحيات حسابك (${getRoleLabel(user.role || 'staff')}) لا تسمح بتنفيذ "${tLabel}". هذه العملية مخصصة لإدارة المدرسة.`
         };
       }
 
@@ -432,7 +517,7 @@
       if ((toolName === 'create_cv' || toolName === 'update_cv') && isTeacher(user) && !hasPermission('student_cv', user) && !isSupervisor(user)) {
         return {
           allowed: false,
-          reason: 'حسابك لا يمتلك صلاحية تعديل السيرة الذاتية للطلاب (student_cv).'
+          reason: 'حسابك لا يمتلك صلاحية تعديل السيرة الذاتية للطلاب.'
         };
       }
 
@@ -1468,6 +1553,7 @@
             total_exams: snap.exams.length,
             total_exam_results: snap.examResults.length,
             active_period: snap.activePeriod,
+            cycle_mode_label: cycleCfg ? getPeriodTypeLabel(cycleCfg.mode) : 'النظام الشهري',
             cycle_config: cycleCfg,
             cycle_stats: cycleStats,
             sync_status: window.AlbayanDiagnostics ? window.AlbayanDiagnostics.getStatus() : 'unknown'
@@ -1806,7 +1892,7 @@
               الاسم: targetCircle.name,
               المعلم: targetCircle.resolved_teacher_name || 'غير محدد',
               الوصف: targetCircle.description || 'بدون وصف',
-              عدد_الطلاب: formatStudentCountAr(targetCircle.live_student_count)
+              'عدد الطلاب': formatStudentCountAr(targetCircle.live_student_count)
             },
             newValues: { الحالة: 'محذوفة مع طلابها وسجلاتها' },
             impactWarning: `سيؤدي هذا الإجراء إلى حذف الحلقة و${formatStudentCountAr(targetCircle.live_student_count)} وسجلاتهم المرتبطة بها.`
@@ -2159,7 +2245,7 @@
           { field: 'الفترة', before: '—', after: `${period.month} ${period.year}` }
         ];
         Object.keys(initialFields).forEach(k => {
-          changes.push({ field: k, before: 'فارغ', after: String(initialFields[k]) });
+          changes.push({ field: getFieldLabel(k), before: 'فارغ', after: String(initialFields[k]) });
         });
         return {
           ok: true,
@@ -2401,6 +2487,7 @@
             id: u.id,
             username: u.username,
             role: u.role,
+            role_label: getRoleLabel(u.role),
             circles_count: assignedCircles.length,
             circles_names: assignedCircles.map(c => c.name),
             total_students: totalStudents
@@ -2471,8 +2558,8 @@
               args: { ...args, teacher_id: String(existingUser.id) },
               operationTitle: `تغيير صلاحيات "${existingUser.username}"`,
               targetSummary: `المستخدم: ${existingUser.username}`,
-              oldValues: { الدور_الحالي: existingUser.role },
-              newValues: { الدور_الجديد: args.new_role },
+              oldValues: { 'الدور الحالي': getRoleLabel(existingUser.role) },
+              newValues: { 'الدور الجديد': getRoleLabel(args.new_role) },
               impactWarning: 'تغيير الدور الوظيفي يعدّل صلاحيات الوصول الإدارية للحساب.'
             }, user);
             return { ok: false, status: 'CONFIRMATION_REQUIRED', confirmation };
@@ -2490,7 +2577,7 @@
         }
         if (args.new_role && args.new_role !== existingUser.role) {
           updatedUser.role = args.new_role;
-          changes.push({ field: 'الدور الوظيفي', before: existingUser.role, after: updatedUser.role });
+          changes.push({ field: 'الدور الوظيفي', before: getRoleLabel(existingUser.role), after: getRoleLabel(updatedUser.role) });
         }
 
         let userSaved = true;
@@ -2764,7 +2851,7 @@
         Object.keys(fields).forEach(k => {
           beforeFields[k] = currentRecord[k] !== undefined ? currentRecord[k] : '';
           changes.push({
-            field: k,
+            field: getFieldLabel(k),
             before: beforeFields[k] === '' ? 'فارغ' : String(beforeFields[k]),
             after: String(fields[k])
           });
@@ -3168,7 +3255,7 @@
         const changes = [];
         ['phone', 'guardian_phone', 'study_level', 'notes'].forEach(f => {
           if (args[f] !== undefined && String(args[f]) !== String(target[f] || '')) {
-            changes.push({ field: f, before: target[f] || 'فارغ', after: String(args[f]) });
+            changes.push({ field: getFieldLabel(f), before: target[f] || 'فارغ', after: String(args[f]) });
             updated[f] = String(args[f]);
           }
         });
@@ -3430,7 +3517,7 @@
       const req = (def.parameters && Array.isArray(def.parameters.required)) ? def.parameters.required : [];
       for (const field of req) {
         if (args[field] === undefined || args[field] === null || String(args[field]).trim() === '') {
-          return { valid: false, message: `الحقل المطلوب "${field}" مفقود لتنفيذ الأداة "${def.label}".` };
+          return { valid: false, message: `الحقل المطلوب "${getFieldLabel(field)}" مفقود لتنفيذ الأداة "${def.label}".` };
         }
       }
       return { valid: true };
@@ -3867,10 +3954,10 @@
           const built = window.AlbayanCycleEngine.buildPeriodOptionsList();
           const cfg = built.config || {};
           const modeLabel = cfg.mode === 'term'
-            ? `النظام الفصلي (term • ${cfg.termMonths || 3} أشهر لكل فصل)`
+            ? `النظام الفصلي (${cfg.termMonths || 3} أشهر لكل فصل)`
             : (cfg.mode === 'weekly'
-              ? 'النظام الأسبوعي (weekly)'
-              : (cfg.mode === 'yearly' ? 'النظام السنوي (yearly)' : 'النظام الشهري (monthly)'));
+              ? 'النظام الأسبوعي'
+              : (cfg.mode === 'yearly' ? 'النظام السنوي' : 'النظام الشهري'));
           const optList = (built.options || []).filter(o => !o.isYearly).map(o => o.value);
           cycleDesc = `${modeLabel}`;
           if (optList.length > 0) {
@@ -3881,7 +3968,7 @@
 
       return [
         'أنت "مساعد البيان الذكي" داخل منظومة مدرسة البيان لتعليم القرآن الكريم.',
-        `المستخدم الحالي: ${user ? user.username : 'كادر'} (الدور: ${user ? user.role : 'staff'}).`,
+        `المستخدم الحالي: ${user ? user.username : 'كادر'} (الدور: ${getRoleLabel(user ? user.role : 'staff')}).`,
         'المهام: الإجابة باللغة العربية الفصيحة الواضحة، وتنفيذ الاستعلامات والعمليات الإدارية عبر الأدوات الحقيقية فقط.',
         '',
         'قواعد التوجيه الذكي للطلبات (إلزامية):',
@@ -3890,14 +3977,15 @@
         '3. إضافة طالب وتسجيل أي خانة في السجل: يمكنك إضافة طالب مع تعبئة سجله دفعة واحدة عبر create_student (بتمرير fields)، أو تعديل/إنشاء أي خانة في السجل عبر update_student_record / create_student_record.',
         `   - نظام المدة النشط حالياً: ${cycleDesc}.`,
         ...(periodOptionsDesc ? [periodOptionsDesc] : []),
-        '   - قاعدة الفترات والفصول (مهم جداً): عند طلب التعديل أو القراءة على **فصل معين** (مثل: الفصل الأول، الفصل الثاني، الفصل الثالث، الفصل الرابع)، يجب تمرير `period_type: "term"` وتمرير اسم الفصل في `month` (أو `term`) مثل `"الفصل الأول"` أو `"الفصل الثاني"`؛ وعند طلب **أسبوع** مرّر `period_type: "weekly"`؛ وعند طلب **شهر** مرّر `period_type: "monthly"` واسم الشهر؛ وإلا استخدم الفترة النشطة للنظام. يُمنع تعديل سجل الشهر عندما يطلب المستخدم فصلاً دراسياً.',
-        '   - الحفظ: from_surah، from_ayah، to_surah، to_ayah، memo_pages (تُحسب تلقائياً عند تحديد نطاق السور والآيات)، memo_grade (0-40).',
-        '   - المراجعة والسرد: rev_from_surah، rev_from_ayah، rev_to_surah، rev_to_ayah، sard_pages، rev_grade (0-30).',
-        '   - الحضور والنشاط والمناهج المصاحبة: absent_days (0-31)، activity_mark (0-20)، fiqh (0-20)، tafsir (0-20)، adhkar (0-20)، seerah (0-20).',
-        '   - الاختبارات: exam_title، exam_grade.',
+        '   - قاعدة الفترات والفصول (للاستدعاء البرمجي الداخلي فقط): عند طلب التعديل أو القراءة على **فصل معين** (مثل: الفصل الأول، الفصل الثاني، الفصل الثالث، الفصل الرابع)، يجب تمرير `period_type: "term"` وتمرير اسم الفصل في `month` (أو `term`) مثل `"الفصل الأول"` أو `"الفصل الثاني"`؛ وعند طلب **أسبوع** مرّر `period_type: "weekly"`؛ وعند طلب **شهر** مرّر `period_type: "monthly"` واسم الشهر؛ وإلا استخدم الفترة النشطة للنظام. يُمنع تعديل سجل الشهر عندما يطلب المستخدم فصلاً دراسياً.',
+        '   - الحفظ (أسماء الحقول البرمجية الداخلية): from_surah، from_ayah، to_surah، to_ayah، memo_pages (تُحسب تلقائياً عند تحديد نطاق السور والآيات)، memo_grade (0-40).',
+        '   - المراجعة والسرد (أسماء الحقول البرمجية الداخلية): rev_from_surah، rev_from_ayah، rev_to_surah، rev_to_ayah، sard_pages، rev_grade (0-30).',
+        '   - الحضور والنشاط والمناهج المصاحبة (أسماء الحقول البرمجية الداخلية): absent_days (0-31)، activity_mark (0-20)، fiqh (0-20)، tafsir (0-20)، adhkar (0-20)، seerah (0-20).',
+        '   - الاختبارات (أسماء الحقول البرمجية الداخلية): exam_title، exam_grade.',
         '4. التحقق قبل التنفيذ: إذا نقصت بيانات إلزامية (مثل الحلقة عند إضافة طالب) أو تشابهت الأسماء، اسأل المستخدم ولا تخمّن.',
         '5. التحليل الشامل وفحص الأخطاء: استدعِ analyze_statistics أو detect_data_anomalies أو generate_report فقط عندما يطلب المستخدم فحص المدرسة أو اكتشاف الأخطاء أو مقارنة الإحصائيات أو تقريراً شاملاً.',
-        '6. الصدق والدقة: لا تخترع أرقاماً أو أسماء طلاب أو نتائج لم ترد في مخرجات الأدوات. العمليات الحساسة (الحذف أو تغيير الأدوار) تتطلب confirm_token من المستخدم.'
+        '6. الصدق والدقة: لا تخترع أرقاماً أو أسماء طلاب أو نتائج لم ترد في مخرجات الأدوات. العمليات الحساسة (الحذف أو تغيير الأدوار) تتطلب موافقة وتأكيد المستخدم.',
+        '7. لغة الرد النهائي للمستخدم (شرط إلزامي صارم): خاطب المستخدم باللغة العربية الطبيعية الصرفة فقط. يُمنع منعاً باتاً كتابة أي أسماء متغيرات برمجية أو حقول قاعدة بيانات أو قيم تقنية إنجليزية أو أسماء أدوات في ردك للمستخدم (مثل: term، monthly، weekly، daily، yearly، period_type، memo_grade، rev_grade، from_surah، to_surah، rev_to_ayah، absent_days، activity_mark، fiqh، tafsir، adhkar، seerah، exam_grade، circle_id، student_id، confirm_token، get_all_halaqat، إلخ)؛ عبّر عنها دائماً بمسمياتها العربية الواضحة فقط (مثل: النظام الفصلي، النظام الشهري، النظام الأسبوعي، درجة الحفظ، درجة المراجعة، سورة بداية الحفظ، أيام الغياب).'
       ].join('\n');
     }
 
@@ -4727,7 +4815,7 @@
           headers: ['الاسم', 'الدور', 'عدد الحلقات', 'الحلقات المسندة', 'إجمالي الطلاب'],
           rows: tRes.teachers.map(t => [
             t.username,
-            t.role,
+            t.role_label || getRoleLabel(t.role),
             t.circles_count,
             t.circles_names.join('، ') || 'غير مسند',
             formatStudentCountAr(t.total_students)
@@ -4769,7 +4857,7 @@
         const lines = [
           '### الإحصائيات والتقرير الإداري المحدّث',
           `- **إجمالي الحلقات القرآنية:** ${m.total_circles}`,
-          `- **إجمالي الطلاب النشطين (/students):** ${formatStudentCountAr(m.total_students_active)} (منهم ${m.sum_of_circle_live_students} داخل الحلقات النشطة و ${m.orphan_students_count} غير مرتبطين بحلقة)`,
+          `- **إجمالي الطلاب النشطين:** ${formatStudentCountAr(m.total_students_active)} (منهم ${m.sum_of_circle_live_students} داخل الحلقات النشطة و ${m.orphan_students_count} غير مرتبطين بحلقة)`,
           `- **عدد المعلمين:** ${m.total_teachers} | **الاختبارات:** ${m.total_exams} (${m.total_exam_results} نتيجة)`,
           `- **نسبة الحضور العامة:** ${m.attendance_rate}% (أيام الغياب: ${m.total_absent_days})`,
           `- **إجمالي أوجه الحفظ:** ${m.total_memo_pages} | **أوجه السرد:** ${m.total_sard_pages}`
@@ -5162,6 +5250,9 @@
     Tools: AlbayanAIToolRegistry,
     Providers: AlbayanAIProviders,
     Memory: AlbayanAIMemory,
-    CATALOG: PROVIDER_CATALOG
+    CATALOG: PROVIDER_CATALOG,
+    getFieldLabel,
+    getRoleLabel,
+    getPeriodTypeLabel
   };
 })();

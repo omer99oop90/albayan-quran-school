@@ -22,6 +22,13 @@
       .replace(/'/g, '&#39;');
   }
 
+  function resolveFieldLabel(key) {
+    if (window.AlbayanAI && typeof window.AlbayanAI.getFieldLabel === 'function') {
+      return window.AlbayanAI.getFieldLabel(key);
+    }
+    return String(key || '');
+  }
+
   function formatInlineMarkdown(txt) {
     let safe = escapeHtml(txt);
     safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) => {
@@ -244,7 +251,7 @@
     return cards.map(card => {
       const diffRows = (card.changes || []).map(ch => `
         <div class="ai-op-diff-row">
-          <strong>${escapeHtml(ch.field)}:</strong>
+          <strong>${escapeHtml(resolveFieldLabel(ch.field))}:</strong>
           <span class="ai-op-diff-old">${escapeHtml(ch.before)}</span>
           <span aria-hidden="true">←</span>
           <span class="ai-op-diff-new">${escapeHtml(ch.after)}</span>
@@ -278,8 +285,8 @@
       if (conf.resolvedStatus === 'cancelled') {
         return `<div class="ai-confirm-card"><div class="ai-confirm-meta" style="margin:0;">تم إلغاء العملية: ${escapeHtml(conf.operationTitle)}</div></div>`;
       }
-      const oldEntries = Object.entries(conf.oldValues || {}).map(([k, v]) => `<div><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</div>`).join('');
-      const newEntries = Object.entries(conf.newValues || {}).map(([k, v]) => `<div><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</div>`).join('');
+      const oldEntries = Object.entries(conf.oldValues || {}).map(([k, v]) => `<div><strong>${escapeHtml(resolveFieldLabel(k))}:</strong> ${escapeHtml(v)}</div>`).join('');
+      const newEntries = Object.entries(conf.newValues || {}).map(([k, v]) => `<div><strong>${escapeHtml(resolveFieldLabel(k))}:</strong> ${escapeHtml(v)}</div>`).join('');
       return `
         <div class="ai-confirm-card">
           <div class="ai-confirm-head">

@@ -36,7 +36,7 @@
       max-width: calc(100vw - 270px);
       width: calc(100% - 270px);
       box-sizing: border-box;
-      padding: 20px 24px;
+      padding: 14px 20px;
       overflow-x: hidden;
     }
 
@@ -44,13 +44,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
+      gap: 12px;
+      flex-wrap: nowrap;
       background: var(--card-bg, #ffffff);
       border: 1px solid var(--line, #e2e8f0);
-      padding: 12px 18px;
-      border-radius: 18px;
-      margin-bottom: 16px;
+      padding: 8px 14px;
+      border-radius: 14px;
+      margin-bottom: 12px;
       box-shadow: none !important;
       width: 100%;
       box-sizing: border-box;
@@ -59,7 +59,7 @@
     .roster-toolbar-main {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       min-width: 0;
       flex: 1 1 auto;
     }
@@ -68,14 +68,14 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
       background: var(--bg, #f8fafc);
       border: 1px solid var(--line, #e2e8f0);
       color: var(--primary, #2563eb);
       text-decoration: none;
-      transition: all 0.2s ease;
+      transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
       flex-shrink: 0;
       box-shadow: none !important;
     }
@@ -83,63 +83,68 @@
     .roster-back-btn:hover {
       background: rgba(37, 99, 235, 0.08);
       border-color: var(--primary, #2563eb);
-      transform: translateX(-2px);
+      transform: translateX(2px);
     }
 
     .roster-back-btn i,
     .roster-back-btn svg {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
     }
 
     .roster-title-box {
       display: flex;
       flex-direction: column;
+      justify-content: center;
       min-width: 0;
+      gap: 1px;
     }
 
     .roster-title-badge {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 800;
       color: var(--primary, #2563eb);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      line-height: 1.2;
+      letter-spacing: 0.2px;
+      line-height: 1.15;
     }
 
     .roster-circle-name {
       margin: 0;
-      font-size: 17px;
+      font-size: 15.5px;
       font-weight: 800;
       color: var(--text, #0f172a);
-      line-height: 1.3;
+      line-height: 1.25;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 360px;
+      max-width: 420px;
     }
 
     .roster-toolbar-actions {
       display: flex;
       align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
+      gap: 8px;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
     }
 
     .period-badge-group {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: var(--bg, #f8fafc);
-      padding: 6px 14px;
-      border-radius: 14px;
+      height: 36px;
+      padding: 0 11px;
+      border-radius: 10px;
       border: 1px solid var(--line, #e2e8f0);
-      transition: all 0.2s ease;
+      transition: border-color 0.18s ease, background-color 0.18s ease;
       min-width: 0;
-      max-width: fit-content;
+      max-width: 240px;
+      box-sizing: border-box;
     }
 
-    .period-badge-group:hover {
+    .period-badge-group:hover,
+    .period-badge-group:focus-within {
       border-color: var(--primary, #2563eb);
     }
 
@@ -147,28 +152,23 @@
       background: transparent;
       border: none;
       font-weight: 800;
-      font-size: 14px;
+      font-size: 13px;
       color: var(--primary, #2563eb);
       outline: none;
       cursor: pointer;
       min-width: 0;
+      width: 100%;
       max-width: 100%;
       text-overflow: ellipsis;
       white-space: nowrap;
       font-family: inherit;
-    }
-
-    .period-badge-label {
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--text, #334155);
-      white-space: nowrap;
-      flex-shrink: 0;
+      padding: 0;
+      height: 100%;
     }
 
     .period-badge-icon {
-      width: 17px;
-      height: 17px;
+      width: 15px;
+      height: 15px;
       color: var(--primary, #2563eb);
       flex-shrink: 0;
     }
@@ -178,13 +178,13 @@
       background-image: none !important;
       border: none !important;
       box-shadow: none !important;
-      height: 38px;
-      min-height: 38px !important;
-      padding: 0 14px;
-      border-radius: 12px;
+      height: 36px;
+      min-height: 36px !important;
+      padding: 0 13px;
+      border-radius: 10px;
       color: #FFFFFF !important;
       font-weight: 800;
-      font-size: 13.5px;
+      font-size: 13px;
       font-family: inherit;
       display: inline-flex;
       align-items: center;
@@ -210,6 +210,8 @@
 
     .btn-text-action svg,
     .btn-text-action .lucide {
+      width: 15px;
+      height: 15px;
       margin: 0 !important;
     }
 
@@ -224,14 +226,14 @@
     .table-scroll-container {
       position: relative;
       background: var(--card-bg, #ffffff);
-      border-radius: 18px;
+      border-radius: 16px;
       border: 1px solid var(--line, #e2e8f0);
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
       overflow-x: auto !important;
       overflow-y: auto !important;
-      max-height: calc(100vh - 180px);
+      max-height: calc(100vh - 140px);
       scrollbar-width: thin;
       scrollbar-color: #94a3b8 rgba(0, 0, 0, 0.05);
       -webkit-overflow-scrolling: touch;
@@ -273,13 +275,33 @@
       color: #ffffff;
     }
 
+    html[data-theme="dark"] .roster-toolbar {
+      background: #0f172a;
+      border-color: #1e293b;
+    }
+
+    html[data-theme="dark"] .roster-back-btn {
+      background: #1e293b;
+      border-color: #334155;
+      color: #60a5fa;
+    }
+
+    html[data-theme="dark"] .roster-circle-name {
+      color: #f8fafc;
+    }
+
+    html[data-theme="dark"] .roster-title-badge {
+      color: #60a5fa;
+    }
+
     html[data-theme="dark"] .period-badge-group {
       background: #1e293b;
       border-color: #334155;
     }
 
-    html[data-theme="dark"] .period-badge-label {
-      color: #cbd5e1;
+    html[data-theme="dark"] .period-badge-group select,
+    html[data-theme="dark"] .period-badge-icon {
+      color: #60a5fa;
     }
 
     html[data-theme="dark"] .btn-text-action {
@@ -325,17 +347,18 @@
         margin-right: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
-        padding: 12px 10px !important;
+        padding: 8px 8px !important;
         box-sizing: border-box !important;
       }
 
       .roster-toolbar {
         display: flex !important;
         flex-direction: column !important;
-        gap: 10px !important;
-        padding: 10px 12px !important;
-        border-radius: 16px !important;
-        margin-bottom: 12px !important;
+        align-items: stretch !important;
+        gap: 7px !important;
+        padding: 8px 10px !important;
+        border-radius: 14px !important;
+        margin-bottom: 10px !important;
       }
 
       .roster-toolbar-main {
@@ -343,79 +366,79 @@
         align-items: center !important;
         justify-content: flex-start !important;
         width: 100% !important;
-        gap: 10px !important;
+        gap: 8px !important;
       }
 
       .roster-back-btn {
-        width: 34px !important;
-        height: 34px !important;
-        border-radius: 10px !important;
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 9px !important;
       }
 
       .roster-back-btn i,
       .roster-back-btn svg {
-        width: 16px !important;
-        height: 16px !important;
+        width: 15px !important;
+        height: 15px !important;
       }
 
       .roster-circle-name {
-        font-size: 15px !important;
-        max-width: 220px !important;
+        font-size: 14.5px !important;
+        max-width: calc(100vw - 88px) !important;
       }
 
       .roster-title-badge {
-        font-size: 10.5px !important;
+        font-size: 9.5px !important;
       }
 
       .roster-toolbar-actions {
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
+        flex-wrap: nowrap !important;
         width: 100% !important;
         gap: 8px !important;
       }
 
       .period-badge-group {
-        flex: 1 1 auto !important;
+        flex: 1 1 0% !important;
         min-width: 0 !important;
-        padding: 6px 10px !important;
-        gap: 6px !important;
-        border-radius: 12px !important;
+        height: 34px !important;
+        padding: 0 9px !important;
+        gap: 5px !important;
+        border-radius: 10px !important;
         max-width: none !important;
       }
 
       .period-badge-group select {
-        font-size: 13px !important;
+        font-size: 12.5px !important;
         width: 100% !important;
         min-width: 0 !important;
       }
 
-      .period-badge-label {
-        font-size: 12px !important;
-      }
-
       .period-badge-icon {
-        width: 15px !important;
-        height: 15px !important;
+        width: 14px !important;
+        height: 14px !important;
       }
 
       .btn-text-action {
-        padding: 7px 11px !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        padding: 0 12px !important;
         font-size: 12.5px !important;
         gap: 5px !important;
         flex-shrink: 0 !important;
         white-space: nowrap !important;
-        border-radius: 12px !important;
+        border-radius: 10px !important;
       }
 
       .btn-text-action i,
       .btn-text-action svg {
-        width: 15px !important;
-        height: 15px !important;
+        width: 14px !important;
+        height: 14px !important;
       }
 
       .table-scroll-container {
-        max-height: calc(100vh - 170px) !important;
+        max-height: calc(100vh - 175px) !important;
         border-radius: 14px !important;
       }
     }
@@ -496,18 +519,9 @@
         </div>
 
         <div class="roster-toolbar-actions">
-          <div class="period-badge-group">
-            <i data-lucide="graduation-cap" class="period-badge-icon"></i>
-            <span class="period-badge-label">الحلقة:</span>
-            <select id="rosterCircleSelect" onchange="switchCircleFromSelect(this.value)" style="cursor:pointer; font-weight:700; min-width:0; max-width:100%;">
-              <option value="">جارٍ تحميل الحلقات...</option>
-            </select>
-          </div>
-
-          <div class="period-badge-group">
+          <div class="period-badge-group" title="تغيير الفترة">
             <i data-lucide="calendar" class="period-badge-icon"></i>
-            <span class="period-badge-label">الفترة:</span>
-            <select id="filterMonth" onchange="loadStudents()">
+            <select id="filterMonth" onchange="loadStudents()" aria-label="اختر الفترة">
               <option value="صفر">شهر صفر</option>
               <option value="محرم">شهر محرم</option>
               <option value="ربيع الأول">شهر ربيع الأول</option>
