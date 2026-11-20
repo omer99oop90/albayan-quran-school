@@ -729,23 +729,56 @@
   }
   window.closeAiHistoryDrawer = closeHistoryDrawer;
 
+  const KEY_HELP_BY_PROVIDER = {
+    gemini: '<strong>المطلوب هو مفتاح API فقط (لا تكتب Name أو Project name أو Project number):</strong><br>من صفحة <strong>API Keys</strong> في Google AI Studio، اضغط أيقونة النسخ بجانب قيمة المفتاح نفسها (تبدأ بـ <code dir="ltr">AIza...</code>) والصقها هنا.',
+    groq: 'من لوحة تحكم <strong>Groq Console</strong> انسخ مفتاح API (يبدأ بـ <code dir="ltr">gsk_...</code>) والصقه هنا فقط.',
+    openai: 'من <strong>OpenAI Platform → API Keys</strong> أنشئ مفتاحاً (يبدأ بـ <code dir="ltr">sk-...</code>) والصقه هنا فقط.',
+    openrouter: 'من <strong>OpenRouter → Keys</strong> انسخ مفتاحك (يبدأ بـ <code dir="ltr">sk-or-...</code>) والصقه هنا فقط.',
+    deepseek: 'من <strong>DeepSeek Platform → API Keys</strong> انسخ مفتاحك (يبدأ بـ <code dir="ltr">sk-...</code>) والصقه هنا فقط.',
+    anthropic: 'من <strong>Anthropic Console → API Keys</strong> انسخ مفتاحك (يبدأ بـ <code dir="ltr">sk-ant-...</code>) والصقه هنا فقط.',
+    custom: 'أدخل مفتاح المزود المخصص ثم اكتب رابط API في الحقل أدناه.'
+  };
+
+  function buildMergedModelList(providerId, liveOverride = null) {
+    const cat = window.AlbayanAI.CATALOG[providerId] || window.AlbayanAI.CATALOG.builtin;
+    if (providerId === 'builtin') return cat.models;
+    const live = Array.isArray(liveOverride)
+      ? liveOverride
+      : (typeof window.AlbayanAI.Providers.getCachedLiveModels === 'function'
+        ? window.AlbayanAI.Providers.getCachedLiveModels(providerId)
+        : []);
+    if (!live || live.length === 0) return cat.models;
+    const seen = new Set();
+    const merged = [];
+    // Prefer live-verified models from user's account first, then static presets
+    [...live, ...cat.models].forEach(m => {
+      if (m && m.id && !seen.has(m.id)) {
+        seen.add(m.id);
+        merged.push(m);
+      }
+    });
+    return merged;
+  }
+
   // Provider Settings Modal Logic
-  function syncModelOptions(providerId, selectedModel = '') {
+  function syncModelOptions(providerId, selectedModel = '', liveOverride = null) {
     const sel = document.getElementById('aiCfgModelSelect');
     const customInput = document.getElementById('aiCfgModelCustom');
     const cat = window.AlbayanAI.CATALOG[providerId] || window.AlbayanAI.CATALOG.builtin;
     if (!sel) return;
 
-    sel.innerHTML = cat.models.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.label)}</option>`).join('');
-    const matched = cat.models.some(m => m.id === selectedModel);
+    const models = buildMergedModelList(providerId, liveOverride);
+    sel.innerHTML = models.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.label)}</option>`).join('');
+    const matched = models.some(m => m.id === selectedModel);
+    const defaultPick = (models[0] && models[0].id) || cat.defaultModel;
     if (matched) {
       sel.value = selectedModel;
       if (customInput) customInput.value = '';
     } else if (selectedModel && providerId !== 'builtin') {
-      sel.value = cat.defaultModel;
+      sel.value = models.some(m => m.id === cat.defaultModel) ? cat.defaultModel : defaultPick;
       if (customInput) customInput.value = selectedModel;
     } else {
-      sel.value = cat.defaultModel;
+      sel.value = models.some(m => m.id === cat.defaultModel) ? cat.defaultModel : defaultPick;
       if (customInput) customInput.value = '';
     }
 
@@ -754,12 +787,23 @@
     const showEndpoint = providerId === 'custom';
     const keyGroup = document.getElementById('aiCfgKeyGroup');
     if (keyGroup) keyGroup.style.display = showKey ? 'block' : 'none';
+    const helpBox = document.getElementById('aiKeyHelpBox');
+    if (helpBox) {
+      const helpHtml = KEY_HELP_BY_PROVIDER[providerId] || '';
+      helpBox.style.display = (!isLocal && helpHtml) ? 'block' : 'none';
+      helpBox.innerHTML = helpHtml;
+    }
+    const fetchBtn = document.getElementById('aiFetchModelsBtn');
+    if (fetchBtn) fetchBtn.style.display = isLocal ? 'none' : 'inline-flex';
     const epGroup = document.getElementById('aiCfgEndpointGroup');
     if (epGroup) epGroup.style.display = showEndpoint ? 'block' : 'none';
     const localHint = document.getElementById('aiLocalProviderHint');
     if (localHint) localHint.style.display = isLocal ? 'block' : 'none';
-    const customModelEl = document.getElementById('aiCfgModelCustom');
-    if (customModelEl) customModelEl.style.display = isLocal ? 'none' : 'block';
+    const advBox = document.getElementById('aiAdvancedSettingsBox');
+    if (advBox) {
+      advBox.style.display = isLocal ? 'none' : 'block';
+      if (!selectedModel || matched) advBox.open = false;
+    }
     const r1 = document.getElementById('aiCfgParamsRow1');
     if (r1) r1.style.display = isLocal ? 'none' : 'grid';
     const r2 = document.getElementById('aiCfgParamsRow2');
@@ -933,15 +977,49 @@
       };
     };
 
+    document.getElementById('aiFetchModelsBtn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('aiFetchModelsBtn');
+      const resBox = document.getElementById('aiTestResultBox');
+      const rawKey = document.getElementById('aiCfgApiKey')?.value.trim() || '';
+      const cfgNow = readModalConfig();
+      if (!btn || typeof window.AlbayanAI.Providers.fetchProviderModels !== 'function') return;
+      btn.disabled = true;
+      btn.textContent = 'جاري الجلب...';
+      const fRes = await window.AlbayanAI.Providers.fetchProviderModels(cfgNow, rawKey);
+      btn.disabled = false;
+      btn.textContent = 'تحديث أحدث النماذج';
+      if (fRes.ok && Array.isArray(fRes.models) && fRes.models.length > 0) {
+        const preferred = fRes.models.some(m => m.id === cfgNow.model) ? cfgNow.model : fRes.models[0].id;
+        syncModelOptions(cfgNow.provider, preferred, fRes.models);
+        if (resBox) {
+          resBox.style.display = 'block';
+          resBox.style.background = 'var(--ai-ok-bg)';
+          resBox.style.color = 'var(--ai-ok-fg)';
+          resBox.textContent = `تم جلب ${fRes.models.length} نموذجاً متاحاً مباشرةً من حسابك.`;
+        }
+      } else if (resBox) {
+        resBox.style.display = 'block';
+        resBox.style.background = 'var(--ai-danger-bg)';
+        resBox.style.color = 'var(--ai-danger-fg)';
+        resBox.textContent = fRes.message || 'تعذر جلب النماذج.';
+      }
+    });
+
     document.getElementById('aiTestConnBtn')?.addEventListener('click', async () => {
       const btn = document.getElementById('aiTestConnBtn');
       const resBox = document.getElementById('aiTestResultBox');
       const rawKey = document.getElementById('aiCfgApiKey')?.value.trim() || '';
+      const cfgNow = readModalConfig();
       btn.disabled = true;
       btn.textContent = 'جاري الاختبار...';
-      const res = await window.AlbayanAI.Providers.testConnection(readModalConfig(), rawKey);
+      const res = await window.AlbayanAI.Providers.testConnection(cfgNow, rawKey);
       btn.disabled = false;
       btn.textContent = 'اختبار الاتصال';
+      const liveModels = res.liveModels || res.suggestedModels;
+      if (Array.isArray(liveModels) && liveModels.length > 0) {
+        const nextModel = res.ok && liveModels.some(m => m.id === cfgNow.model) ? cfgNow.model : liveModels[0].id;
+        syncModelOptions(cfgNow.provider, nextModel, liveModels);
+      }
       if (resBox) {
         resBox.style.display = 'block';
         resBox.style.background = res.ok ? 'var(--ai-ok-bg)' : 'var(--ai-danger-bg)';

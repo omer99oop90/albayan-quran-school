@@ -7,7 +7,7 @@
   <script src="theme-init.js"></script>
   <link rel="stylesheet" href="style.css?v=2.7">
   <link rel="stylesheet" href="dark_theme.css?v=3.0">
-  <link rel="stylesheet" href="albayan_ai.css?v=3.0">
+  <link rel="stylesheet" href="albayan_ai.css?v=4.0">
 </head>
 <body class="ai-page">
   <div class="ai-shell" id="aiAppShell">
@@ -182,48 +182,58 @@
         هذا الخيار محلي بالكامل (قواعد محدودة بدون نموذج سحابي). اختر <strong>Google Gemini</strong> أو <strong>Groq</strong> أو <strong>OpenAI</strong> وأضف مفتاح API لتشغيل الذكاء الاصطناعي الحقيقي.
       </div>
 
-      <div class="ai-form-group">
-        <label for="aiCfgModelSelect">النموذج المستخدم</label>
-        <select id="aiCfgModelSelect" class="ai-form-control"></select>
-        <input type="text" id="aiCfgModelCustom" class="ai-form-control" style="margin-top:6px;" placeholder="أو اكتب معرّف نموذج مخصص">
-      </div>
-
       <div class="ai-form-group" id="aiCfgKeyGroup">
-        <label for="aiCfgApiKey">مفتاح API Key <small id="aiCfgKeyStatusLabel" style="color:var(--ai-muted); font-weight:500;"></small></label>
-        <input type="password" id="aiCfgApiKey" class="ai-form-control" autocomplete="new-password" placeholder="أدخل مفتاحاً جديداً للحفظ بأمان (لا يُعرض بعد الحفظ)">
+        <label for="aiCfgApiKey">مفتاح API فقط <small id="aiCfgKeyStatusLabel" style="color:var(--ai-muted); font-weight:500;"></small></label>
+        <input type="password" id="aiCfgApiKey" class="ai-form-control" autocomplete="new-password" placeholder="ألصق مفتاح API هنا (مثل AIza...)">
+        <div id="aiKeyHelpBox" class="ai-key-help-box" style="display:none;"></div>
       </div>
 
       <div class="ai-form-group" id="aiCfgEndpointGroup">
-        <label for="aiCfgEndpoint">عنوان API (مطلوب للمزود المخصص)</label>
+        <label for="aiCfgEndpoint">عنوان API (مطلوب للمزود المخصص فقط)</label>
         <input type="url" id="aiCfgEndpoint" class="ai-form-control" dir="ltr" placeholder="https://api.example.com/v1/chat/completions">
       </div>
 
-      <div class="ai-form-row-2" id="aiCfgParamsRow1">
-        <div class="ai-form-group">
-          <label for="aiCfgTemp">درجة الإبداع (0 - 1)</label>
-          <input type="number" id="aiCfgTemp" class="ai-form-control" min="0" max="1" step="0.1" value="0.2">
+      <div class="ai-form-group" id="aiCfgModelGroup">
+        <div class="ai-label-row">
+          <label for="aiCfgModelSelect">النموذج المستخدم</label>
+          <button type="button" class="ai-mini-link-btn" id="aiFetchModelsBtn" style="display:none;">تحديث أحدث النماذج</button>
         </div>
-        <div class="ai-form-group">
-          <label for="aiCfgThinking">ميزانية التفكير (Tokens)</label>
-          <input type="number" id="aiCfgThinking" class="ai-form-control" min="0" max="16384" step="256" value="1024">
-        </div>
+        <select id="aiCfgModelSelect" class="ai-form-control"></select>
       </div>
 
-      <div class="ai-form-row-2" id="aiCfgParamsRow2">
-        <div class="ai-form-group">
-          <label for="aiCfgMaxTokens">الحد الأقصى للإجابة</label>
-          <input type="number" id="aiCfgMaxTokens" class="ai-form-control" min="256" max="16384" step="256" value="2048">
+      <details id="aiAdvancedSettingsBox" class="ai-advanced-details">
+        <summary>خيارات متقدمة (اختيارية — مضبوطة تلقائياً، لا يلزم تعبئتها)</summary>
+        <div class="ai-advanced-body">
+          <div class="ai-form-group">
+            <label for="aiCfgModelCustom">معرّف نموذج مخصص (اتركه فارغاً لاستخدام القائمة أعلاه)</label>
+            <input type="text" id="aiCfgModelCustom" class="ai-form-control" dir="ltr" placeholder="مثال: gemini-3.8-flash">
+          </div>
+          <div class="ai-form-row-2" id="aiCfgParamsRow1">
+            <div class="ai-form-group">
+              <label for="aiCfgTemp">درجة الإبداع (0 - 1)</label>
+              <input type="number" id="aiCfgTemp" class="ai-form-control" min="0" max="1" step="0.1" value="0.2">
+            </div>
+            <div class="ai-form-group">
+              <label for="aiCfgThinking">ميزانية التفكير (Tokens)</label>
+              <input type="number" id="aiCfgThinking" class="ai-form-control" min="0" max="16384" step="256" value="1024">
+            </div>
+          </div>
+          <div class="ai-form-row-2" id="aiCfgParamsRow2">
+            <div class="ai-form-group">
+              <label for="aiCfgMaxTokens">الحد الأقصى للإجابة</label>
+              <input type="number" id="aiCfgMaxTokens" class="ai-form-control" min="256" max="16384" step="256" value="2048">
+            </div>
+            <div class="ai-form-group">
+              <label for="aiCfgDailyLimit">حد الرموز اليومي</label>
+              <input type="number" id="aiCfgDailyLimit" class="ai-form-control" min="1000" max="10000000" step="5000" value="250000">
+            </div>
+          </div>
+          <div class="ai-form-group" id="aiCfgFallbackGroup" style="display:flex; align-items:center; gap:8px; margin-bottom:0;">
+            <input type="checkbox" id="aiCfgFallbackBuiltin" style="width:18px; height:18px; accent-color:var(--ai-primary);">
+            <label for="aiCfgFallbackBuiltin" style="margin:0; font-weight:600; font-size:12.5px; cursor:pointer;">التبديل التلقائي للمحرك المحلي عند فشل المزود الخارجي</label>
+          </div>
         </div>
-        <div class="ai-form-group">
-          <label for="aiCfgDailyLimit">حد الرموز</label>
-          <input type="number" id="aiCfgDailyLimit" class="ai-form-control" min="1000" max="10000000" step="5000" value="250000">
-        </div>
-      </div>
-
-      <div class="ai-form-group" id="aiCfgFallbackGroup" style="display:flex; align-items:center; gap:8px;">
-        <input type="checkbox" id="aiCfgFallbackBuiltin" style="width:18px; height:18px; accent-color:var(--ai-primary);">
-        <label for="aiCfgFallbackBuiltin" style="margin:0; font-weight:600; font-size:12.5px; cursor:pointer;">التبديل التلقائي للمحرك المحلي عند فشل المزود الخارجي</label>
-      </div>
+      </details>
 
       <div id="aiTestResultBox" style="display:none; margin-bottom:12px; padding:10px 12px; border-radius:10px; font-size:12.5px; font-weight:600; line-height:1.5;"></div>
 
@@ -237,7 +247,7 @@
   <script src="albayan_dialog.js?v=2.0"></script>
   <script src="mobile-db.js?v=3.0"></script>
   <script src="firebase-client.js?v=4.0"></script>
-  <script src="albayan_ai_engine.js?v=3.0"></script>
-  <script src="albayan_ai.js?v=3.0"></script>
+  <script src="albayan_ai_engine.js?v=4.0"></script>
+  <script src="albayan_ai.js?v=4.0"></script>
 </body>
 </html>

@@ -47,12 +47,17 @@
       requiresKey: true,
       requiresEndpoint: false,
       defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
-      defaultModel: 'gemini-2.5-flash',
+      defaultModel: 'gemini-3.8-flash',
       models: [
-        { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-        { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-        { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
-        { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' }
+        { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (الأحدث — سريع وذكي)' },
+        { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen (متوازن وموثوق)' },
+        { id: 'gemini-4-carbon', label: 'Gemini 4 Carbon (تفكير عميق)' },
+        { id: 'gemini-4-argon', label: 'Gemini 4 Argon' },
+        { id: 'gemini-4-neon', label: 'Gemini 4 Neon' },
+        { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
+        { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (اقتصادي)' },
+        { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (مستقر)' },
+        { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' }
       ]
     },
     openai: {
@@ -3441,14 +3446,15 @@
     }
 
     async function performHttp(provider, url, payloadObj, options = {}) {
-      const { extraHeaders = {}, overrideKey = '', signal = null, timeoutMs = 45000, model = '' } = options;
+      const { extraHeaders = {}, overrideKey = '', signal = null, timeoutMs = 45000, model = '', method = 'POST' } = options;
+      const reqMethod = String(method || 'POST').toUpperCase();
       if (signal && signal.aborted) throw new ProviderRequestError('aborted', 'ABORTED');
       if (typeof navigator !== 'undefined' && navigator.onLine === false) {
         throw new ProviderRequestError('offline', 'الجهاز غير متصل بالإنترنت حالياً.');
       }
 
       const plugin = getNativePlugin();
-      const bodyStr = payloadObj ? JSON.stringify(payloadObj) : '';
+      const bodyStr = (reqMethod !== 'GET' && payloadObj) ? JSON.stringify(payloadObj) : '';
 
       if (plugin && typeof plugin.proxyAiHttp === 'function') {
         const requestId = genId('aihttp');
@@ -3463,7 +3469,7 @@
             plugin.proxyAiHttp({
               provider,
               url,
-              method: 'POST',
+              method: reqMethod,
               body: bodyStr,
               headers: extraHeaders,
               overrideApiKey: overrideKey || '',
@@ -3523,12 +3529,15 @@
       const timer = setTimeout(() => fetchCtrl.abort('TIMEOUT'), timeoutMs);
 
       try {
-        const fetchRes = await fetch(url, {
-          method: 'POST',
+        const fetchOpts = {
+          method: reqMethod,
           headers,
-          body: bodyStr,
           signal: fetchCtrl.signal
-        });
+        };
+        if (reqMethod !== 'GET' && bodyStr) {
+          fetchOpts.body = bodyStr;
+        }
+        const fetchRes = await fetch(url, fetchOpts);
         const text = await fetchRes.text();
         if (!fetchRes.ok) {
           throw classifyProviderHttpError(fetchRes.status, text, model);
@@ -4666,6 +4675,98 @@
       }
     }
 
+    const LIVE_MODELS_STORAGE_PREFIX = 'albayan_ai_live_models_v1_';
+
+    function getCachedLiveModels(providerId) {
+      try {
+        const raw = localStorage.getItem(`${LIVE_MODELS_STORAGE_PREFIX}${providerId}`);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveCachedLiveModels(providerId, models) {
+      try {
+        if (Array.isArray(models) && models.length > 0) {
+          localStorage.setItem(`${LIVE_MODELS_STORAGE_PREFIX}${providerId}`, JSON.stringify(models));
+        }
+      } catch (e) {}
+    }
+
+    function getModelsEndpoint(tempConfig = {}) {
+      const p = tempConfig.provider || 'openai';
+      if (p === 'gemini') {
+        const base = (tempConfig.customEndpoint && tempConfig.customEndpoint.trim())
+          ? tempConfig.customEndpoint.replace(/\/models\/.*$/, '').replace(/\/$/, '')
+          : 'https://generativelanguage.googleapis.com/v1beta';
+        return `${base}/models?pageSize=100`;
+      }
+      if (p === 'anthropic') {
+        return 'https://api.anthropic.com/v1/models';
+      }
+      const chatUrl = resolveOpenAICompatEndpoint(tempConfig);
+      if (!chatUrl) return '';
+      return chatUrl.replace(/\/chat\/completions\/?$/i, '/models');
+    }
+
+    async function fetchProviderModels(tempConfig = {}, overrideKey = '') {
+      const p = tempConfig.provider || 'builtin';
+      if (p === 'builtin') {
+        return { ok: true, models: PROVIDER_CATALOG.builtin.models };
+      }
+      const keyStatus = await AlbayanAISecurity.getApiKeyStatus(p);
+      if (!overrideKey && PROVIDER_CATALOG[p]?.requiresKey && !keyStatus.configured) {
+        return { ok: false, category: 'auth', message: 'أدخل مفتاح API أولاً ثم اضغط تحديث النماذج.' };
+      }
+      const url = getModelsEndpoint(tempConfig);
+      if (!url) {
+        return { ok: false, category: 'config', message: 'رابط API غير محدد.' };
+      }
+
+      try {
+        const data = await performHttp(p, url, null, { method: 'GET', overrideKey, timeoutMs: 12000 });
+        let models = [];
+        if (p === 'gemini' && Array.isArray(data.models)) {
+          models = data.models
+            .filter(m => {
+              const id = String(m.name || '').replace(/^models\//, '');
+              const methods = Array.isArray(m.supportedGenerationMethods) ? m.supportedGenerationMethods : [];
+              if (!methods.includes('generateContent')) return false;
+              if (/(embedding|imagen|veo|tts|robotics|aqa)/i.test(id)) return false;
+              return /^gemini/i.test(id);
+            })
+            .map(m => {
+              const id = String(m.name || '').replace(/^models\//, '');
+              return { id, label: m.displayName ? `${m.displayName} (${id})` : id };
+            })
+            .sort((a, b) => {
+              const score = (id) => {
+                const match = id.match(/gemini-(\d+(?:\.\d+)?)/i);
+                const ver = match ? parseFloat(match[1]) : 0;
+                const bonus = /flash/i.test(id) ? 0.05 : (/pro|carbon|hydrogen/i.test(id) ? 0.03 : 0);
+                return ver + bonus;
+              };
+              return score(b.id) - score(a.id);
+            });
+        } else if (Array.isArray(data.data)) {
+          models = data.data
+            .map(m => ({ id: m.id, label: m.name ? `${m.name} (${m.id})` : m.id }))
+            .filter(m => m.id)
+            .slice(0, 60);
+        }
+
+        if (models.length === 0) {
+          return { ok: false, message: 'لم يتم العثور على نماذج نصية متاحة في هذا الحساب.' };
+        }
+        saveCachedLiveModels(p, models);
+        return { ok: true, models };
+      } catch (err) {
+        return { ok: false, category: (err && err.category) || 'network', message: (err && err.message) || 'تعذر جلب قائمة النماذج.' };
+      }
+    }
+
     async function testConnection(tempConfig = {}, overrideKey = '') {
       if (!AlbayanAISecurity.canConfigureProvider()) {
         return { ok: false, category: 'auth', message: 'اختبار وتعديل إعدادات المزود متاح لطاقم المدرسة المسجل فقط.' };
@@ -4714,12 +4815,33 @@
 
         const latencyMs = Date.now() - started;
         setConnectionState(tempConfig, 'connected', `متصل (${latencyMs}ms)`, latencyMs);
-        return { ok: true, category: 'connected', latencyMs, message: `تم التحقق من الاتصال بنجاح بمزود ${PROVIDER_CATALOG[p].shortLabel} (${model}) خلال ${latencyMs}ms.` };
+        let liveModels = null;
+        try {
+          const mRes = await fetchProviderModels(tempConfig, overrideKey);
+          if (mRes && mRes.ok) liveModels = mRes.models;
+        } catch (e) {}
+        return {
+          ok: true,
+          category: 'connected',
+          latencyMs,
+          liveModels,
+          message: `تم التحقق من الاتصال بنجاح بمزود ${PROVIDER_CATALOG[p].shortLabel} (${model}) خلال ${latencyMs}ms.`
+        };
       } catch (err) {
         const cat = (err && err.category) || 'network';
         const stateMap = { auth: 'auth_error', model: 'model_error', rate_limit: 'rate_limit' };
+        let suggestedModels = null;
+        if (cat === 'model') {
+          try {
+            const mRes = await fetchProviderModels(tempConfig, overrideKey);
+            if (mRes && mRes.ok) suggestedModels = mRes.models;
+          } catch (e) {}
+        }
         setConnectionState(tempConfig, stateMap[cat] || 'network_error', err.message || 'فشل الاختبار');
-        return { ok: false, category: cat, message: err.message || 'تعذر الاتصال بالمزود.' };
+        const msgSuffix = (suggestedModels && suggestedModels.length > 0)
+          ? ` — تم تحديث القائمة بـ ${suggestedModels.length} نموذج متاح في حسابك، اختر أول نموذج ثم احفظ.`
+          : '';
+        return { ok: false, category: cat, suggestedModels, message: (err.message || 'تعذر الاتصال بالمزود.') + msgSuffix };
       }
     }
 
@@ -4731,6 +4853,8 @@
       loadUsageStats,
       getConnectionState,
       setConnectionState,
+      getCachedLiveModels,
+      fetchProviderModels,
       sendPrompt,
       testConnection,
       _adapters: {
