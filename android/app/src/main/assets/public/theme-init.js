@@ -377,6 +377,7 @@
       }
     } catch (e) {}
   };
+  window.albayanPushOverlayHistory = window.albayanPushModalState;
 
   window.albayanHasOpenOverlay = function() {
     try {

@@ -10,6 +10,7 @@
   let activeConvId = null;
   let activeAbortController = null;
   let isGenerating = false;
+  let partialStreamedText = '';
 
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -21,10 +22,32 @@
       .replace(/'/g, '&#39;');
   }
 
+  function formatInlineMarkdown(txt) {
+    let safe = escapeHtml(txt);
+    safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) => {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    });
+    return safe
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  }
+
+  function isMarkdownTableSeparator(line) {
+    return /^\|?(\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?$/.test(line.trim());
+  }
+
+  function splitMarkdownTableRow(line) {
+    let trimmed = line.trim();
+    if (trimmed.startsWith('|')) trimmed = trimmed.slice(1);
+    if (trimmed.endsWith('|')) trimmed = trimmed.slice(0, -1);
+    return trimmed.split('|').map(c => c.trim());
+  }
+
   function renderSafeMarkdown(raw) {
     const src = String(raw || '').replace(/\r\n/g, '\n');
     const codeBlocks = [];
-    const withPlaceholders = src.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    const withPlaceholders = src.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (_, _lang, code) => {
       const idx = codeBlocks.length;
       codeBlocks.push(`<pre><code>${escapeHtml(code.trim())}</code></pre>`);
       return `\n@@CODE_BLOCK_${idx}@@\n`;
@@ -32,20 +55,13 @@
 
     const lines = withPlaceholders.split('\n');
     const out = [];
-    let inUl = false;
+    let listTag = null;
 
     const closeLists = () => {
-      if (inUl) {
-        out.push('</ul>');
-        inUl = false;
+      if (listTag) {
+        out.push(`</${listTag}>`);
+        listTag = null;
       }
-    };
-
-    const formatInline = (txt) => {
-      return escapeHtml(txt)
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>');
     };
 
     for (let i = 0; i < lines.length; i++) {
@@ -60,30 +76,53 @@
         closeLists();
         continue;
       }
+
+      // Markdown table detection: header line with pipes followed by separator line
+      if (line.includes('|') && i + 1 < lines.length && isMarkdownTableSeparator(lines[i + 1])) {
+        closeLists();
+        const headers = splitMarkdownTableRow(line);
+        i += 2;
+        const bodyRows = [];
+        while (i < lines.length && lines[i].trim().includes('|') && !isMarkdownTableSeparator(lines[i])) {
+          bodyRows.push(splitMarkdownTableRow(lines[i]));
+          i++;
+        }
+        i--; // step back so outer loop increments accurately
+        const ths = headers.map(h => `<th>${formatInlineMarkdown(h)}</th>`).join('');
+        const trs = bodyRows.map(row => `<tr>${headers.map((_, idx) => `<td>${formatInlineMarkdown(row[idx] || '')}</td>`).join('')}</tr>`).join('');
+        out.push(`<div class="ai-table-block"><div class="ai-table-scroll"><table class="ai-table"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div></div>`);
+        continue;
+      }
+
       if (line.startsWith('#### ')) {
         closeLists();
-        out.push(`<h4>${formatInline(line.slice(5))}</h4>`);
-      } else if (line.startsWith('### ') || line.startsWith('## ')) {
+        out.push(`<h4>${formatInlineMarkdown(line.slice(5))}</h4>`);
+      } else if (line.startsWith('### ')) {
         closeLists();
-        out.push(`<h3>${formatInline(line.replace(/^#{2,3}\s+/, ''))}</h3>`);
+        out.push(`<h3>${formatInlineMarkdown(line.slice(4))}</h3>`);
+      } else if (line.startsWith('## ')) {
+        closeLists();
+        out.push(`<h2>${formatInlineMarkdown(line.slice(3))}</h2>`);
       } else if (line.startsWith('> ')) {
         closeLists();
-        out.push(`<blockquote>${formatInline(line.slice(2))}</blockquote>`);
+        out.push(`<blockquote>${formatInlineMarkdown(line.slice(2))}</blockquote>`);
       } else if (/^[-•*]\s+/.test(line)) {
-        if (!inUl) {
+        if (listTag !== 'ul') {
+          closeLists();
           out.push('<ul>');
-          inUl = true;
+          listTag = 'ul';
         }
-        out.push(`<li>${formatInline(line.replace(/^[-•*]\s+/, ''))}</li>`);
+        out.push(`<li>${formatInlineMarkdown(line.replace(/^[-•*]\s+/, ''))}</li>`);
       } else if (/^\d+\.\s+/.test(line)) {
-        if (!inUl) {
-          out.push('<ul>');
-          inUl = true;
+        if (listTag !== 'ol') {
+          closeLists();
+          out.push('<ol>');
+          listTag = 'ol';
         }
-        out.push(`<li>${formatInline(line.replace(/^\d+\.\s+/, ''))}</li>`);
+        out.push(`<li>${formatInlineMarkdown(line.replace(/^\d+\.\s+/, ''))}</li>`);
       } else {
         closeLists();
-        out.push(`<p>${formatInline(line)}</p>`);
+        out.push(`<p>${formatInlineMarkdown(line)}</p>`);
       }
     }
     closeLists();
@@ -123,23 +162,54 @@
 
     const cfg = await window.AlbayanAI.Providers.loadConfig();
     const cat = window.AlbayanAI.CATALOG[cfg.provider] || window.AlbayanAI.CATALOG.builtin;
-    const online = navigator.onLine;
+    const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
     if (cfg.provider === 'builtin') {
+      if (dot) dot.className = 'ai-status-dot local';
+      txt.textContent = 'محرك محلي • بدون نموذج سحابي';
+      return;
+    }
+
+    const keyStat = await window.AlbayanAI.Security.getApiKeyStatus(cfg.provider);
+    const modelLabel = cfg.model || cat.defaultModel;
+
+    if (cat.requiresKey && !keyStat.configured) {
+      if (dot) dot.className = 'ai-status-dot offline';
+      txt.textContent = `${cat.shortLabel} • بانتظار مفتاح API`;
+      return;
+    }
+
+    if (cfg.provider === 'custom' && (!cfg.customEndpoint || !cfg.customEndpoint.trim())) {
+      if (dot) dot.className = 'ai-status-dot error';
+      txt.textContent = `${cat.shortLabel} • ينقص رابط API`;
+      return;
+    }
+
+    if (!online) {
+      if (dot) dot.className = 'ai-status-dot offline';
+      txt.textContent = `غير متصل بالإنترنت • ${cat.shortLabel}`;
+      return;
+    }
+
+    const conn = window.AlbayanAI.Providers.getConnectionState(cfg);
+    if (conn.state === 'connected') {
       if (dot) dot.className = 'ai-status-dot';
-      txt.textContent = `متصل • ${cat.label}`;
+      txt.textContent = `متصل • ${modelLabel}`;
+    } else if (conn.state === 'auth_error') {
+      if (dot) dot.className = 'ai-status-dot error';
+      txt.textContent = `خطأ مصادقة • ${cat.shortLabel}`;
+    } else if (conn.state === 'model_error') {
+      if (dot) dot.className = 'ai-status-dot error';
+      txt.textContent = `خطأ في النموذج • ${modelLabel}`;
+    } else if (conn.state === 'rate_limit') {
+      if (dot) dot.className = 'ai-status-dot error';
+      txt.textContent = `تجاوز الحصة • ${cat.shortLabel}`;
+    } else if (conn.state === 'network_error') {
+      if (dot) dot.className = 'ai-status-dot error';
+      txt.textContent = `تعذر الاتصال • ${cat.shortLabel}`;
     } else {
-      const keyStat = await window.AlbayanAI.Security.getApiKeyStatus(cfg.provider);
-      if (!keyStat.configured) {
-        if (dot) dot.className = 'ai-status-dot offline';
-        txt.textContent = `${cat.label} (بدون مفتاح — يعمل الاحتياطي المدمج)`;
-      } else if (!online) {
-        if (dot) dot.className = 'ai-status-dot offline';
-        txt.textContent = `بدون إنترنت — يعمل المحرك المحلي`;
-      } else {
-        if (dot) dot.className = 'ai-status-dot';
-        txt.textContent = `متصل • ${cfg.model || cat.defaultModel}`;
-      }
+      if (dot) dot.className = 'ai-status-dot offline';
+      txt.textContent = `غير مختبر • ${modelLabel}`;
     }
   }
 
@@ -176,7 +246,7 @@
         </div>
       `).join('');
       const undoBtn = (card.reversible && card.auditId && !card.undone)
-        ? `<button type="button" class="ai-btn-mini ai-undo-op-btn" data-audit-id="${escapeHtml(card.auditId)}">تراجع عن التعديل</button>`
+        ? `<button type="button" class="ai-btn-mini ai-undo-op-btn" data-audit-id="${escapeHtml(card.auditId)}">تراجع</button>`
         : (card.undone ? `<span style="font-size:11.5px; color:var(--ai-muted);">تم التراجع ✓</span>` : '');
       return `
         <div class="ai-op-card">
@@ -262,7 +332,13 @@
         : '';
 
       const toolsHtml = (Array.isArray(m.executedTools) && m.executedTools.length > 0)
-        ? `<div class="ai-tools-strip">${m.executedTools.map(t => `<span class="ai-tool-chip ${t.ok ? '' : 'fail'}">${t.ok ? '✓' : '!'} ${escapeHtml(t.label || t.name)}</span>`).join('')}</div>`
+        ? `<div class="ai-tools-strip">${m.executedTools.map(t => {
+            const st = t.status || (t.ok ? 'ok' : 'fail');
+            const cls = st === 'pending' ? 'pending' : (st === 'fail' ? 'fail' : '');
+            const icon = st === 'pending' ? '!' : (st === 'fail' ? '✕' : '✓');
+            const titleAttr = t.error ? ` title="${escapeHtml(t.error)}"` : '';
+            return `<span class="ai-tool-chip ${cls}"${titleAttr}>${icon} ${escapeHtml(t.label || t.name)}</span>`;
+          }).join('')}</div>`
         : '';
 
       const tablesHtml = renderTablesHtml(m.tables);
@@ -272,12 +348,25 @@
         ? ` • ${m.usage.totalTokens} رمز`
         : '';
 
+      const bodyHtml = m.isError
+        ? `<div class="ai-error-card">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+             <div class="ai-markdown">${renderSafeMarkdown(m.content)}</div>
+           </div>`
+        : `<div class="ai-markdown">${renderSafeMarkdown(m.content)}</div>`;
+
       return `
-        <div class="ai-msg-row assistant">
+        <div class="ai-msg-row assistant ${m.isError ? 'is-error' : ''}">
+          <div class="ai-assistant-sender">
+            <span class="ai-assistant-badge" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path></svg>
+            </span>
+            <span>مساعد البيان</span>
+          </div>
           <div class="ai-bubble">
             ${fallbackHtml}
             ${toolsHtml}
-            <div class="ai-markdown">${renderSafeMarkdown(m.content)}</div>
+            ${bodyHtml}
             ${tablesHtml}
             ${cardsHtml}
             ${confirmsHtml}
@@ -339,8 +428,8 @@
           scrollChatToBottom();
         } else {
           btn.disabled = false;
-          btn.textContent = 'تراجع عن التعديل';
-          alert((res && res.message) || 'تعذر التراجع عن العملية.');
+          btn.textContent = 'تراجع';
+          if (window.AlbayanDialog) window.AlbayanDialog.alert((res && res.message) || 'تعذر التراجع عن العملية.', 'تنبيه', 'warning');
         }
       });
     });
@@ -364,6 +453,7 @@
         if (curConv) {
           curConv.messages.push({
             role: 'assistant',
+            isError: !res.ok,
             content: res.ok ? `تم تنفيذ العملية بنجاح: **${conf.operationTitle}**` : (res.error || res.message || 'تعذر تنفيذ العملية المؤكدة.'),
             operationCards: res.operationCard ? [res.operationCard] : [],
             timestamp: new Date().toISOString()
@@ -392,7 +482,7 @@
     scrollChatToBottom();
   }
 
-  function showThinkingIndicator(statusLabel) {
+  function showThinkingIndicator(statusLabel, streamText = '') {
     const container = document.getElementById('aiMessagesContainer');
     const welcome = document.getElementById('aiWelcomeScreen');
     if (!container) return;
@@ -404,17 +494,41 @@
       el = document.createElement('div');
       el.id = 'aiActiveThinkingRow';
       el.className = 'ai-thinking-bar';
-      el.innerHTML = `<div class="ai-pulse-dots"><span></span><span></span><span></span></div><span id="aiThinkingLabel"></span>`;
+      el.innerHTML = `
+        <div class="ai-thinking-head">
+          <div class="ai-pulse-dots"><span></span><span></span><span></span></div>
+          <span id="aiThinkingLabel"></span>
+        </div>
+        <div id="aiStreamPreview" class="ai-stream-preview ai-markdown" style="display:none;"></div>
+      `;
       container.appendChild(el);
     }
     const labelEl = document.getElementById('aiThinkingLabel');
-    if (labelEl) labelEl.textContent = statusLabel || 'جاري التفكير والتحقق من البيانات...';
+    if (labelEl && statusLabel) labelEl.textContent = statusLabel;
+    const previewEl = document.getElementById('aiStreamPreview');
+    if (previewEl) {
+      if (streamText) {
+        previewEl.style.display = 'block';
+        previewEl.innerHTML = renderSafeMarkdown(streamText);
+      } else {
+        previewEl.style.display = 'none';
+        previewEl.innerHTML = '';
+      }
+    }
     scrollChatToBottom();
   }
 
   function removeThinkingIndicator() {
     const el = document.getElementById('aiActiveThinkingRow');
     if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function syncSendBtnState() {
+    const input = document.getElementById('aiPromptInput');
+    const sendBtn = document.getElementById('aiSendBtn');
+    if (sendBtn && input) {
+      sendBtn.disabled = isGenerating || input.value.trim().length === 0;
+    }
   }
 
   function setGeneratingUI(active) {
@@ -425,6 +539,7 @@
     if (sendBtn) sendBtn.style.display = active ? 'none' : 'inline-flex';
     if (stopBtn) stopBtn.style.display = active ? 'inline-flex' : 'none';
     if (input && !active) input.disabled = false;
+    syncSendBtnState();
   }
 
   async function handleUserSend(explicitText = null) {
@@ -458,8 +573,9 @@
     renderHistoryDrawer();
 
     activeAbortController = new AbortController();
+    partialStreamedText = '';
     setGeneratingUI(true);
-    showThinkingIndicator('جاري قراءة سياق المدرسة والبدء...');
+    showThinkingIndicator('جاري معالجة الطلب...');
 
     try {
       const priorMsgs = window.AlbayanAI.Memory.compressHistoryForModel({
@@ -470,7 +586,11 @@
       const response = await window.AlbayanAI.Providers.sendPrompt(priorMsgs, prompt, {
         conversationId: conv.id,
         signal: activeAbortController.signal,
-        onProgress: (stepText) => showThinkingIndicator(stepText)
+        onProgress: (stepText) => showThinkingIndicator(stepText, partialStreamedText),
+        onStreamDelta: (fullText) => {
+          partialStreamedText = fullText;
+          showThinkingIndicator('جاري كتابة الرد...', partialStreamedText);
+        }
       });
 
       removeThinkingIndicator();
@@ -488,22 +608,27 @@
       conv.updatedAt = new Date().toISOString();
       await saveConversationsState();
       renderMessages();
-      updateStatusHeader();
+      await updateStatusHeader();
     } catch (err) {
       removeThinkingIndicator();
-      const aborted = err && (err.message === 'ABORTED' || err.name === 'AbortError');
+      const aborted = err && (err.category === 'aborted' || err.message === 'ABORTED' || err.name === 'AbortError');
+      const content = aborted
+        ? (partialStreamedText ? `${partialStreamedText}\n\n*(تم إيقاف التوليد بناءً على طلبك)*` : 'تم إيقاف التوليد بناءً على طلبك.')
+        : ((err && err.message) || 'تعذر إتمام الطلب بسبب خطأ غير متوقع في الاتصال.');
+
       conv.messages.push({
         role: 'assistant',
-        content: aborted
-          ? 'تم إيقاف التوليد بناءً على طلبك.'
-          : `تعذر إتمام الطلب: **${(err && err.message) || 'خطأ غير متوقع في الاتصال'}**\nيمكنك إعادة المحاولة أو مراجعة إعدادات المزود.`,
+        isError: !aborted,
+        content,
         timestamp: new Date().toISOString()
       });
       conv.updatedAt = new Date().toISOString();
       await saveConversationsState();
       renderMessages();
+      await updateStatusHeader();
     } finally {
       activeAbortController = null;
+      partialStreamedText = '';
       setGeneratingUI(false);
     }
   }
@@ -556,8 +681,10 @@
         const cid = btn.dataset.convId;
         const target = conversations.find(x => x.id === cid);
         if (!target) return;
-        const nextTitle = window.prompt('أدخل الاسم الجديد للمحادثة:', target.title || '');
-        if (nextTitle && nextTitle.trim()) {
+        const nextTitle = window.AlbayanDialog
+          ? await window.AlbayanDialog.prompt('أدخل الاسم الجديد للمحادثة:', target.title || '', 'تسمية المحادثة')
+          : null;
+        if (typeof nextTitle === 'string' && nextTitle.trim()) {
           target.title = nextTitle.trim().slice(0, 60);
           target.updatedAt = new Date().toISOString();
           await saveConversationsState();
@@ -569,7 +696,10 @@
     listEl.querySelectorAll('.ai-delete-conv-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const cid = btn.dataset.convId;
-        if (!window.confirm('هل تريد حذف هذه المحادثة نهائياً؟')) return;
+        const confirmed = window.AlbayanDialog
+          ? await window.AlbayanDialog.confirm('هل تريد حذف هذه المحادثة نهائياً؟', 'حذف المحادثة', { isDestructive: true, confirmText: 'نعم، حذف' })
+          : false;
+        if (!confirmed) return;
         conversations = conversations.filter(x => x.id !== cid);
         if (activeConvId === cid) {
           activeConvId = conversations[0] ? conversations[0].id : null;
@@ -606,7 +736,7 @@
     if (matched) {
       sel.value = selectedModel;
       if (customInput) customInput.value = '';
-    } else if (selectedModel) {
+    } else if (selectedModel && providerId !== 'builtin') {
       sel.value = cat.defaultModel;
       if (customInput) customInput.value = selectedModel;
     } else {
@@ -614,10 +744,23 @@
       if (customInput) customInput.value = '';
     }
 
+    const isLocal = providerId === 'builtin';
+    const showKey = !isLocal;
+    const showEndpoint = !isLocal;
     const keyGroup = document.getElementById('aiCfgKeyGroup');
-    if (keyGroup) keyGroup.style.display = providerId === 'builtin' ? 'none' : 'block';
+    if (keyGroup) keyGroup.style.display = showKey ? 'block' : 'none';
     const epGroup = document.getElementById('aiCfgEndpointGroup');
-    if (epGroup) epGroup.style.display = (providerId === 'builtin') ? 'none' : 'block';
+    if (epGroup) epGroup.style.display = showEndpoint ? 'block' : 'none';
+    const localHint = document.getElementById('aiLocalProviderHint');
+    if (localHint) localHint.style.display = isLocal ? 'block' : 'none';
+    const customModelEl = document.getElementById('aiCfgModelCustom');
+    if (customModelEl) customModelEl.style.display = isLocal ? 'none' : 'block';
+    const r1 = document.getElementById('aiCfgParamsRow1');
+    if (r1) r1.style.display = isLocal ? 'none' : 'grid';
+    const r2 = document.getElementById('aiCfgParamsRow2');
+    if (r2) r2.style.display = isLocal ? 'none' : 'grid';
+    const fbGrp = document.getElementById('aiCfgFallbackGroup');
+    if (fbGrp) fbGrp.style.display = isLocal ? 'none' : 'flex';
   }
 
   async function refreshKeyStatusLabel(providerId) {
@@ -639,9 +782,21 @@
     const cfg = await window.AlbayanAI.Providers.loadConfig();
     const usage = await window.AlbayanAI.Providers.loadUsageStats();
 
-    document.getElementById('aiUsageTokens').textContent = (usage.totalTokens || 0).toLocaleString();
-    document.getElementById('aiUsageCost').textContent = `$${Number(usage.estimatedCostUsd || 0).toFixed(4)}`;
-    document.getElementById('aiUsageCount').textContent = String(usage.requestsCount || 0);
+    const usageBox = document.getElementById('aiUsageBox');
+    const costWrap = document.getElementById('aiUsageCostWrap');
+    if (usageBox) {
+      if (usage.requestsCount > 0 && usage.totalTokens > 0) {
+        usageBox.style.display = 'flex';
+        document.getElementById('aiUsageTokens').textContent = usage.totalTokens.toLocaleString();
+        document.getElementById('aiUsageCount').textContent = String(usage.requestsCount);
+        if (costWrap) {
+          costWrap.style.display = usage.hasKnownCost ? 'inline' : 'none';
+          document.getElementById('aiUsageCost').textContent = `$${Number(usage.estimatedCostUsd || 0).toFixed(4)}`;
+        }
+      } else {
+        usageBox.style.display = 'none';
+      }
+    }
 
     const pSel = document.getElementById('aiCfgProvider');
     const tempEl = document.getElementById('aiCfgTemp');
@@ -649,6 +804,7 @@
     const maxEl = document.getElementById('aiCfgMaxTokens');
     const limitEl = document.getElementById('aiCfgDailyLimit');
     const epEl = document.getElementById('aiCfgEndpoint');
+    const fbEl = document.getElementById('aiCfgFallbackBuiltin');
     const keyInput = document.getElementById('aiCfgApiKey');
     const nonAdminNotice = document.getElementById('aiNonAdminNotice');
     const saveBtn = document.getElementById('aiSaveCfgBtn');
@@ -662,13 +818,14 @@
     if (thinkEl) thinkEl.value = cfg.thinkingBudget ?? 1024;
     if (maxEl) maxEl.value = cfg.maxTokens ?? 2048;
     if (limitEl) limitEl.value = cfg.dailyTokenLimit ?? 250000;
+    if (fbEl) fbEl.checked = !!cfg.fallbackToBuiltin;
     if (keyInput) keyInput.value = '';
     if (resBox) resBox.style.display = 'none';
 
     await refreshKeyStatusLabel(cfg.provider);
 
     if (nonAdminNotice) nonAdminNotice.style.display = canEdit ? 'none' : 'block';
-    ['aiCfgProvider', 'aiCfgModelSelect', 'aiCfgModelCustom', 'aiCfgApiKey', 'aiCfgEndpoint', 'aiCfgTemp', 'aiCfgThinking', 'aiCfgMaxTokens', 'aiCfgDailyLimit'].forEach(id => {
+    ['aiCfgProvider', 'aiCfgModelSelect', 'aiCfgModelCustom', 'aiCfgApiKey', 'aiCfgEndpoint', 'aiCfgTemp', 'aiCfgThinking', 'aiCfgMaxTokens', 'aiCfgDailyLimit', 'aiCfgFallbackBuiltin'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.disabled = !canEdit;
     });
@@ -698,19 +855,23 @@
     }
     renderMessages();
     renderHistoryDrawer();
-    updateStatusHeader();
+    await updateStatusHeader();
 
     const promptInput = document.getElementById('aiPromptInput');
     if (promptInput) {
       promptInput.addEventListener('input', () => {
         promptInput.style.height = 'auto';
         promptInput.style.height = Math.min(promptInput.scrollHeight, 120) + 'px';
+        syncSendBtnState();
       });
       promptInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey && window.innerWidth >= 768) {
           e.preventDefault();
           handleUserSend();
         }
+      });
+      promptInput.addEventListener('focus', () => {
+        setTimeout(scrollChatToBottom, 180);
       });
     }
 
@@ -740,6 +901,8 @@
       const p = e.target.value;
       syncModelOptions(p);
       await refreshKeyStatusLabel(p);
+      const resBox = document.getElementById('aiTestResultBox');
+      if (resBox) resBox.style.display = 'none';
     });
 
     const readModalConfig = () => {
@@ -753,7 +916,8 @@
         temperature: Number(document.getElementById('aiCfgTemp')?.value ?? 0.2),
         thinkingBudget: Number(document.getElementById('aiCfgThinking')?.value ?? 1024),
         maxTokens: Number(document.getElementById('aiCfgMaxTokens')?.value ?? 2048),
-        dailyTokenLimit: Number(document.getElementById('aiCfgDailyLimit')?.value ?? 250000)
+        dailyTokenLimit: Number(document.getElementById('aiCfgDailyLimit')?.value ?? 250000),
+        fallbackToBuiltin: !!document.getElementById('aiCfgFallbackBuiltin')?.checked
       };
     };
 
@@ -772,6 +936,7 @@
         resBox.style.color = res.ok ? 'var(--ai-ok-fg)' : 'var(--ai-danger-fg)';
         resBox.textContent = res.message;
       }
+      await updateStatusHeader();
     });
 
     document.getElementById('aiSaveCfgBtn')?.addEventListener('click', async () => {
@@ -784,17 +949,33 @@
         await window.AlbayanAI.Providers.saveConfig(nextCfg);
         await updateStatusHeader();
         closeProviderSettingsModal();
+        if (window.AlbayanDialog && typeof window.AlbayanDialog.toast === 'function') {
+          window.AlbayanDialog.toast(
+            nextCfg.provider === 'builtin'
+              ? 'تم حفظ الإعدادات (المحرك المحلي)'
+              : 'تم حفظ الإعدادات — استخدم "اختبار الاتصال" للتحقق من المزود',
+            'info'
+          );
+        }
       } catch (err) {
-        alert((err && err.message) || 'تعذر حفظ إعدادات المزود.');
+        if (window.AlbayanDialog) window.AlbayanDialog.alert((err && err.message) || 'تعذر حفظ إعدادات المزود.', 'خطأ', 'danger');
       }
     });
 
+    window.addEventListener('online', updateStatusHeader);
+    window.addEventListener('offline', updateStatusHeader);
+
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => {
+      const syncViewport = () => {
         const shell = document.getElementById('aiAppShell');
         if (shell) shell.style.height = `${window.visualViewport.height}px`;
+        if (window.scrollY !== 0) window.scrollTo(0, 0);
         scrollChatToBottom();
-      });
+      };
+      window.visualViewport.addEventListener('resize', syncViewport);
+      window.visualViewport.addEventListener('scroll', syncViewport);
     }
+
+    syncSendBtnState();
   });
 })();

@@ -7,11 +7,11 @@
   <script src="theme-init.js"></script>
   <link rel="stylesheet" href="style.css?v=2.7">
   <link rel="stylesheet" href="dark_theme.css?v=3.0">
-  <link rel="stylesheet" href="albayan_ai.css?v=1.0">
+  <link rel="stylesheet" href="albayan_ai.css?v=2.0">
 </head>
 <body class="ai-page">
   <div class="ai-shell" id="aiAppShell">
-    <!-- Top App Bar -->
+    <!-- Compact Top Header -->
     <header class="ai-top-bar">
       <div class="ai-top-brand">
         <a href="more.html" class="ai-icon-btn" id="aiBackBtn" aria-label="العودة" title="العودة">
@@ -20,19 +20,17 @@
           </svg>
         </a>
         <div class="ai-brand-icon" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path>
             <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path>
             <path d="M12 5v14"></path>
-            <circle cx="9" cy="12" r="1"></circle>
-            <circle cx="15" cy="12" r="1"></circle>
           </svg>
         </div>
         <div class="ai-brand-titles">
-          <h1>مساعد البيان الذكي</h1>
+          <h1>مساعد البيان</h1>
           <div class="ai-status-pill" id="aiConnectionBadge">
-            <span class="ai-status-dot" id="aiStatusDot"></span>
-            <span id="aiStatusText">جاهز • المحرك المدمج</span>
+            <span class="ai-status-dot local" id="aiStatusDot"></span>
+            <span id="aiStatusText">جاري التحقق...</span>
           </div>
         </div>
       </div>
@@ -51,7 +49,7 @@
             <path d="M12 7v5l4 2"></path>
           </svg>
         </button>
-        <button type="button" class="ai-icon-btn" id="aiOpenSettingsBtn" aria-label="إعدادات المزود والنموذج" title="إعدادات النموذج والمزود">
+        <button type="button" class="ai-icon-btn" id="aiOpenSettingsBtn" aria-label="إعدادات المزود" title="إعدادات المزود">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"></path>
@@ -60,54 +58,44 @@
       </div>
     </header>
 
-    <!-- Scrollable Chat Stream & Empty Welcome -->
+    <!-- Scrollable Chat Stream & Welcome State -->
     <main class="ai-chat-scroll" id="aiChatScroll">
       <div class="ai-chat-inner" id="aiChatInner">
         <section class="ai-welcome-screen" id="aiWelcomeScreen">
           <div class="ai-welcome-badge" aria-hidden="true">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path>
               <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path>
               <path d="M12 5v14"></path>
-              <circle cx="9" cy="12" r="1"></circle>
-              <circle cx="15" cy="12" r="1"></circle>
             </svg>
           </div>
-          <h2>مرحباً بك في مساعد البيان الذكي</h2>
-          <p>مساعدك الذكي لإدارة المدرسة وتحليل بياناتها واكتشاف الأخطاء وتنفيذ المهام.</p>
+          <h2>مساعد البيان الإداري</h2>
+          <p>إدارة الحلقات والطلاب، استخراج الإحصائيات الفعلية، واكتشاف الأخطاء في بيانات المدرسة.</p>
 
           <div class="ai-suggestions-grid" id="aiSuggestionsGrid">
-            <button type="button" class="ai-suggestion-card" data-prompt="حلل أداء الحلقات القرآنية">
-              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg></span>
-              <span>حلل أداء الحلقات القرآنية</span>
+            <button type="button" class="ai-suggestion-card" data-prompt="كم عدد الحلقات القرآنية المسجلة؟">
+              <span class="ai-suggestion-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
+              </span>
+              <span>كم عدد الحلقات القرآنية؟</span>
             </button>
-            <button type="button" class="ai-suggestion-card" data-prompt="اكتشف الأخطاء في إحصائيات الطلاب ولماذا يختلف العدد">
-              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></span>
-              <span>اكتشف الأخطاء في إحصائيات الطلاب</span>
+            <button type="button" class="ai-suggestion-card" data-prompt="أعطني إحصائيات الطلاب والأداء الحالية">
+              <span class="ai-suggestion-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>
+              </span>
+              <span>إحصائيات الطلاب والأداء</span>
             </button>
-            <button type="button" class="ai-suggestion-card" data-prompt="أعطني تقريراً مفصلاً عن الطلاب">
-              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></span>
-              <span>أعطني تقريراً عن الطلاب</span>
-            </button>
-            <button type="button" class="ai-suggestion-card" data-prompt="راجع بيانات المعلمين وتوزيع الحلقات">
-              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path></svg></span>
-              <span>راجع بيانات المعلمين</span>
-            </button>
-            <button type="button" class="ai-suggestion-card" data-prompt="ساعدني في إنشاء حلقة قرآنية جديدة">
-              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg></span>
-              <span>أنشئ حلقة قرآنية جديدة</span>
-            </button>
-            <button type="button" class="ai-suggestion-card" data-prompt="ابحث عن أي مشكلة أو تناقض في سجلات المدرسة">
-              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
-              <span>ابحث عن مشكلة في سجلات المدرسة</span>
+            <button type="button" class="ai-suggestion-card" data-prompt="اكتشف الأخطاء والتناقضات في بيانات المدرسة">
+              <span class="ai-suggestion-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              </span>
+              <span>فحص أخطاء وتناقضات البيانات</span>
             </button>
             <button type="button" class="ai-suggestion-card" data-prompt="أنشئ تقريراً إدارياً شاملاً عن المدرسة">
-              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></span>
-              <span>أنشئ تقريراً إدارياً</span>
-            </button>
-            <button type="button" class="ai-suggestion-card" data-prompt="ساعدني في تعديل بيانات أو درجات طالب">
-              <span class="ai-suggestion-icon" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></span>
-              <span>ساعدني في تعديل بيانات طالب</span>
+              <span class="ai-suggestion-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              </span>
+              <span>تقرير إداري شامل للمدرسة</span>
             </button>
           </div>
         </section>
@@ -116,17 +104,17 @@
       </div>
     </main>
 
-    <!-- Fixed Bottom Composer -->
+    <!-- Anchored Bottom Composer -->
     <footer class="ai-composer-bar" id="aiComposerBar">
       <div class="ai-composer-inner">
-        <textarea id="aiPromptInput" rows="1" placeholder="اكتب أمرك الإداري أو سؤالك لمساعد البيان..." aria-label="اكتب رسالتك هنا"></textarea>
+        <textarea id="aiPromptInput" rows="1" enterkeyhint="send" placeholder="اكتب رسالتك أو أمرك الإداري هنا..." aria-label="اكتب رسالتك هنا"></textarea>
         <button type="button" class="ai-composer-btn stop" id="aiStopBtn" style="display:none;" aria-label="إيقاف التوليد" title="إيقاف التوليد">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <rect x="6" y="6" width="12" height="12" rx="2"></rect>
           </svg>
         </button>
-        <button type="button" class="ai-composer-btn" id="aiSendBtn" aria-label="إرسال" title="إرسال">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button type="button" class="ai-composer-btn" id="aiSendBtn" disabled aria-label="إرسال" title="إرسال">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="22" y1="2" x2="11" y2="13"></line>
             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
           </svg>
@@ -162,21 +150,25 @@
         صلاحية تعديل إعدادات المزود ومفاتيح API مخصصة لمدير النظام فقط. يمكنك عرض الحالة الحالية هنا.
       </div>
 
-      <div class="ai-usage-box" id="aiUsageBox">
-        <span>إجمالي الرموز المستهلكة: <strong id="aiUsageTokens">0</strong></span>
-        <span>التكلفة التقديرية: <strong id="aiUsageCost">$0.000</strong></span>
+      <div class="ai-usage-box" id="aiUsageBox" style="display:none;">
+        <span>الرموز المستهلكة: <strong id="aiUsageTokens">0</strong></span>
+        <span id="aiUsageCostWrap" style="display:none;">التكلفة التقديرية: <strong id="aiUsageCost">$0.000</strong></span>
         <span>الطلبات: <strong id="aiUsageCount">0</strong></span>
       </div>
 
       <div class="ai-form-group">
         <label for="aiCfgProvider">مزود الذكاء الاصطناعي</label>
         <select id="aiCfgProvider" class="ai-form-control">
-          <option value="builtin">محرك البيان الذكي المدمج (مجاني ومحلي)</option>
+          <option value="builtin">محرك البيان المحلي (بدون سحابة ذكاء اصطناعي)</option>
           <option value="gemini">Google Gemini API</option>
           <option value="openai">OpenAI API</option>
           <option value="anthropic">Anthropic Claude API</option>
           <option value="custom">مزود متوافق مع OpenAI (Custom URL)</option>
         </select>
+      </div>
+
+      <div id="aiLocalProviderHint" class="ai-info-hint" style="display:none;">
+        هذا الخيار محلي بالكامل (قواعد لغوية + قاعدة بيانات المدرسة) ولا يتصل بأي نموذج ذكاء اصطناعي خارجي.
       </div>
 
       <div class="ai-form-group">
@@ -191,11 +183,11 @@
       </div>
 
       <div class="ai-form-group" id="aiCfgEndpointGroup">
-        <label for="aiCfgEndpoint">عنوان API مخصص (عند الحاجة)</label>
-        <input type="url" id="aiCfgEndpoint" class="ai-form-control" placeholder="https://...">
+        <label for="aiCfgEndpoint">عنوان API (مطلوب للمزود المخصص)</label>
+        <input type="url" id="aiCfgEndpoint" class="ai-form-control" dir="ltr" placeholder="https://api.example.com/v1/chat/completions">
       </div>
 
-      <div class="ai-form-row-2">
+      <div class="ai-form-row-2" id="aiCfgParamsRow1">
         <div class="ai-form-group">
           <label for="aiCfgTemp">درجة الإبداع (0 - 1)</label>
           <input type="number" id="aiCfgTemp" class="ai-form-control" min="0" max="1" step="0.1" value="0.2">
@@ -206,18 +198,23 @@
         </div>
       </div>
 
-      <div class="ai-form-row-2">
+      <div class="ai-form-row-2" id="aiCfgParamsRow2">
         <div class="ai-form-group">
           <label for="aiCfgMaxTokens">الحد الأقصى للإجابة</label>
           <input type="number" id="aiCfgMaxTokens" class="ai-form-control" min="256" max="16384" step="256" value="2048">
         </div>
         <div class="ai-form-group">
-          <label for="aiCfgDailyLimit">الحد الأقصى لاستهلاك الرموز</label>
+          <label for="aiCfgDailyLimit">حد الرموز</label>
           <input type="number" id="aiCfgDailyLimit" class="ai-form-control" min="1000" max="10000000" step="5000" value="250000">
         </div>
       </div>
 
-      <div id="aiTestResultBox" style="display:none; margin-bottom:12px; padding:10px; border-radius:10px; font-size:12.5px; font-weight:600;"></div>
+      <div class="ai-form-group" id="aiCfgFallbackGroup" style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="aiCfgFallbackBuiltin" style="width:18px; height:18px; accent-color:var(--ai-primary);">
+        <label for="aiCfgFallbackBuiltin" style="margin:0; font-weight:600; font-size:12.5px; cursor:pointer;">التبديل التلقائي للمحرك المحلي عند فشل المزود الخارجي</label>
+      </div>
+
+      <div id="aiTestResultBox" style="display:none; margin-bottom:12px; padding:10px 12px; border-radius:10px; font-size:12.5px; font-weight:600; line-height:1.5;"></div>
 
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button type="button" class="ai-btn-secondary" id="aiTestConnBtn" style="flex:1;">اختبار الاتصال</button>
@@ -229,7 +226,7 @@
   <script src="albayan_dialog.js?v=2.0"></script>
   <script src="mobile-db.js?v=3.0"></script>
   <script src="firebase-client.js?v=4.0"></script>
-  <script src="albayan_ai_engine.js?v=1.0"></script>
-  <script src="albayan_ai.js?v=1.0"></script>
+  <script src="albayan_ai_engine.js?v=2.0"></script>
+  <script src="albayan_ai.js?v=2.0"></script>
 </body>
 </html>

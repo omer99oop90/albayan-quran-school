@@ -57,6 +57,8 @@ public class AlbayanExportPlugin extends Plugin {
     private static final String SUBFOLDER = "AlbayanCertificates";
     private static final String AI_VAULT_PREFS = "albayan_ai_secure_vault";
     private final ExecutorService aiHttpExecutor = Executors.newCachedThreadPool();
+    private final java.util.concurrent.ConcurrentHashMap<String, HttpURLConnection> activeAiConnections = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Set<String> cancelledAiRequests = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
 
     private enum SaveTarget {
         GALLERY,
@@ -477,6 +479,29 @@ public class AlbayanExportPlugin extends Plugin {
     }
 
     /**
+     * Cancel an active native AI HTTP request by requestId.
+     */
+    @PluginMethod
+    public void cancelAiHttp(PluginCall call) {
+        String requestId = call.getString("requestId", "");
+        if (requestId != null && !requestId.trim().isEmpty()) {
+            String rid = requestId.trim();
+            cancelledAiRequests.add(rid);
+            HttpURLConnection conn = activeAiConnections.remove(rid);
+            if (conn != null) {
+                aiHttpExecutor.execute(() -> {
+                    try {
+                        conn.disconnect();
+                    } catch (Exception ignored) {}
+                });
+            }
+        }
+        JSObject res = new JSObject();
+        res.put("ok", true);
+        call.resolve(res);
+    }
+
+    /**
      * Perform HTTPS AI provider requests from native layer with vault-injected credentials.
      */
     @PluginMethod
@@ -487,8 +512,9 @@ public class AlbayanExportPlugin extends Plugin {
         final String body = call.getString("body", "");
         final JSObject extraHeaders = call.getObject("headers", new JSObject());
         final Integer timeoutObj = call.getInt("timeoutMs", 45000);
-        final int timeoutMs = timeoutObj != null ? Math.max(5000, Math.min(timeoutObj, 120000)) : 45000;
+        final int timeoutMs = timeoutObj != null ? Math.max(4000, Math.min(timeoutObj, 120000)) : 45000;
         final String overrideKey = call.getString("overrideApiKey", "");
+        final String requestId = call.getString("requestId", "req_" + System.currentTimeMillis());
 
         if (targetUrl == null || (!targetUrl.startsWith("https://") && !targetUrl.startsWith("http://"))) {
             call.reject("Invalid target URL for AI proxy");
@@ -509,8 +535,18 @@ public class AlbayanExportPlugin extends Plugin {
         aiHttpExecutor.execute(() -> {
             HttpURLConnection conn = null;
             try {
+                if (cancelledAiRequests.contains(requestId)) {
+                    JSObject abortRes = new JSObject();
+                    abortRes.put("ok", false);
+                    abortRes.put("status", 0);
+                    abortRes.put("aborted", true);
+                    abortRes.put("error", "ABORTED");
+                    call.resolve(abortRes);
+                    return;
+                }
                 URL url = new URL(targetUrl);
                 conn = (HttpURLConnection) url.openConnection();
+                activeAiConnections.put(requestId, conn);
                 conn.setRequestMethod(method);
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(timeoutMs);
@@ -560,7 +596,10 @@ public class AlbayanExportPlugin extends Plugin {
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
                         String line;
                         while ((line = br.readLine()) != null) {
-                            sb.append(line);
+                            if (cancelledAiRequests.contains(requestId)) {
+                                throw new IOException("ABORTED");
+                            }
+                            sb.append(line).append('\n');
                         }
                     }
                 }
@@ -568,17 +607,23 @@ public class AlbayanExportPlugin extends Plugin {
                 JSObject res = new JSObject();
                 res.put("ok", status >= 200 && status < 300);
                 res.put("status", status);
-                res.put("data", sb.toString());
+                res.put("data", sb.toString().trim());
                 call.resolve(res);
             } catch (Exception e) {
+                boolean wasCancelled = cancelledAiRequests.contains(requestId) || "ABORTED".equals(e.getMessage());
                 JSObject errRes = new JSObject();
                 errRes.put("ok", false);
                 errRes.put("status", 0);
-                errRes.put("error", e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "Connection failed"));
+                errRes.put("aborted", wasCancelled);
+                errRes.put("error", wasCancelled ? "ABORTED" : (e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "Connection failed")));
                 call.resolve(errRes);
             } finally {
+                activeAiConnections.remove(requestId);
+                cancelledAiRequests.remove(requestId);
                 if (conn != null) {
-                    conn.disconnect();
+                    try {
+                        conn.disconnect();
+                    } catch (Exception ignored) {}
                 }
             }
         });
