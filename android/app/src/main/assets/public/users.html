@@ -4,23 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
   <meta name="csrf-token" content="">
-  <title>إدارة الحسابات والمستخدمين - مدرسة البيان</title>
+  <title>إدارة المستخدمين والحسابات - مدرسة البيان</title>
   <script src="theme-init.js"></script>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="dark_theme.css?v=2.2">
-  <link rel="stylesheet" href="circles.css">
-  <link rel="stylesheet" href="users.css?v=3.0">
+  <link rel="stylesheet" href="style.css?v=2.7">
+  <link rel="stylesheet" href="dark_theme.css?v=3.0">
+  <link rel="stylesheet" href="users.css?v=4.0">
   <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
   <!-- Lucide Icons (Local with CDN fallback) -->
   <script src="lucide.min.js"></script>
   <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
 </head>
-<body>
+<body class="wa-users-page">
   <div class="app-layout">
-    <!-- Sidebar Navigation -->
+    <!-- Desktop Sidebar Navigation -->
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <span class="brand-icon" style="display:inline-flex; align-items:center; justify-content:center;"><img src="logo.png" alt="شعار مدرسة البيان" style="width:48px; height:48px; object-fit:contain; filter: brightness(0) invert(1);"></span>
+        <span class="brand-icon" style="display:inline-flex; align-items:center; justify-content:center;">
+          <img src="logo.png" alt="شعار مدرسة البيان" style="width:48px; height:48px; object-fit:contain; filter: brightness(0) invert(1);">
+        </span>
         <div>
           <h2>مدرسة البيان</h2>
           <small>لتعليم القرآن الكريم</small>
@@ -28,14 +29,16 @@
       </div>
 
       <nav class="sidebar-menu">
-        <a href="circles.html" class="menu-item"><svg style="width:18px; height:18px; vertical-align:middle; fill:currentColor;" viewBox="0 0 100 100"><circle cx="50" cy="22" r="14"/><path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/><path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg> الحلقات القرآنية</a>
+        <a href="circles.html" class="menu-item">
+          <svg style="width:18px; height:18px; vertical-align:middle; fill:currentColor;" viewBox="0 0 100 100"><circle cx="50" cy="22" r="14"/><path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/><path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          الحلقات القرآنية
+        </a>
         <a href="admin.html" class="menu-item"><i data-lucide="file-text" style="width:18px; height:18px;"></i> إدارة الاختبارات</a>
         <a href="analytics.html" class="menu-item"><i data-lucide="bar-chart-3" style="width:18px; height:18px;"></i> الإحصائيات المتقدمة</a>
         <a href="student_cv.html" class="menu-item" id="studentCvMenuLink"><i data-lucide="contact" style="width:18px; height:18px;"></i> السيرة الذاتية للطالب</a>
         <a href="certificates.html" class="menu-item" id="certificatesMenuLink"><i data-lucide="award" style="width:18px; height:18px;"></i> استوديو الشهادات</a>
         <a href="users.html" class="menu-item active" id="usersMenuLink"><i data-lucide="user-cog" style="width:18px; height:18px;"></i> إدارة المستخدمين</a>
         <a href="settings.html" class="menu-item"><i data-lucide="settings" style="width:18px; height:18px;"></i> إعدادات الحساب</a>
-        <a href="circles.html" class="menu-item"><i data-lucide="graduation-cap" style="width:18px; height:18px;"></i> الحلقات القرآنية</a>
       </nav>
 
       <div class="sidebar-footer">
@@ -43,161 +46,208 @@
           <strong id="loggedUsername">مسؤول النظام</strong>
           <small id="loggedRoleBadge">صلاحيات كاملة</small>
         </div>
-        <button type="button" class="btn-danger-outline" onclick="logout()">تسجيل الخروج <i data-lucide="log-out" style="width:16px; height:16px;"></i></button>
+        <button type="button" class="btn-danger-outline" onclick="logout()">
+          تسجيل الخروج <i data-lucide="log-out" style="width:16px; height:16px;"></i>
+        </button>
       </div>
     </aside>
 
-    <!-- Main Content Area -->
+    <!-- Main Content Area (WhatsApp Blue Edition) -->
     <main class="main-content">
-      <!-- Top Page Header -->
-      <header class="users-page-header">
-        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-          <a href="more.html" class="users-back-btn" title="الرجوع إلى صفحة المزيد">
-            <i data-lucide="arrow-right" style="width:18px; height:18px;"></i>
-            <span>المزيد</span>
-          </a>
-          <div class="users-header-title-box">
-            <h1 id="pageMainHeading">إدارة الحسابات والمستخدمين</h1>
-            <p id="pageSubHeading">التحكم الكامل بكادر النظام، المشرفين، المعلمين، وحسابات الطلاب القرآنية مع إدارة الرموز والصلاحيات.</p>
+      <!-- WhatsApp-Style Top Header -->
+      <header class="wa-users-top-bar" id="usersTopBar">
+        <!-- Row 1: Back + Title + Quick Actions & Overflow Menu -->
+        <div class="wa-top-bar-title-row">
+          <div class="wa-top-title-group">
+            <a href="more.html" class="wa-top-icon-btn wa-back-btn" title="الرجوع إلى المزيد" aria-label="الرجوع إلى المزيد">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </a>
+            <h1 id="pageMainHeading">إدارة المستخدمين</h1>
+          </div>
+
+          <div class="wa-top-actions-group">
+            <button type="button" id="btnSyncUsers" class="wa-top-icon-btn" onclick="refreshAllAccounts(true)" title="تحديث ومزامنة البيانات" aria-label="تحديث ومزامنة البيانات">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+            </button>
+
+            <button type="button" id="btnQuickAddHeader" class="wa-top-icon-btn" onclick="openPrimaryAddModal()" title="إضافة حساب جديد" aria-label="إضافة حساب جديد">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="23" y1="11" x2="17" y2="11"></line>
+              </svg>
+            </button>
+
+            <div class="wa-more-menu-wrap" id="usersMoreMenuWrap">
+              <button type="button" id="usersMoreMenuBtn" class="wa-top-icon-btn" aria-haspopup="true" aria-expanded="false" aria-controls="usersMoreMenuDropdown" aria-label="خيارات إدارة المستخدمين" title="المزيد">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="12" cy="5" r="2"></circle>
+                  <circle cx="12" cy="12" r="2"></circle>
+                  <circle cx="12" cy="19" r="2"></circle>
+                </svg>
+              </button>
+              <div id="usersMoreMenuDropdown" class="wa-more-menu-dropdown" role="menu" aria-label="إجراءات إدارة المستخدمين">
+                <button type="button" id="menuItemAddStaff" class="wa-more-menu-item" role="menuitem">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    <line x1="12" y1="8" x2="12" y2="14"></line>
+                    <line x1="9" y1="11" x2="15" y2="11"></line>
+                  </svg>
+                  <span>إنشاء حساب كادر جديد</span>
+                </button>
+                <button type="button" id="menuItemAddStudent" class="wa-more-menu-item" role="menuitem">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                    <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                  </svg>
+                  <span>إضافة حساب طالب جديد</span>
+                </button>
+                <button type="button" id="menuItemSyncNow" class="wa-more-menu-item" role="menuitem">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                  </svg>
+                  <span>مزامنة الحسابات مع السحابة</span>
+                </button>
+                <button type="button" id="menuItemExportStudents" class="wa-more-menu-item" role="menuitem">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  <span>تصدير كشف الطلاب (Excel / CSV)</span>
+                </button>
+                <button type="button" id="menuItemToggleStats" class="wa-more-menu-item" role="menuitem">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 3v18h18"></path>
+                    <path d="M18 17V9"></path>
+                    <path d="M13 17V5"></path>
+                    <path d="M8 17v-3"></path>
+                  </svg>
+                  <span id="menuItemToggleStatsLabel">إخفاء شريط الإحصائيات</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="users-header-actions" id="headerActionsWrap">
-          <button type="button" class="btn-add-user-main" id="btnAddStaffMain" onclick="openAddUserModal()">
-            <i data-lucide="user-plus" style="width:18px; height:18px;"></i>
-            <span>إنشاء حساب كادر</span>
+
+        <!-- Row 2: WhatsApp Segmented Switcher (Staff vs Students) -->
+        <div class="wa-users-tabs" role="tablist" aria-label="تصنيف الحسابات">
+          <button type="button" id="tabStaffBtn" class="wa-users-tab active" role="tab" aria-selected="true" onclick="switchSectionTab('staff')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>كادر النظام</span>
+            <span class="wa-tab-badge" id="staffCountBadge">0</span>
           </button>
-          <button type="button" class="btn-add-user-main green-btn" id="btnAddStudentMain" style="display:none;" onclick="openAddStudentModal()">
-            <i data-lucide="user-plus" style="width:18px; height:18px;"></i>
-            <span>إضافة حساب طالب</span>
+          <button type="button" id="tabStudentsBtn" class="wa-users-tab" role="tab" aria-selected="false" onclick="switchSectionTab('students')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+            </svg>
+            <span>حسابات الطلاب</span>
+            <span class="wa-tab-badge" id="studentsCountBadge">0</span>
           </button>
-          <button type="button" class="btn-excel-export" id="btnExportStudentsExcel" style="display:none;" onclick="exportStudentsExcel()">
-            <i data-lucide="download" style="width:16px; height:16px;"></i>
-            <span>تصدير كشف Excel</span>
+        </div>
+
+        <!-- Row 3: WhatsApp Search Pill -->
+        <div class="wa-search-row">
+          <div class="wa-search-pill">
+            <span class="wa-search-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </span>
+            <input type="text" id="usersSearchInput" placeholder="بحث في حسابات الكادر بالاسم أو الدور..." oninput="handleUnifiedSearchInput()" autocomplete="off" aria-label="بحث في الحسابات">
+            <button type="button" id="usersSearchClearBtn" class="wa-search-clear-btn" onclick="clearUnifiedSearch()" aria-label="مسح البحث" title="مسح البحث">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Row 4A: Staff Filter Pills -->
+        <div class="wa-filter-pills-row" id="staffFilterPills" role="tablist" aria-label="تصفية الكادر">
+          <button type="button" class="wa-filter-pill active" data-role="all" onclick="setUserRoleFilter('all', this)">
+            <span class="wa-filter-pill-label">الكل</span>
           </button>
+          <button type="button" class="wa-filter-pill" data-role="admin" onclick="setUserRoleFilter('admin', this)">
+            <span class="wa-filter-pill-label">مسؤولو النظام</span>
+          </button>
+          <button type="button" class="wa-filter-pill" data-role="supervisor" onclick="setUserRoleFilter('supervisor', this)">
+            <span class="wa-filter-pill-label">المشرفون</span>
+          </button>
+          <button type="button" class="wa-filter-pill" data-role="teacher" onclick="setUserRoleFilter('teacher', this)">
+            <span class="wa-filter-pill-label">معلمو الحلقات</span>
+          </button>
+          <button type="button" class="wa-filter-pill" data-role="active" onclick="setUserRoleFilter('active', this)">
+            <span class="wa-filter-pill-label">النشطة</span>
+          </button>
+          <button type="button" class="wa-filter-pill" data-role="inactive" onclick="setUserRoleFilter('inactive', this)">
+            <span class="wa-filter-pill-label">المعطّلة</span>
+          </button>
+        </div>
+
+        <!-- Row 4B: Students Filter Pills -->
+        <div class="wa-filter-pills-row" id="studentsFilterPills" style="display:none;" role="tablist" aria-label="تصفية الطلاب">
+          <button type="button" class="wa-filter-pill active" data-status="all" onclick="setStudentStatusFilter('all', this)">
+            <span class="wa-filter-pill-label">جميع الطلاب</span>
+          </button>
+          <button type="button" class="wa-filter-pill" data-status="has_pin" onclick="setStudentStatusFilter('has_pin', this)">
+            <span class="wa-filter-pill-label">مفعّل برمز</span>
+          </button>
+          <button type="button" class="wa-filter-pill" data-status="no_pin" onclick="setStudentStatusFilter('no_pin', this)">
+            <span class="wa-filter-pill-label">بانتظار الرمز</span>
+          </button>
+          <div class="wa-circle-select-pill-wrap" id="circleFilterPillWrap">
+            <select id="filterStudentCircleSelect" class="wa-circle-select-pill" onchange="onStudentCircleFilterChanged()" aria-label="تصفية حسب الحلقة">
+              <option value="all">كل الحلقات</option>
+            </select>
+          </div>
         </div>
       </header>
 
       <!-- Alert Notification Banner -->
       <div id="usersAlertBox" class="alert-box ok" style="display:none;"></div>
 
-      <!-- SECTION 1: STAFF & ADMINISTRATORS -->
-      <section id="staffSection" class="tab-section-content active">
-        <!-- Quick Statistics 2x2 Grid -->
-        <div id="usersStatsCards" class="users-kpi-grid"></div>
+      <!-- Compact Summary Strip (WhatsApp-clean, toggleable) -->
+      <div id="waSummaryStrip" class="wa-summary-strip"></div>
 
-        <!-- Search & Swipeable Filter Chips Toolbar -->
-        <div class="users-filter-box">
-          <div class="users-search-input-wrap">
-            <i data-lucide="search" style="width:18px; height:18px;"></i>
-            <input type="text" id="searchUsersInput" placeholder="ابحث باسم المستخدم أو الدور..." oninput="filterUsersTable()" autocomplete="off">
-          </div>
-
-          <div class="users-role-chips" id="usersRoleChips">
-            <button type="button" class="user-role-chip active" data-role="all" onclick="setUserRoleFilter('all', this)">
-              <i data-lucide="users" style="width:14px; height:14px;"></i> الكل
-            </button>
-            <button type="button" class="user-role-chip" data-role="admin" onclick="setUserRoleFilter('admin', this)">
-              <i data-lucide="shield" style="width:14px; height:14px;"></i> مسؤولو النظام
-            </button>
-            <button type="button" class="user-role-chip" data-role="supervisor" onclick="setUserRoleFilter('supervisor', this)">
-              <i data-lucide="shield-check" style="width:14px; height:14px;"></i> المشرفون
-            </button>
-            <button type="button" class="user-role-chip" data-role="teacher" onclick="setUserRoleFilter('teacher', this)">
-              <i data-lucide="book-open" style="width:14px; height:14px;"></i> معلمو الحلقات
-            </button>
-            <button type="button" class="user-role-chip" data-role="students" onclick="setUserRoleFilter('students', this)">
-              <i data-lucide="graduation-cap" style="width:14px; height:14px;"></i> الطلاب
-            </button>
-            <button type="button" class="user-role-chip" data-role="active" onclick="setUserRoleFilter('active', this)">
-              <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> النشطة
-            </button>
-          </div>
-        </div>
-
-        <!-- Mobile User Cards Feed (< 769px) -->
-        <div id="usersMobileFeed" class="users-mobile-feed"></div>
-
-        <!-- Desktop Executive Data Table (>= 769px) -->
-        <div class="users-desktop-table-wrap">
-          <table class="users-table">
-            <thead>
-              <tr>
-                <th style="width:50px;">#</th>
-                <th>اسم المستخدم</th>
-                <th style="white-space: nowrap;">نوع الحساب / الدور</th>
-                <th>الصلاحيات الممنوحة</th>
-                <th style="white-space: nowrap;">حالة التسجيل</th>
-                <th id="thStaffPassword" style="white-space: nowrap; display:none;">الرمز / كلمة المرور</th>
-                <th style="white-space: nowrap;">تاريخ الإنشاء</th>
-                <th style="text-align:center; width:120px;">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody id="usersTableBody">
-              <tr>
-                <td colspan="7" style="text-align:center; padding:24px; color:var(--muted);">جارٍ تحميل حسابات الكادر...</td>
-              </tr>
-            </tbody>
-          </table>
+      <!-- SECTION 1: STAFF & ADMINISTRATORS (WhatsApp Chat-List Style) -->
+      <section id="staffSection" class="wa-section-content active">
+        <div id="usersChatList" class="wa-users-list" aria-live="polite">
+          <div class="wa-loading-state">جارٍ تحميل حسابات الكادر...</div>
         </div>
       </section>
 
-      <!-- SECTION 2: STUDENTS ACCOUNTS -->
-      <section id="studentsSection" class="tab-section-content" style="display:none;">
-        <div id="studentsStatsCards" class="users-kpi-grid"></div>
-
-        <div class="users-filter-box students-filter-box">
-          <div class="users-search-input-wrap">
-            <i data-lucide="search" style="width:18px; height:18px;"></i>
-            <input type="text" id="searchStudentsInput" placeholder="ابحث باسم الطالب أو الحلقة أو المعلم..." oninput="filterStudentsTable()" autocomplete="off">
-          </div>
-
-          <div class="student-circle-filter-wrap">
-            <select id="filterStudentCircleSelect" onchange="filterStudentsTable()">
-              <option value="all">جميع الحلقات القرآنية</option>
-            </select>
-          </div>
-
-          <div class="users-role-chips" id="studentsStatusChips">
-            <button type="button" class="user-role-chip active" data-status="all" onclick="setStudentStatusFilter('all', this)">
-              <i data-lucide="users" style="width:14px; height:14px;"></i> جميع الطلاب
-            </button>
-            <button type="button" class="user-role-chip" data-status="has_pin" onclick="setStudentStatusFilter('has_pin', this)">
-              <i data-lucide="key" style="width:14px; height:14px; color:#059669;"></i> مفعّل برمز سري
-            </button>
-            <button type="button" class="user-role-chip" data-status="no_pin" onclick="setStudentStatusFilter('no_pin', this)">
-              <i data-lucide="clock" style="width:14px; height:14px; color:#d97706;"></i> بانتظار تعيين الرمز
-            </button>
-            <button type="button" class="user-role-chip" onclick="setUserRoleFilter('all', null)">
-              <i data-lucide="shield" style="width:14px; height:14px;"></i> كادر النظام والمشرفين
-            </button>
-          </div>
-        </div>
-
-        <!-- Mobile Students Cards Feed (< 769px) -->
-        <div id="studentsMobileFeed" class="users-mobile-feed"></div>
-
-        <!-- Desktop Students Data Table (>= 769px) -->
-        <div class="users-desktop-table-wrap">
-          <table class="users-table">
-            <thead>
-              <tr>
-                <th style="width:50px;">#</th>
-                <th>اسم الطالب</th>
-                <th style="white-space: nowrap;">الحلقة القرآنية</th>
-                <th style="white-space: nowrap;">المعلم المشرف</th>
-                <th style="white-space: nowrap;">حالة الرمز السري</th>
-                <th style="white-space: nowrap;">الرمز السري (PIN)</th>
-                <th style="white-space: nowrap;">تاريخ التسجيل</th>
-              </tr>
-            </thead>
-            <tbody id="studentsTableBody">
-              <tr>
-                <td colspan="7" style="text-align:center; padding:24px; color:var(--muted);">جارٍ تحميل حسابات الطلاب...</td>
-              </tr>
-            </tbody>
-          </table>
+      <!-- SECTION 2: STUDENTS ACCOUNTS (WhatsApp Chat-List Style) -->
+      <section id="studentsSection" class="wa-section-content" style="display:none;">
+        <div id="studentsChatList" class="wa-users-list" aria-live="polite">
+          <div class="wa-loading-state">جارٍ تحميل حسابات الطلاب...</div>
         </div>
       </section>
+
+      <!-- WhatsApp-Style Floating Action Button -->
+      <button type="button" id="waFabAddBtn" class="wa-fab-btn" onclick="openPrimaryAddModal()" title="إضافة حساب جديد" aria-label="إضافة حساب جديد">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <line x1="20" y1="8" x2="20" y2="14"></line>
+          <line x1="23" y1="11" x2="17" y2="11"></line>
+        </svg>
+      </button>
     </main>
   </div>
 
@@ -210,27 +260,55 @@
           <i data-lucide="x" style="width:20px; height:20px;"></i>
         </button>
       </div>
+
       <form class="modal-body" onsubmit="saveUser(event)">
         <input type="hidden" id="editUserId" value="">
-        <div class="field">
-          <label for="newUsername">اسم المستخدم <span style="color:var(--danger)">*</span></label>
-          <input type="text" id="newUsername" placeholder="مثال: teacher_ahmed" required autocomplete="off">
+
+        <!-- WhatsApp Contact Header Preview (Shown in Edit Mode) -->
+        <div id="staffModalProfileBanner" class="wa-modal-profile-banner" style="display:none;">
+          <div class="wa-modal-profile-main">
+            <div class="wa-user-avatar" id="staffBannerAvatar">م</div>
+            <div class="wa-modal-profile-meta">
+              <strong id="staffBannerName">اسم المستخدم</strong>
+              <span id="staffBannerSubtitle">الدور والصلاحيات</span>
+            </div>
+          </div>
+          <div class="wa-modal-profile-actions">
+            <button type="button" class="wa-chip-action" onclick="copyCurrentUserCredentials()" title="نسخ بيانات الدخول للمشاركة">
+              <i data-lucide="copy" style="width:14px; height:14px;"></i>
+              <span>نسخ الدخول</span>
+            </button>
+            <button type="button" class="wa-chip-action" id="btnToggleStaffActiveQuick" onclick="toggleCurrentUserActiveQuick()">
+              <i data-lucide="power" style="width:14px; height:14px;"></i>
+              <span id="btnToggleStaffActiveLabel">تعطيل</span>
+            </button>
+          </div>
         </div>
 
         <div class="field">
-          <label for="newCode">الرمز الرقمي السري / كلمة المرور <span id="newCodeReqStar" style="color:var(--danger)">*</span></label>
+          <label for="newUsername">اسم المستخدم <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="newUsername" placeholder="مثال: teacher_ahmed أو أ. أحمد" required autocomplete="off">
+        </div>
+
+        <div class="field">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+            <label for="newCode" style="margin:0;">الرمز الرقمي السري / كلمة المرور <span id="newCodeReqStar" style="color:var(--danger)">*</span></label>
+            <button type="button" class="btn-text-action" onclick="generateRandomStaffCode()">
+              <i data-lucide="sparkles" style="width:13px; height:13px;"></i> توليد رمز عشوائي
+            </button>
+          </div>
           <div style="position:relative; display:flex; align-items:center;">
             <input type="password" id="newCode" placeholder="ادخل الرمز الرقمي للحساب" required autocomplete="off" style="padding-left:42px;">
             <button type="button" class="btn-toggle-pwd-input" onclick="toggleInputPasswordVisibility('newCode', 'newCodeEyeIcon')" title="إظهار / إخفاء كلمة المرور" style="position:absolute; left:10px; background:none; border:none; cursor:pointer; color:var(--muted); display:flex; align-items:center; z-index:2;">
               <i data-lucide="eye" id="newCodeEyeIcon" style="width:18px; height:18px;"></i>
             </button>
           </div>
-          <small id="newCodeHelper" style="color:var(--muted); font-size:12px; display:none; margin-top:4px;">يمكن لمشرف النظام رؤية وتعديل الرمز الحالي ومشاركته مع المعلم إذا نسيه.</small>
+          <small id="newCodeHelper" style="color:var(--muted); font-size:12px; display:none; margin-top:4px;">يمكن لمشرف النظام رؤية وتعديل الرمز الحالي ومشاركته مع الكادر إذا نسيه.</small>
         </div>
 
         <div class="field">
           <label for="userRole">نوع الحساب / الدور</label>
-          <select id="userRole">
+          <select id="userRole" onchange="onUserRoleSelectChanged()">
             <option value="teacher">معلم حلقة قرآنية</option>
             <option value="supervisor">مشرف تعليمي</option>
             <option value="admin">مسؤول نظام</option>
@@ -287,7 +365,7 @@
           </div>
         </fieldset>
 
-        <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+        <div class="wa-modal-footer-actions">
           <button type="button" id="deleteUserBtn" class="btn-danger-outline" style="display:none; padding:11px 16px; font-size:14px; align-items:center; gap:6px; min-height:44px;" onclick="deleteCurrentUserFromModal()">
             <i data-lucide="trash-2" style="width:16px; height:16px;"></i> حذف الحساب
           </button>
@@ -311,6 +389,27 @@
       </div>
       <form class="modal-body" onsubmit="saveStudent(event)">
         <input type="hidden" id="editStudentId" value="">
+
+        <!-- WhatsApp Student Profile Banner (Shown in Edit Mode) -->
+        <div id="studentModalProfileBanner" class="wa-modal-profile-banner" style="display:none;">
+          <div class="wa-modal-profile-main">
+            <div class="wa-user-avatar student" id="studentBannerAvatar">ط</div>
+            <div class="wa-modal-profile-meta">
+              <strong id="studentBannerName">اسم الطالب</strong>
+              <span id="studentBannerSubtitle">الحلقة القرآنية</span>
+            </div>
+          </div>
+          <div class="wa-modal-profile-actions">
+            <button type="button" class="wa-chip-action" onclick="copyCurrentStudentCredentials()" title="نسخ بيانات الدخول لولي الأمر">
+              <i data-lucide="copy" style="width:14px; height:14px;"></i>
+              <span>نسخ الدخول</span>
+            </button>
+            <a id="studentBannerCvLink" href="student_cv.html" class="wa-chip-action" title="فتح السيرة الذاتية">
+              <i data-lucide="contact" style="width:14px; height:14px;"></i>
+              <span>السيرة</span>
+            </a>
+          </div>
+        </div>
 
         <div class="field">
           <label for="studentNameInput">اسم الطالب الثلاثي أو الرباعي <span style="color:var(--danger)">*</span></label>
@@ -357,7 +456,7 @@
           <div id="studentSharePreviewText" class="student-share-preview"></div>
         </div>
 
-        <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+        <div class="wa-modal-footer-actions">
           <button type="button" id="deleteStudentBtn" class="btn-danger-outline" style="display:none; padding:11px 16px; font-size:14px; align-items:center; gap:6px; min-height:44px;" onclick="deleteCurrentStudentFromModal()">
             <i data-lucide="trash-2" style="width:16px; height:16px;"></i> حذف الطالب
           </button>
@@ -371,11 +470,11 @@
   </div>
 
   <script src="albayan_dialog.js?v=2.0"></script>
-  <script src="mobile-db.js?v=2.0"></script>
-  <script src="hijri_date.js?v=1.0"></script>
-  <script src="mobile_bottom_nav.js?v=2.0"></script>
-  <script defer src="users.js?v=3.1"></script>
+  <script src="hijri_date.js?v=3.0"></script>
+  <script src="mobile-db.js?v=3.0"></script>
   <script src="firebase-client.js?v=3.0"></script>
-  <script>lucide.createIcons();</script>
+  <script src="mobile_bottom_nav.js?v=2.0"></script>
+  <script src="users.js?v=4.0"></script>
+  <script>if(window.lucide) lucide.createIcons();</script>
 </body>
 </html>

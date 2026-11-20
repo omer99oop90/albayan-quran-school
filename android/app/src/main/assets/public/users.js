@@ -1,19 +1,29 @@
 /**
  * Users and Accounts Management Script (إدارة المستخدمين وحسابات الطلاب)
- * Complete implementation for Staff & Student Accounts Management
+ * WhatsApp UI Style – Blue Edition with Full Offline/Firebase/Server CRUD
  */
 
-// CSRF Token Helper
+const FB_RTDB_BASE = "https://bayan-56e77-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+// CSRF & Auth Headers Helper
 function getCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
-  return meta ? meta.getAttribute("content") : "";
+  return (meta ? meta.getAttribute("content") : "") ||
+    sessionStorage.getItem("albayan_csrf_token") ||
+    localStorage.getItem("albayan_csrf_token") || "";
 }
 
 function csrfHeaders(extra = {}) {
-  return Object.assign({
+  const headers = Object.assign({
     "Content-Type": "application/json",
     "X-CSRF-Token": getCsrfToken()
   }, extra);
+  const token = localStorage.getItem("albayan_saved_token");
+  if (token && !headers["Authorization"]) {
+    headers["Authorization"] = "Bearer " + token;
+    headers["X-Albayan-Token"] = token;
+  }
+  return headers;
 }
 
 // Global State
@@ -26,23 +36,151 @@ let allCirclesData = [];
 let activeStudentStatusFilter = "all";
 let activeStudentCircleFilter = "all";
 let alertTimeoutHandle = null;
+let showStatsStrip = true;
 
+try {
+  showStatsStrip = localStorage.getItem("albayan_users_show_stats") !== "0";
+} catch (e) {}
+
+// ==============================================
+// INITIALIZATION
+// ==============================================
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileSidebar();
+  initOverflowMenu();
+  applyStatsStripVisibility();
   await checkAuth();
-  await loadUsers();
-  await loadStudents();
+  await refreshAllAccounts(false);
+
+  // Re-sync automatically when global background sync finishes
+  window.addEventListener("albayan:db-synced", () => {
+    refreshAllAccounts(false).catch(() => {});
+  });
 });
+
+async function refreshAllAccounts(isManual = false) {
+  const syncBtn = document.getElementById("btnSyncUsers");
+  if (syncBtn) syncBtn.classList.add("spinning");
+
+  try {
+    await loadUsers();
+    await loadStudents();
+    if (isManual) {
+      showAlert("تم تحديث ومزامنة حسابات الكادر والطلاب بنجاح.", "ok");
+    }
+  } finally {
+    if (syncBtn) syncBtn.classList.remove("spinning");
+  }
+}
+
+// ==============================================
+// HELPERS: NORMALIZATION, DIALOGS, CLIPBOARD
+// ==============================================
+function normalizeArabicSearch(str) {
+  return String(str || "")
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeEntityId(rawId, prefix = "") {
+  if (rawId === null || rawId === undefined) return null;
+  let s = String(rawId).trim();
+  if (prefix) {
+    s = s.replace(new RegExp(`^${prefix}_`, "i"), "");
+  }
+  s = s.replace(/^(users_|students_|student_|circles_)/i, "").trim();
+  if (!s) return null;
+  const num = Number(s);
+  return (!Number.isNaN(num) && String(num) === s) ? num : s;
+}
+
+function parsePermissions(raw) {
+  if (Array.isArray(raw)) return raw.map(String);
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map(String);
+    } catch (e) {
+      return raw.split(",").map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function getDeletedSet(storageKey) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    return new Set(Array.isArray(raw) ? raw.map(String) : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function addDeletedTombstone(storageKey, id) {
+  try {
+    const set = getDeletedSet(storageKey);
+    set.add(String(id));
+    localStorage.setItem(storageKey, JSON.stringify(Array.from(set)));
+  } catch (e) {}
+}
+
+async function confirmAction(message, title = "تأكيد الإجراء", isDestructive = true) {
+  if (window.AlbayanDialog && typeof window.AlbayanDialog.confirm === "function") {
+    return await window.AlbayanDialog.confirm(message, title, {
+      isDestructive,
+      confirmText: isDestructive ? "نعم، تأكيد" : "تأكيد",
+      cancelText: "إلغاء"
+    });
+  }
+  return window.confirm(message);
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function escapeJsArg(str) {
+  return String(str ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/\r?\n/g, " ");
+}
+
+function formatDualDateShort(rawDate) {
+  if (!rawDate) return "";
+  try {
+    if (window.HijriDate && typeof window.HijriDate.formatDualDate === "function") {
+      const dual = window.HijriDate.formatDualDate(rawDate);
+      if (dual && dual.hijri) return dual.hijri;
+    }
+  } catch (e) {}
+  return String(rawDate).slice(0, 10);
+}
 
 // ==============================================
 // AUTHENTICATION & ACCESS CONTROL
 // ==============================================
 async function checkAuth() {
-  const isStandalone = window.IS_CAPACITOR_APP || window.location.protocol === 'file:' || window.location.origin.includes('capacitor://') || (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80'));
+  const isStandalone = window.IS_CAPACITOR_APP ||
+    typeof window.Capacitor !== "undefined" ||
+    window.location.protocol === "file:" ||
+    window.location.origin.includes("capacitor://") ||
+    (window.location.hostname === "localhost" && (!window.location.port || window.location.port === "80"));
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 1600);
     const res = await fetch("/api/me", { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!res.ok) throw new Error("Auth request failed");
@@ -57,8 +195,9 @@ async function checkAuth() {
       return;
     }
 
+    const perms = parsePermissions(data.permissions);
     const isSuper = data.is_superadmin === 1 || data.is_superadmin === "1";
-    if (data.role !== "admin" && !isSuper && !(data.permissions || []).includes("users")) {
+    if (data.role !== "admin" && !isSuper && !perms.includes("users")) {
       if (!isStandalone) {
         window.location.href = "circles.html";
         return;
@@ -75,10 +214,7 @@ async function checkAuth() {
     }
 
     window.currentUserIsAdmin = (isSuper || data.role === "admin" || isStandalone);
-    const thPwd = document.getElementById("thStaffPassword");
-    if (thPwd) thPwd.style.display = window.currentUserIsAdmin ? "" : "none";
-
-    const canAccessCv = isSuper || data.role === "admin" || data.role === "supervisor" || (Array.isArray(data.permissions) && data.permissions.includes("student_cv"));
+    const canAccessCv = isSuper || data.role === "admin" || data.role === "supervisor" || perms.includes("student_cv");
     const cvLink = document.getElementById("studentCvMenuLink");
     if (cvLink) cvLink.style.display = canAccessCv ? "flex" : "none";
   } catch (err) {
@@ -90,161 +226,324 @@ function useCachedUserAuth() {
   let user = null;
   try {
     const cached = localStorage.getItem("albayan_logged_user");
-    if (cached) {
-      user = JSON.parse(cached);
-    }
-  } catch(e) {}
+    if (cached) user = JSON.parse(cached);
+  } catch (e) {}
 
   if (!user || (!user.username && !user.student_name)) {
     window.location.href = "login.html";
     return;
   }
 
+  const perms = parsePermissions(user.permissions);
+  const isSuper = user.is_superadmin === 1 || user.is_superadmin === "1";
   const username = user.username || "مسؤول النظام";
   const userEl = document.getElementById("loggedUsername");
   if (userEl) userEl.textContent = username;
   const roleBadge = document.getElementById("loggedRoleBadge");
-  if (roleBadge) roleBadge.textContent = user.role === "admin" ? "مسؤول نظام" : "كادر تعليمي";
-  window.currentUserIsAdmin = (user.role === "admin" || user.is_superadmin === 1);
-  const thPwd = document.getElementById("thStaffPassword");
-  if (thPwd) thPwd.style.display = window.currentUserIsAdmin ? "" : "none";
+  if (roleBadge) {
+    if (isSuper) roleBadge.textContent = "المسؤول الأول";
+    else if (user.role === "admin") roleBadge.textContent = "مسؤول نظام";
+    else if (user.role === "supervisor") roleBadge.textContent = "مشرف تعليمي";
+    else roleBadge.textContent = "كادر تعليمي";
+  }
+  window.currentUserIsAdmin = (user.role === "admin" || isSuper || perms.includes("users"));
 }
 
 async function logout() {
-  if (typeof window.albayanLogout === 'function') {
+  if (typeof window.albayanLogout === "function") {
     return window.albayanLogout();
   }
   sessionStorage.clear();
   try {
     localStorage.removeItem("albayan_logged_user");
     localStorage.removeItem("albayan_saved_token");
-  } catch(e) {}
+  } catch (e) {}
   await fetch("/api/logout", { method: "POST", headers: csrfHeaders() }).catch(() => {});
   window.location.href = "login.html?logout=1";
 }
 
+// ==============================================
+// OVERFLOW MENU & TOP BAR CONTROLS
+// ==============================================
+function initOverflowMenu() {
+  const moreBtn = document.getElementById("usersMoreMenuBtn");
+  const menuWrap = document.getElementById("usersMoreMenuWrap");
+
+  if (moreBtn) {
+    moreBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleUsersMoreMenu();
+    });
+  }
+
+  const bindMenuAction = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener("click", () => {
+        closeUsersMoreMenu();
+        fn();
+      });
+    }
+  };
+
+  bindMenuAction("menuItemAddStaff", openAddUserModal);
+  bindMenuAction("menuItemAddStudent", openAddStudentModal);
+  bindMenuAction("menuItemSyncNow", () => refreshAllAccounts(true));
+  bindMenuAction("menuItemExportStudents", exportStudentsExcel);
+  bindMenuAction("menuItemToggleStats", toggleStatsStrip);
+
+  document.addEventListener("click", (e) => {
+    if (menuWrap && !menuWrap.contains(e.target)) {
+      closeUsersMoreMenu();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeUsersMoreMenu();
+    }
+  });
+
+  document.addEventListener("backbutton", (e) => {
+    const dropdown = document.getElementById("usersMoreMenuDropdown");
+    if (dropdown && dropdown.classList.contains("open")) {
+      closeUsersMoreMenu();
+      if (e && typeof e.preventDefault === "function") e.preventDefault();
+      if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+    }
+  }, true);
+}
+
+function toggleUsersMoreMenu() {
+  const dropdown = document.getElementById("usersMoreMenuDropdown");
+  const btn = document.getElementById("usersMoreMenuBtn");
+  if (!dropdown) return;
+  const willOpen = !dropdown.classList.contains("open");
+  dropdown.classList.toggle("open", willOpen);
+  if (btn) btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+}
+
+function closeUsersMoreMenu() {
+  const dropdown = document.getElementById("usersMoreMenuDropdown");
+  const btn = document.getElementById("usersMoreMenuBtn");
+  if (dropdown) dropdown.classList.remove("open");
+  if (btn) btn.setAttribute("aria-expanded", "false");
+}
+
+function toggleStatsStrip() {
+  showStatsStrip = !showStatsStrip;
+  try {
+    localStorage.setItem("albayan_users_show_stats", showStatsStrip ? "1" : "0");
+  } catch (e) {}
+  applyStatsStripVisibility();
+}
+
+function applyStatsStripVisibility() {
+  const strip = document.getElementById("waSummaryStrip");
+  const label = document.getElementById("menuItemToggleStatsLabel");
+  if (strip) strip.classList.toggle("hidden", !showStatsStrip);
+  if (label) label.textContent = showStatsStrip ? "إخفاء شريط الإحصائيات" : "إظهار شريط الإحصائيات";
+}
+
+function openPrimaryAddModal() {
+  if (currentActiveSection === "students") {
+    openAddStudentModal();
+  } else {
+    openAddUserModal();
+  }
+}
 
 // ==============================================
-// TAB SWITCHER CONTROLLER
+// TAB SWITCHER & UNIFIED SEARCH CONTROLLER
 // ==============================================
 function switchSectionTab(tab) {
-  currentActiveSection = tab;
+  currentActiveSection = tab === "students" ? "students" : "staff";
 
   const tabStaffBtn = document.getElementById("tabStaffBtn");
   const tabStudentsBtn = document.getElementById("tabStudentsBtn");
   const staffSection = document.getElementById("staffSection");
   const studentsSection = document.getElementById("studentsSection");
+  const staffPills = document.getElementById("staffFilterPills");
+  const studentPills = document.getElementById("studentsFilterPills");
+  const searchInput = document.getElementById("usersSearchInput");
+  const fabBtn = document.getElementById("waFabAddBtn");
+  const headerAddBtn = document.getElementById("btnQuickAddHeader");
 
-  const btnAddStaff = document.getElementById("btnAddStaffMain");
-  const btnAddStudent = document.getElementById("btnAddStudentMain");
-  const btnExportExcel = document.getElementById("btnExportStudentsExcel");
-
-  const pageMainHeading = document.getElementById("pageMainHeading");
-  const pageSubHeading = document.getElementById("pageSubHeading");
-
-  if (tab === "staff") {
-    if (tabStaffBtn) tabStaffBtn.classList.add("active");
-    if (tabStudentsBtn) tabStudentsBtn.classList.remove("active");
-
-    if (staffSection) {
-      staffSection.style.display = "block";
-      staffSection.classList.add("active");
+  if (currentActiveSection === "staff") {
+    if (tabStaffBtn) {
+      tabStaffBtn.classList.add("active");
+      tabStaffBtn.setAttribute("aria-selected", "true");
     }
-    if (studentsSection) {
-      studentsSection.style.display = "none";
-      studentsSection.classList.remove("active");
+    if (tabStudentsBtn) {
+      tabStudentsBtn.classList.remove("active");
+      tabStudentsBtn.setAttribute("aria-selected", "false");
     }
+    if (staffSection) staffSection.style.display = "block";
+    if (studentsSection) studentsSection.style.display = "none";
+    if (staffPills) staffPills.style.display = "flex";
+    if (studentPills) studentPills.style.display = "none";
+    if (searchInput) searchInput.placeholder = "بحث في الكادر بالاسم أو الدور أو الصلاحية...";
+    if (fabBtn) fabBtn.title = "إنشاء حساب كادر جديد";
+    if (headerAddBtn) headerAddBtn.title = "إنشاء حساب كادر جديد";
 
-    if (btnAddStaff) btnAddStaff.style.display = "inline-flex";
-    if (btnAddStudent) btnAddStudent.style.display = "none";
-    if (btnExportExcel) btnExportExcel.style.display = "none";
-
-    if (pageMainHeading) pageMainHeading.textContent = "إدارة حسابات الكادر والصلاحيات";
-    if (pageSubHeading) pageSubHeading.textContent = "إمكانية إنشاء وتعديل وحذف الحسابات وتوزيع الصلاحيات بدقة للمشرفين والمعلمين.";
-
+    renderStats(allUsersData);
     filterUsersTable();
   } else {
-    if (tabStudentsBtn) tabStudentsBtn.classList.add("active");
-    if (tabStaffBtn) tabStaffBtn.classList.remove("active");
-
-    if (studentsSection) {
-      studentsSection.style.display = "block";
-      studentsSection.classList.add("active");
+    if (tabStudentsBtn) {
+      tabStudentsBtn.classList.add("active");
+      tabStudentsBtn.setAttribute("aria-selected", "true");
     }
-    if (staffSection) {
-      staffSection.style.display = "none";
-      staffSection.classList.remove("active");
+    if (tabStaffBtn) {
+      tabStaffBtn.classList.remove("active");
+      tabStaffBtn.setAttribute("aria-selected", "false");
     }
+    if (studentsSection) studentsSection.style.display = "block";
+    if (staffSection) staffSection.style.display = "none";
+    if (staffPills) staffPills.style.display = "none";
+    if (studentPills) studentPills.style.display = "flex";
+    if (searchInput) searchInput.placeholder = "بحث في الطلاب بالاسم أو الحلقة أو المعلم...";
+    if (fabBtn) fabBtn.title = "إضافة حساب طالب جديد";
+    if (headerAddBtn) headerAddBtn.title = "إضافة حساب طالب جديد";
 
-    if (btnAddStaff) btnAddStaff.style.display = "none";
-    if (btnAddStudent) btnAddStudent.style.display = "none";
-    if (btnExportExcel) btnExportExcel.style.display = "inline-flex";
-
-    if (pageMainHeading) pageMainHeading.textContent = "سجل حسابات ورموز الطلاب القرآنية";
-    if (pageSubHeading) pageSubHeading.textContent = "عرض حسابات الطلاب والرموز السرية (PIN) وتواريخ التسجيل.";
-
-    // Highlight students chip if available
-    const stChip = document.querySelector('#usersRoleChips [data-role="students"]');
-    if (stChip) {
-      document.querySelectorAll("#usersRoleChips .user-role-chip").forEach(b => b.classList.remove("active"));
-      stChip.classList.add("active");
-    }
-
+    renderStudentStats(allStudentsData);
     filterStudentsTable();
   }
+}
 
-  if (window.lucide) lucide.createIcons();
+function handleUnifiedSearchInput() {
+  const input = document.getElementById("usersSearchInput");
+  const clearBtn = document.getElementById("usersSearchClearBtn");
+  const val = input ? input.value : "";
+  if (clearBtn) {
+    clearBtn.classList.toggle("visible", val.trim().length > 0);
+  }
+  if (currentActiveSection === "students") {
+    filterStudentsTable();
+  } else {
+    filterUsersTable();
+  }
+}
+
+function clearUnifiedSearch() {
+  const input = document.getElementById("usersSearchInput");
+  const clearBtn = document.getElementById("usersSearchClearBtn");
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+  if (clearBtn) clearBtn.classList.remove("visible");
+  if (currentActiveSection === "students") {
+    filterStudentsTable();
+  } else {
+    filterUsersTable();
+  }
 }
 
 // ==============================================
 // STAFF USERS MANAGEMENT
 // ==============================================
+function normalizeUserObj(raw, fallbackId = null) {
+  if (!raw || typeof raw !== "object") return null;
+  const uid = normalizeEntityId(raw.id !== undefined ? raw.id : (raw.local_id !== undefined ? raw.local_id : fallbackId), "users");
+  if (uid === null) return null;
+  const perms = parsePermissions(raw.permissions);
+  const code = String(raw.code || raw.passcode || "").trim();
+  const isSuper = (raw.is_superadmin === 1 || raw.is_superadmin === "1" || raw.is_superadmin === true) ? 1 : 0;
+  const isActive = raw.is_active === undefined || raw.is_active === null ? 1 : (Number(raw.is_active) === 0 || raw.is_active === false ? 0 : 1);
+
+  return {
+    ...raw,
+    id: uid,
+    local_id: uid,
+    username: String(raw.username || raw.display_name || raw.name || "").trim(),
+    display_name: String(raw.display_name || raw.username || raw.name || "").trim(),
+    role: raw.role || "teacher",
+    code,
+    passcode: code,
+    permissions: perms,
+    is_superadmin: isSuper,
+    is_active: isActive
+  };
+}
+
+function deduplicateAndFilterUsers(list) {
+  const deletedSet = getDeletedSet("deleted_users");
+  const byId = new Map();
+  (list || []).forEach((item) => {
+    const norm = normalizeUserObj(item);
+    if (!norm || !norm.username) return;
+    if (deletedSet.has(String(norm.id))) return;
+    byId.set(String(norm.id), norm);
+  });
+  return Array.from(byId.values()).sort((a, b) => {
+    if (a.is_superadmin !== b.is_superadmin) return b.is_superadmin - a.is_superadmin;
+    return String(a.username).localeCompare(String(b.username), "ar");
+  });
+}
+
+async function persistUsersCache(usersList) {
+  try {
+    localStorage.setItem("cached_users_list", JSON.stringify(usersList));
+  } catch (e) {}
+  if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.saveUsers === "function") {
+    try {
+      await window.AlbayanLocalDB.saveUsers(usersList);
+    } catch (e) {}
+  }
+}
+
 async function loadUsers() {
-  const tbody = document.getElementById("usersTableBody");
-  const mobileFeed = document.getElementById("usersMobileFeed");
   let fetched = false;
 
-  // 1. Instant Cache Render (<10ms)
-  if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalUsers === "function") {
+  // 1. Instant Cache Render (<10ms) from AlbayanLocalDB or localStorage
+  if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getUsers === "function") {
     try {
-      const localUsers = await window.AlbayanLocalDB.getLocalUsers();
+      const localUsers = await window.AlbayanLocalDB.getUsers();
       if (Array.isArray(localUsers) && localUsers.length > 0) {
-        allUsersData = localUsers;
-        renderStats(allUsersData);
-        filterUsersTable();
+        allUsersData = deduplicateAndFilterUsers(localUsers);
+        updateUsersBadgesAndStats();
+        if (currentActiveSection === "staff") filterUsersTable();
       }
     } catch (e) {}
   }
 
-  // 2. Try network fetch from local server
+  if (allUsersData.length === 0) {
+    try {
+      const lsUsers = JSON.parse(localStorage.getItem("cached_users_list") || "[]");
+      if (Array.isArray(lsUsers) && lsUsers.length > 0) {
+        allUsersData = deduplicateAndFilterUsers(lsUsers);
+        updateUsersBadgesAndStats();
+        if (currentActiveSection === "staff") filterUsersTable();
+      }
+    } catch (e) {}
+  }
+
+  // 2. Try local Python server API
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1200);
+    const timeoutId = setTimeout(() => controller.abort(), 1400);
     const res = await fetch("/api/users", { signal: controller.signal });
     clearTimeout(timeoutId);
     if (res.ok) {
       const users = await res.json();
       if (Array.isArray(users) && users.length > 0) {
-        allUsersData = users;
+        allUsersData = deduplicateAndFilterUsers(users);
         fetched = true;
-        if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.cacheUsers === "function") {
-          window.AlbayanLocalDB.cacheUsers(users).catch(() => {});
-        }
+        await persistUsersCache(allUsersData);
       }
     }
   } catch (err) {}
 
-  // 3. Try Firebase pull
+  // 3. Firebase RTDB pull
   if (!fetched) {
     if (typeof window.pullUsersFromFirebase === "function") {
       try {
         const fbUsers = await window.pullUsersFromFirebase();
         if (Array.isArray(fbUsers) && fbUsers.length > 0) {
-          allUsersData = fbUsers;
+          allUsersData = deduplicateAndFilterUsers(fbUsers);
           fetched = true;
-          if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.cacheUsers === "function") {
-            window.AlbayanLocalDB.cacheUsers(fbUsers).catch(() => {});
-          }
+          await persistUsersCache(allUsersData);
         }
       } catch (e) {}
     }
@@ -252,370 +551,261 @@ async function loadUsers() {
     if (!fetched) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4500);
-        const fbRes = await fetch("https://bayan-56e77-default-rtdb.asia-southeast1.firebasedatabase.app/users.json", { signal: controller.signal });
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const fbRes = await fetch(`${FB_RTDB_BASE}/users.json`, { signal: controller.signal });
         clearTimeout(timeoutId);
         if (fbRes.ok) {
           const raw = await fbRes.json();
           if (raw && typeof raw === "object") {
             const list = [];
             Object.entries(raw).forEach(([k, v]) => {
-              if (v && typeof v === "object") {
-                const id = v.id || v.local_id || (k.includes('_') ? parseInt(k.split('_')[1]) : k);
-                list.push({ ...v, id });
-              }
+              const norm = normalizeUserObj(v, k);
+              if (norm) list.push(norm);
             });
             if (list.length > 0) {
-              allUsersData = list;
+              allUsersData = deduplicateAndFilterUsers(list);
               fetched = true;
-              if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.cacheUsers === "function") {
-                window.AlbayanLocalDB.cacheUsers(list).catch(() => {});
-              }
+              await persistUsersCache(allUsersData);
             }
           }
         }
-      } catch(e) {}
+      } catch (e) {}
     }
   }
 
-  // 4. Fallback to AlbayanLocalDB pre-seeded accounts
-  if (!allUsersData || allUsersData.length === 0) {
-    if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalUsers === "function") {
-      try {
-        const fallbackUsers = await window.AlbayanLocalDB.getLocalUsers();
-        if (Array.isArray(fallbackUsers) && fallbackUsers.length > 0) {
-          allUsersData = fallbackUsers;
-        }
-      } catch(e) {}
-    }
+  updateUsersBadgesAndStats();
+  if (currentActiveSection === "staff") {
+    filterUsersTable();
   }
-
-  const countBadge = document.getElementById("staffCountBadge");
-  if (countBadge) countBadge.textContent = allUsersData.length;
-
-  renderStats(allUsersData);
-  filterUsersTable();
 }
 
+function updateUsersBadgesAndStats() {
+  const countBadge = document.getElementById("staffCountBadge");
+  if (countBadge) countBadge.textContent = allUsersData.length;
+  if (currentActiveSection === "staff") {
+    renderStats(allUsersData);
+  }
+}
 
 function renderStats(users) {
-  const cardsContainer = document.getElementById("usersStatsCards");
-  if (!cardsContainer) return;
+  const strip = document.getElementById("waSummaryStrip");
+  if (!strip || currentActiveSection !== "staff") return;
 
   const total = users.length;
   const active = users.filter(u => u.is_active == 1).length;
   const teachers = users.filter(u => u.role === "teacher").length;
   const admins = users.filter(u => u.role === "admin" || u.role === "supervisor").length;
 
-  cardsContainer.innerHTML = `
-    <div class="users-kpi-card">
-      <div class="users-kpi-icon blue">
-        <i data-lucide="users" style="width:22px; height:22px;"></i>
-      </div>
-      <div class="users-kpi-data">
-        <span class="users-kpi-label">إجمالي الكادر</span>
-        <strong class="users-kpi-val">${total}</strong>
-      </div>
+  strip.innerHTML = `
+    <div class="wa-stat-chip accent-blue">
+      <strong>${total}</strong>
+      <span>إجمالي الكادر</span>
     </div>
-
-    <div class="users-kpi-card">
-      <div class="users-kpi-icon green">
-        <i data-lucide="check-circle-2" style="width:22px; height:22px;"></i>
-      </div>
-      <div class="users-kpi-data">
-        <span class="users-kpi-label">الحسابات النشطة</span>
-        <strong class="users-kpi-val">${active}</strong>
-      </div>
+    <div class="wa-stat-chip accent-green">
+      <strong>${active}</strong>
+      <span>نشط ومفعّل</span>
     </div>
-
-    <div class="users-kpi-card">
-      <div class="users-kpi-icon amber">
-        <i data-lucide="book-open" style="width:22px; height:22px;"></i>
-      </div>
-      <div class="users-kpi-data">
-        <span class="users-kpi-label">معلمو الحلقات</span>
-        <strong class="users-kpi-val">${teachers}</strong>
-      </div>
+    <div class="wa-stat-chip accent-amber">
+      <strong>${teachers}</strong>
+      <span>معلمو الحلقات</span>
     </div>
-
-    <div class="users-kpi-card">
-      <div class="users-kpi-icon purple">
-        <i data-lucide="shield-check" style="width:22px; height:22px;"></i>
-      </div>
-      <div class="users-kpi-data">
-        <span class="users-kpi-label">الإدارة والإشراف</span>
-        <strong class="users-kpi-val">${admins}</strong>
-      </div>
+    <div class="wa-stat-chip accent-purple">
+      <strong>${admins}</strong>
+      <span>الإدارة والإشراف</span>
     </div>
   `;
-  if (window.lucide) lucide.createIcons();
 }
 
 function setUserRoleFilter(role, btnEl) {
-  activeRoleFilter = role;
-  const buttons = document.querySelectorAll("#usersRoleChips .user-role-chip, #studentsStatusChips .user-role-chip");
+  activeRoleFilter = role || "all";
+  const buttons = document.querySelectorAll("#staffFilterPills .wa-filter-pill");
   buttons.forEach(b => b.classList.remove("active"));
   if (btnEl) {
     btnEl.classList.add("active");
   } else {
-    const matching = document.querySelector(`#usersRoleChips [data-role="${role}"]`);
+    const matching = document.querySelector(`#staffFilterPills [data-role="${activeRoleFilter}"]`);
     if (matching) matching.classList.add("active");
   }
+  filterUsersTable();
+}
 
-  if (role === "students") {
-    switchSectionTab("students");
-  } else {
-    switchSectionTab("staff");
-  }
+function getRoleMeta(role, isSuper) {
+  if (isSuper) return { cls: "superadmin", label: "المسؤول الأول", inlineCls: "" };
+  if (role === "admin") return { cls: "admin", label: "مسؤول نظام", inlineCls: "" };
+  if (role === "supervisor") return { cls: "supervisor", label: "مشرف تعليمي", inlineCls: "supervisor" };
+  return { cls: "teacher", label: "معلم حلقة", inlineCls: "teacher" };
 }
 
 function filterUsersTable() {
-  const tbody = document.getElementById("usersTableBody");
-  const mobileFeed = document.getElementById("usersMobileFeed");
-  const searchQuery = (document.getElementById("searchUsersInput")?.value || "").trim().toLowerCase();
+  const listEl = document.getElementById("usersChatList");
+  if (!listEl) return;
 
-  const filtered = allUsersData.filter(u => {
-    const matchQuery = (u.username || "").toLowerCase().includes(searchQuery);
-    let matchRole = true;
-    if (activeRoleFilter === "admin") matchRole = u.role === "admin";
-    else if (activeRoleFilter === "supervisor") matchRole = u.role === "supervisor";
-    else if (activeRoleFilter === "teacher") matchRole = u.role === "teacher";
-    else if (activeRoleFilter === "active") matchRole = u.is_active == 1;
-
-    return matchQuery && matchRole;
-  });
-
-  const emptyHtml = `
-    <div style="text-align:center; padding:32px 16px; color:var(--muted); background:var(--card-bg); border:1px dashed var(--line); border-radius:16px;">
-      <i data-lucide="search-x" style="width:36px; height:36px; margin-bottom:8px; opacity:0.6;"></i>
-      <p style="margin:0; font-size:14px; font-weight:700;">لا توجد حسابات كادر تطابق خيارات البحث أو التصفية الحالية.</p>
-    </div>
-  `;
-
-  if (!filtered || filtered.length === 0) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px;">${emptyHtml}</td></tr>`;
-    if (mobileFeed) mobileFeed.innerHTML = emptyHtml;
-    if (window.lucide) lucide.createIcons();
-    return;
-  }
+  const rawQuery = (document.getElementById("usersSearchInput")?.value || "").trim();
+  const normQuery = normalizeArabicSearch(rawQuery);
 
   const permMap = {
     circles: "الحلقات",
     exams: "الاختبارات",
     analytics: "الإحصائيات",
-    student_cv: "سير الطلاب",
-    users: "المستخدمين",
+    student_cv: "السير الذاتية",
+    users: "المستخدمون",
     all_circles: "جميع الحلقات",
     own_circle: "حلقته فقط"
   };
 
-  // 1. Mobile Feed
-  if (mobileFeed) {
-    mobileFeed.innerHTML = filtered.map((u, idx) => {
-      const isSuper = u.is_superadmin === 1;
-      const isActive = u.is_active == 1;
-      let perms = [];
-      try { perms = JSON.parse(u.permissions || "[]"); } catch (e) { perms = []; }
+  const filtered = allUsersData.filter(u => {
+    const isSuper = u.is_superadmin === 1;
+    const roleInfo = getRoleMeta(u.role, isSuper);
+    const perms = parsePermissions(u.permissions);
+    const permsText = perms.map(p => permMap[p] || p).join(" ");
 
-      let roleClass = "teacher";
-      let roleStr = "معلم حلقة";
-      if (u.role === "admin") {
-        roleClass = "admin";
-        roleStr = "مسؤول نظام";
-      } else if (u.role === "supervisor") {
-        roleClass = "supervisor";
-        roleStr = "مشرف تعليمي";
-      }
+    const haystack = normalizeArabicSearch(`${u.username} ${u.display_name || ""} ${roleInfo.label} ${permsText}`);
+    const matchQuery = !normQuery || haystack.includes(normQuery);
 
-      const initialChar = (u.username || "م").trim().charAt(0).toUpperCase();
+    let matchRole = true;
+    if (activeRoleFilter === "admin") matchRole = u.role === "admin";
+    else if (activeRoleFilter === "supervisor") matchRole = u.role === "supervisor";
+    else if (activeRoleFilter === "teacher") matchRole = u.role === "teacher";
+    else if (activeRoleFilter === "active") matchRole = u.is_active == 1;
+    else if (activeRoleFilter === "inactive") matchRole = u.is_active == 0;
 
-      let formattedDateText = "--";
-      if (u.created_at) {
-        if (window.HijriDate) {
-          const dual = window.HijriDate.formatDualDate(u.created_at);
-          formattedDateText = `${dual.hijri} (${dual.gregorian})`;
-        } else {
-          formattedDateText = u.created_at;
-        }
-      }
+    return matchQuery && matchRole;
+  });
 
-      return `
-        <div class="user-mobile-card">
-          <div class="user-mobile-card-header">
-            <div class="user-mobile-profile">
-              <div class="user-avatar-badge ${roleClass}">
-                <span>${initialChar}</span>
-              </div>
-              <div class="user-mobile-info">
-                <div class="user-mobile-name-row">
-                  <span class="user-mobile-name">${escapeHtml(u.username)}</span>
-                  ${isSuper ? '<span class="user-badge-super"><i data-lucide="crown" style="width:12px; height:12px;"></i> المسؤول الأول</span>' : ''}
-                  ${u.is_online ? '<span class="online-indicator-pill"><span class="online-ping"></span> متصل الآن</span>' : ''}
-                </div>
-                <div style="margin-top:3px;">
-                  <span class="user-badge-role ${roleClass}">${roleStr}</span>
-                </div>
-              </div>
-            </div>
+  if (filtered.length === 0) {
+    const hasFilter = Boolean(normQuery) || activeRoleFilter !== "all";
+    listEl.innerHTML = `
+      <div class="wa-empty-state">
+        <div style="font-size:15.5px; font-weight:800;">${hasFilter ? "لا توجد حسابات مطابقة" : "لا توجد حسابات كادر بعد"}</div>
+        <p>${hasFilter ? "جرّب تعديل كلمة البحث أو تغيير فلتر الدور." : "اضغط على زر الإضافة لإنشاء أول حساب في كادر المدرسة."}</p>
+        ${hasFilter ? `
+          <button type="button" class="wa-filter-pill active" onclick="resetStaffFilters()">إعادة ضبط البحث والفلتر</button>
+        ` : `
+          <button type="button" class="wa-filter-pill active" onclick="openAddUserModal()">إنشاء حساب كادر</button>
+        `}
+      </div>
+    `;
+    return;
+  }
 
-            <div class="user-mobile-status-pill ${isActive ? 'active' : 'inactive'}">
-              <span class="status-dot"></span>
-              <span>${isActive ? 'نشط' : 'معطّل'}</span>
-            </div>
-          </div>
+  listEl.innerHTML = filtered.map(u => {
+    const isSuper = u.is_superadmin === 1;
+    const isActive = u.is_active == 1;
+    const perms = parsePermissions(u.permissions);
+    const roleMeta = getRoleMeta(u.role, isSuper);
+    const initialChar = (u.username || "م").trim().charAt(0).toUpperCase();
+    const safeId = escapeJsArg(u.id);
 
-          <div class="user-mobile-meta-box">
-            <div class="user-mobile-meta-row">
-              <span class="user-mobile-meta-label">
-                <i data-lucide="log-in" style="width:14px; height:14px;"></i> حالة الدخول
-              </span>
-              <span class="user-mobile-meta-val">
-                ${u.has_logged_in ? `
-                  <span style="color:#059669; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
-                    <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم التسجيل
-                  </span>
-                ` : `
-                  <span style="color:var(--muted); font-weight:700; display:inline-flex; align-items:center; gap:4px;">
-                    <i data-lucide="clock" style="width:14px; height:14px;"></i> لم يسجل بعد
-                  </span>
-                `}
-              </span>
-            </div>
+    const permsSummary = (isSuper || perms.length === 0)
+      ? "جميع الصلاحيات"
+      : perms.slice(0, 3).map(p => permMap[p] || p).join("، ") + (perms.length > 3 ? ` (+${perms.length - 3})` : "");
 
-            ${window.currentUserIsAdmin && u.code ? `
-            <div class="user-mobile-meta-row">
-              <span class="user-mobile-meta-label">
-                <i data-lucide="key" style="width:14px; height:14px;"></i> كلمة المرور
-              </span>
-              <span class="user-mobile-meta-val">
-                <div class="user-pwd-cell" id="pwdBoxUserMob_${u.id}">
-                  <span class="user-pwd-text masked" id="pwdTextMob_${u.id}">••••••</span>
-                  <button type="button" class="btn-icon-eye" onclick="toggleRevealPassword('userMob', ${u.id}, '${escapeHtml(u.code)}')" title="إظهار / إخفاء الرمز">
-                    <i data-lucide="eye" id="pwdEyeMob_${u.id}" style="width:16px; height:16px;"></i>
-                  </button>
-                </div>
-              </span>
-            </div>
-            ` : ''}
+    const statusText = !isActive
+      ? `<span class="wa-row-status-text danger">معطّل</span>`
+      : (u.has_logged_in
+          ? `<span class="wa-row-status-text ok">مسجّل دخول</span>`
+          : `<span class="wa-row-status-text">${escapeHtml(formatDualDateShort(u.created_at) || "نشط")}</span>`);
 
-            <div class="user-mobile-meta-row">
-              <span class="user-mobile-meta-label">
-                <i data-lucide="calendar" style="width:14px; height:14px;"></i> تاريخ الإنشاء
-              </span>
-              <span class="user-mobile-meta-val" style="font-size:11.5px;">${formattedDateText}</span>
-            </div>
+    const avatarCls = isActive ? roleMeta.cls : "disabled-avatar";
+    const dotCls = isActive ? "online" : "offline";
 
-            <div style="margin-top:2px;">
-              <span class="user-mobile-meta-label" style="display:block; margin-bottom:4px;">
-                <i data-lucide="key" style="width:14px; height:14px;"></i> الصلاحيات:
-              </span>
-              <div class="user-perms-chips-wrap">
-                ${perms.length > 0 ? perms.map(p => `<span class="user-perm-chip">${escapeHtml(permMap[p] || p)}</span>`).join("") : '<span class="user-perm-chip" style="color:var(--user-primary); font-weight:800;">جميع الصلاحيات</span>'}
-              </div>
-            </div>
-          </div>
-
-          <button type="button" class="user-mobile-action-btn" onclick="openEditUserModal(${u.id})">
-            <i data-lucide="edit-3" style="width:16px; height:16px;"></i>
-            <span>تعديل الصلاحيات والحساب</span>
-          </button>
+    return `
+      <div class="wa-user-row" role="button" tabindex="0" onclick="openEditUserModal('${safeId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEditUserModal('${safeId}');}">
+        <div class="wa-user-avatar-wrap">
+          <div class="wa-user-avatar ${avatarCls}" aria-hidden="true">${escapeHtml(initialChar)}</div>
+          <span class="wa-avatar-dot ${dotCls}" title="${isActive ? 'حساب نشط' : 'حساب معطّل'}"></span>
         </div>
-      `;
-    }).join("");
-  }
 
-  // 2. Desktop Table
-  if (tbody) {
-    tbody.innerHTML = filtered.map((u, idx) => {
-      const isSuper = u.is_superadmin === 1;
-      const isActive = u.is_active == 1;
-      let perms = [];
-      try { perms = JSON.parse(u.permissions || "[]"); } catch (e) { perms = []; }
-
-      let roleClass = "teacher";
-      let roleStr = "معلم حلقة";
-      if (u.role === "admin") {
-        roleClass = "admin";
-        roleStr = "مسؤول نظام";
-      } else if (u.role === "supervisor") {
-        roleClass = "supervisor";
-        roleStr = "مشرف تعليمي";
-      }
-
-      let formattedDateHtml = "--";
-      if (u.created_at) {
-        if (window.HijriDate) {
-          const dual = window.HijriDate.formatDualDate(u.created_at);
-          formattedDateHtml = `<div class="dual-date-wrap"><strong class="date-hijri">${dual.hijri}</strong><small class="date-gregorian">(${dual.gregorian})</small></div>`;
-        } else {
-          formattedDateHtml = u.created_at;
-        }
-      }
-
-      return `
-        <tr>
-          <td style="color:var(--muted); font-weight:700;">${idx + 1}</td>
-          <td>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <strong style="font-size:14.5px;">${escapeHtml(u.username)}</strong>
-              ${isSuper ? '<span class="user-badge-super"><i data-lucide="crown" style="width:12px; height:12px;"></i> المسؤول الأول</span>' : ''}
-              ${u.is_online ? '<span class="online-indicator-pill"><span class="online-ping"></span> متصل</span>' : ''}
-              ${!isActive ? '<span class="user-mobile-status-pill inactive" style="font-size:10px; padding:1px 6px;">معطل</span>' : ''}
+        <div class="wa-user-info">
+          <div class="wa-user-top-line">
+            <div class="wa-user-name-wrap">
+              <h3 class="wa-user-name">${escapeHtml(u.username)}</h3>
+              ${isSuper ? '<span class="wa-super-tag">المسؤول الأول</span>' : ''}
             </div>
-          </td>
-          <td style="white-space: nowrap;">
-            <span class="user-badge-role ${roleClass}">${roleStr}</span>
-          </td>
-          <td>
-            <div class="user-perms-chips-wrap">
-              ${perms.length > 0 ? perms.map(p => `<span class="user-perm-chip">${escapeHtml(permMap[p] || p)}</span>`).join("") : '<span class="user-perm-chip" style="color:var(--user-primary); font-weight:800;">جميع الصلاحيات</span>'}
-            </div>
-          </td>
-          <td style="white-space: nowrap;">
-            ${u.has_logged_in ? `
-              <span style="color:#059669; font-weight:800; display:inline-flex; align-items:center; gap:4px; font-size:12px;">
-                <i data-lucide="check-circle-2" style="width:14px; height:14px;"></i> تم التسجيل
-              </span>
-            ` : `
-              <span style="color:var(--muted); font-weight:700; display:inline-flex; align-items:center; gap:4px; font-size:12px;">
-                <i data-lucide="clock" style="width:14px; height:14px;"></i> لم يتم التسجيل
-              </span>
-            `}
-          </td>
-          ${window.currentUserIsAdmin ? `
-          <td style="white-space: nowrap;">
-            ${u.code ? `
-              <div class="user-pwd-cell" id="pwdBoxUser_${u.id}">
-                <span class="user-pwd-text masked" id="pwdText_${u.id}">••••••</span>
-                <button type="button" class="btn-icon-eye" onclick="toggleRevealPassword('user', ${u.id}, '${escapeHtml(u.code)}')" title="إظهار / إخفاء الرمز">
-                  <i data-lucide="eye" id="pwdEye_${u.id}" style="width:16px; height:16px;"></i>
-                </button>
-              </div>
-            ` : '<span style="color:var(--muted); font-size:12px;">--</span>'}
-          </td>
-          ` : ''}
-          <td style="white-space: nowrap;">${formattedDateHtml}</td>
-          <td style="text-align:center;">
-            <button type="button" class="btn-secondary" style="padding:7px 14px; font-size:12.5px; display:inline-flex; align-items:center; gap:5px; border-radius:10px;" onclick="openEditUserModal(${u.id})">
-              <i data-lucide="edit-3" style="width:14px; height:14px;"></i>
-              <span>تعديل</span>
+            ${statusText}
+          </div>
+
+          <div class="wa-user-meta">
+            <span class="wa-role-inline ${roleMeta.inlineCls}">${escapeHtml(roleMeta.label)}</span>
+            <span>•</span>
+            <span>${escapeHtml(permsSummary)}</span>
+            ${u.code && window.currentUserIsAdmin ? `<span class="wa-inline-pin-pill" id="inlineStaffPin_${escapeHtml(String(u.id))}">${escapeHtml(u.code)}</span>` : ''}
+          </div>
+        </div>
+
+        <div class="wa-user-row-actions" onclick="event.stopPropagation()">
+          ${window.currentUserIsAdmin && u.code ? `
+            <button type="button" class="wa-row-icon-btn" onclick="toggleInlinePin('inlineStaffPin_${escapeHtml(String(u.id))}', this)" title="إظهار / إخفاء كلمة المرور" aria-label="إظهار أو إخفاء كلمة المرور">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             </button>
-          </td>
-        </tr>
-      `;
-    }).join("");
-  }
+          ` : ''}
+          <button type="button" class="wa-row-icon-btn" onclick="copyUserCredentials('${safeId}')" title="نسخ بيانات الدخول" aria-label="نسخ بيانات الدخول">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
+          <span class="wa-row-chevron" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
 
-  if (window.lucide) lucide.createIcons();
+function resetStaffFilters() {
+  const inp = document.getElementById("usersSearchInput");
+  const clr = document.getElementById("usersSearchClearBtn");
+  if (inp) inp.value = "";
+  if (clr) clr.classList.remove("visible");
+  setUserRoleFilter("all");
+}
+
+function toggleInlinePin(pillId, btnEl) {
+  const pill = document.getElementById(pillId);
+  if (!pill) return;
+  const shown = pill.classList.toggle("visible");
+  if (btnEl) {
+    btnEl.style.color = shown ? "#2563EB" : "";
+  }
+}
+
+function onUserRoleSelectChanged() {
+  const editId = document.getElementById("editUserId").value;
+  if (editId) return; // Keep custom permissions while editing existing users
+  const role = document.getElementById("userRole").value;
+  const checkboxes = document.querySelectorAll('#userModal input[name="perm"]');
+  const presets = {
+    admin: ["circles", "all_circles", "exams", "analytics", "student_cv", "users"],
+    supervisor: ["circles", "all_circles", "exams", "analytics", "student_cv"],
+    teacher: ["circles", "exams", "analytics", "student_cv"]
+  };
+  const target = presets[role] || presets.teacher;
+  checkboxes.forEach(cb => {
+    if (!cb.disabled) cb.checked = target.includes(cb.value);
+  });
+}
+
+function generateRandomStaffCode() {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const input = document.getElementById("newCode");
+  if (input) {
+    input.value = code;
+    input.type = "text";
+    const eyeIcon = document.getElementById("newCodeEyeIcon");
+    if (eyeIcon) eyeIcon.setAttribute("data-lucide", "eye-off");
+    if (window.lucide) lucide.createIcons();
+    input.focus();
+    showAlert(`تم توليد رمز مرور عشوائي: ${code}`, "ok");
+  }
 }
 
 function openAddUserModal() {
-  document.getElementById("userModalTitle").textContent = "إنشاء حساب كادر وتحديد الصلاحيات";
+  document.getElementById("userModalTitle").textContent = "إنشاء حساب كادر جديد";
   document.getElementById("saveUserBtn").innerHTML = '<span>حفظ وإنشاء الحساب</span> <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>';
   document.getElementById("editUserId").value = "";
   document.getElementById("newUsername").value = "";
   document.getElementById("newUsername").disabled = false;
   document.getElementById("newCode").value = "";
+  document.getElementById("newCode").type = "password";
   document.getElementById("newCode").required = true;
   document.getElementById("newCodeReqStar").style.display = "inline";
   document.getElementById("newCodeHelper").style.display = "none";
@@ -624,24 +814,30 @@ function openAddUserModal() {
   document.getElementById("userStatusField").style.display = "none";
   document.getElementById("userActiveStatus").value = "1";
 
+  const banner = document.getElementById("staffModalProfileBanner");
+  if (banner) banner.style.display = "none";
+
   const deleteBtn = document.getElementById("deleteUserBtn");
   if (deleteBtn) deleteBtn.style.display = "none";
 
-  toggleAllPerms(true);
-  const modal = document.getElementById("userModal");
-  modal.style.display = "flex";
-  setTimeout(() => modal.classList.add("active"), 10);
+  const checkboxes = document.querySelectorAll('#userModal input[name="perm"]');
+  checkboxes.forEach(cb => { cb.disabled = false; });
+  onUserRoleSelectChanged();
+
+  openModal("userModal");
   if (window.lucide) lucide.createIcons();
 }
 
 function openEditUserModal(userId) {
-  const user = allUsersData.find(u => u.id === userId);
+  const user = allUsersData.find(u => String(u.id) === String(userId));
   if (!user) return;
 
   const isSuper = user.is_superadmin === 1;
+  const isActive = user.is_active == 1;
+  const roleMeta = getRoleMeta(user.role, isSuper);
 
-  document.getElementById("userModalTitle").textContent = `تعديل حساب: ${user.username}`;
-  document.getElementById("saveUserBtn").innerHTML = '<span>حفظ وحماية التعديلات</span> <i data-lucide="check" style="width:16px; height:16px;"></i>';
+  document.getElementById("userModalTitle").textContent = `إدارة حساب: ${user.username}`;
+  document.getElementById("saveUserBtn").innerHTML = '<span>حفظ التعديلات</span> <i data-lucide="check" style="width:16px; height:16px;"></i>';
   document.getElementById("editUserId").value = user.id;
   document.getElementById("newUsername").value = user.username;
   document.getElementById("newUsername").disabled = isSuper;
@@ -655,41 +851,50 @@ function openEditUserModal(userId) {
   document.getElementById("userRole").value = user.role || "teacher";
   document.getElementById("userRole").disabled = isSuper;
 
+  // Profile Banner
+  const banner = document.getElementById("staffModalProfileBanner");
+  if (banner) {
+    banner.style.display = "flex";
+    const av = document.getElementById("staffBannerAvatar");
+    if (av) {
+      av.className = `wa-user-avatar ${isActive ? roleMeta.cls : "disabled-avatar"}`;
+      av.textContent = (user.username || "م").trim().charAt(0).toUpperCase();
+    }
+    const bn = document.getElementById("staffBannerName");
+    if (bn) bn.textContent = user.username;
+    const bs = document.getElementById("staffBannerSubtitle");
+    if (bs) bs.textContent = `${roleMeta.label} • ${isActive ? "حساب نشط" : "حساب معطّل"}`;
+
+    const toggleQuickBtn = document.getElementById("btnToggleStaffActiveQuick");
+    const toggleQuickLbl = document.getElementById("btnToggleStaffActiveLabel");
+    if (toggleQuickBtn) {
+      toggleQuickBtn.style.display = isSuper ? "none" : "inline-flex";
+    }
+    if (toggleQuickLbl) {
+      toggleQuickLbl.textContent = isActive ? "تعطيل" : "تفعيل";
+    }
+  }
+
   const statusField = document.getElementById("userStatusField");
   const statusSelect = document.getElementById("userActiveStatus");
   if (statusField && statusSelect) {
     statusField.style.display = isSuper ? "none" : "block";
-    statusSelect.value = user.is_active ? "1" : "0";
+    statusSelect.value = isActive ? "1" : "0";
   }
 
   const deleteBtn = document.getElementById("deleteUserBtn");
   if (deleteBtn) {
-    deleteBtn.style.display = "inline-flex";
-    if (isSuper) {
-      deleteBtn.disabled = true;
-      deleteBtn.title = "الحساب الرئيسي الأول للنظام محمي من الحذف";
-      deleteBtn.style.opacity = "0.5";
-      deleteBtn.style.cursor = "not-allowed";
-    } else {
-      deleteBtn.disabled = false;
-      deleteBtn.title = "حذف هذا الحساب";
-      deleteBtn.style.opacity = "1";
-      deleteBtn.style.cursor = "pointer";
-    }
+    deleteBtn.style.display = isSuper ? "none" : "inline-flex";
   }
 
-  let perms = [];
-  try { perms = JSON.parse(user.permissions || "[]"); } catch (e) { perms = []; }
-
+  const perms = parsePermissions(user.permissions);
   const checkboxes = document.querySelectorAll('#userModal input[name="perm"]');
   checkboxes.forEach(cb => {
     cb.checked = isSuper ? true : perms.includes(cb.value);
     cb.disabled = isSuper;
   });
 
-  const modal = document.getElementById("userModal");
-  modal.style.display = "flex";
-  setTimeout(() => modal.classList.add("active"), 10);
+  openModal("userModal");
   if (window.lucide) lucide.createIcons();
 }
 
@@ -700,270 +905,510 @@ function toggleAllPerms(check) {
   });
 }
 
-async function deleteCurrentUserFromModal() {
+async function toggleCurrentUserActiveQuick() {
   const editId = document.getElementById("editUserId").value;
   if (!editId) return;
-  await deleteUser(parseInt(editId, 10));
+  const user = allUsersData.find(u => String(u.id) === String(editId));
+  if (!user || user.is_superadmin === 1) return;
+
+  const nextActive = user.is_active == 1 ? 0 : 1;
+  const statusSelect = document.getElementById("userActiveStatus");
+  if (statusSelect) statusSelect.value = String(nextActive);
+
+  await persistStaffUser({
+    id: user.id,
+    username: user.username,
+    code: document.getElementById("newCode").value.trim() || user.code || "",
+    role: document.getElementById("userRole").value || user.role,
+    permissions: Array.from(document.querySelectorAll('#userModal input[name="perm"]:checked')).map(cb => cb.value),
+    is_active: nextActive,
+    isEdit: true,
+    existingUser: user
+  });
 }
 
 async function saveUser(e) {
   e.preventDefault();
-  const editId = document.getElementById("editUserId").value;
+  const editId = document.getElementById("editUserId").value.trim();
   const username = document.getElementById("newUsername").value.trim();
   const code = document.getElementById("newCode").value.trim();
   const role = document.getElementById("userRole").value;
-  const is_active = document.getElementById("userActiveStatus")?.value || "1";
-
+  const is_active = parseInt(document.getElementById("userActiveStatus")?.value || "1", 10);
   const perms = Array.from(document.querySelectorAll('#userModal input[name="perm"]:checked')).map(cb => cb.value);
 
-  const url = editId ? `/api/users/${editId}` : "/api/users";
-  const method = editId ? "PUT" : "POST";
+  if (!username) {
+    showAlert("الرجاء إدخال اسم المستخدم.", "error");
+    return;
+  }
 
-  const bodyData = { username, role, permissions: perms, is_active: parseInt(is_active, 10) };
+  if (!editId && !code) {
+    showAlert("الرجاء إدخال كلمة المرور أو الرمز السري للحساب الجديد.", "error");
+    return;
+  }
+
+  // Duplicate username validation on create
+  if (!editId) {
+    const normNew = normalizeArabicSearch(username);
+    const dup = allUsersData.find(u => normalizeArabicSearch(u.username) === normNew);
+    if (dup) {
+      showAlert(`اسم المستخدم "${username}" مسجّل مسبقاً، اختر اسماً آخر.`, "error");
+      return;
+    }
+  }
+
+  const existingUser = editId ? allUsersData.find(u => String(u.id) === String(editId)) : null;
+
+  await persistStaffUser({
+    id: editId ? (normalizeEntityId(editId, "users") ?? editId) : Date.now(),
+    username,
+    code: code || (existingUser ? existingUser.code : ""),
+    role,
+    permissions: perms,
+    is_active,
+    isEdit: Boolean(editId),
+    existingUser
+  });
+}
+
+async function persistStaffUser({ id, username, code, role, permissions, is_active, isEdit, existingUser }) {
+  const saveBtn = document.getElementById("saveUserBtn");
+  if (saveBtn) saveBtn.disabled = true;
+
+  const url = isEdit ? `/api/users/${id}` : "/api/users";
+  const method = isEdit ? "PUT" : "POST";
+  const bodyData = { username, role, permissions, is_active };
   if (code) bodyData.code = code;
 
+  let serverSaved = false;
+  let serverErrorMsg = "";
+
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1800);
     const res = await fetch(url, {
-      method: method,
+      method,
       headers: csrfHeaders(),
-      body: JSON.stringify(bodyData)
+      body: JSON.stringify(bodyData),
+      signal: controller.signal
     });
-    const data = await res.json();
+    clearTimeout(timeoutId);
+    const data = await res.json().catch(() => ({}));
     if (res.ok && data.success) {
-      closeModal("userModal");
-      showAlert(data.message || (editId ? "تم تحديث بيانات الحساب بنجاح." : "تم إنشاء الحساب بنجاح."), "ok");
-      await loadUsers();
-    } else {
-      showAlert(data.message || "فشل حفظ الحساب.", "error");
+      serverSaved = true;
+    } else if (res.status >= 400 && res.status < 500 && data.message) {
+      serverErrorMsg = data.message;
     }
   } catch (err) {
-    showAlert("تعذر الاتصال بالخادم.", "error");
+    // Offline / APK / Static mode -> fall through to Firebase + LocalDB
+  }
+
+  if (serverErrorMsg) {
+    if (saveBtn) saveBtn.disabled = false;
+    showAlert(serverErrorMsg, "error");
+    return;
+  }
+
+  const nowIso = new Date().toISOString();
+  const userPayload = normalizeUserObj({
+    ...(existingUser || {}),
+    id,
+    local_id: id,
+    username,
+    display_name: username,
+    role,
+    permissions,
+    is_active,
+    code: code || (existingUser ? existingUser.code : ""),
+    passcode: code || (existingUser ? existingUser.code : ""),
+    is_superadmin: existingUser ? existingUser.is_superadmin : 0,
+    created_at: (existingUser && existingUser.created_at) ? existingUser.created_at : nowIso,
+    updated_at: nowIso
+  });
+
+  // Always sync to Firebase RTDB so APK & Cloud stay aligned
+  let fbSaved = false;
+  if (typeof window.saveUserToFirebase === "function") {
+    try {
+      fbSaved = await window.saveUserToFirebase(userPayload);
+    } catch (e) {}
+  } else {
+    try {
+      const fbRes = await fetch(`${FB_RTDB_BASE}/users/${id}.json`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userPayload)
+      });
+      fbSaved = fbRes.ok;
+    } catch (e) {}
+  }
+
+  // Update in-memory list & local IndexedDB immediately
+  const idx = allUsersData.findIndex(u => String(u.id) === String(id));
+  if (idx >= 0) {
+    allUsersData[idx] = userPayload;
+  } else {
+    allUsersData.push(userPayload);
+  }
+  allUsersData = deduplicateAndFilterUsers(allUsersData);
+  await persistUsersCache(allUsersData);
+
+  if (saveBtn) saveBtn.disabled = false;
+  closeModal("userModal");
+  updateUsersBadgesAndStats();
+  filterUsersTable();
+
+  if (serverSaved || fbSaved) {
+    showAlert(isEdit ? `تم تحديث حساب "${username}" بنجاح.` : `تم إنشاء حساب "${username}" وحفظه في السحابة بنجاح.`, "ok");
+  } else {
+    showAlert(isEdit ? "تم حفظ تعديلات الحساب محلياً." : "تم إنشاء الحساب محلياً.", "ok");
   }
 }
 
+async function deleteCurrentUserFromModal() {
+  const editId = document.getElementById("editUserId").value;
+  if (!editId) return;
+  await deleteUser(editId);
+}
+
 async function deleteUser(userId) {
-  if (!confirm("هل أنت متأكد تماماً من رغبتك في حذف هذا الحساب؟ لن يتم التراجع عن هذا الإجراء.")) return;
-  try {
-    const res = await fetch(`/api/users/${userId}`, {
-      method: "DELETE",
-      headers: csrfHeaders()
-    });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      closeModal("userModal");
-      showAlert("تم حذف الحساب بنجاح.", "ok");
-      await loadUsers();
-    } else {
-      showAlert(data.message || "فشل الحذف.", "error");
-    }
-  } catch (err) {
-    showAlert("تعذر الحذف.", "error");
+  const user = allUsersData.find(u => String(u.id) === String(userId));
+  if (user && user.is_superadmin === 1) {
+    showAlert("الحساب الرئيسي الأول للنظام محمي من الحذف.", "error");
+    return;
   }
+
+  const label = user ? `"${user.username}"` : "هذا الحساب";
+  const confirmed = await confirmAction(
+    `هل أنت متأكد تماماً من رغبتك في حذف حساب ${label}؟ لن يمكن التراجع عن هذا الإجراء.`,
+    "حذف حساب كادر",
+    true
+  );
+  if (!confirmed) return;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1600);
+    await fetch(`/api/users/${userId}`, {
+      method: "DELETE",
+      headers: csrfHeaders(),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+  } catch (err) {}
+
+  addDeletedTombstone("deleted_users", userId);
+
+  if (typeof window.deleteUserFromFirebase === "function") {
+    try {
+      await window.deleteUserFromFirebase(userId);
+    } catch (e) {}
+  } else {
+    try {
+      await fetch(`${FB_RTDB_BASE}/users/${userId}.json`, { method: "DELETE" });
+    } catch (e) {}
+  }
+
+  if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.deleteLocalUser === "function") {
+    try { await window.AlbayanLocalDB.deleteLocalUser(userId); } catch (e) {}
+  }
+
+  allUsersData = allUsersData.filter(u => String(u.id) !== String(userId));
+  await persistUsersCache(allUsersData);
+
+  closeModal("userModal");
+  updateUsersBadgesAndStats();
+  filterUsersTable();
+  showAlert("تم حذف الحساب بنجاح.", "ok");
+}
+
+function copyCurrentUserCredentials() {
+  const editId = document.getElementById("editUserId").value;
+  if (!editId) return;
+  copyUserCredentials(editId);
+}
+
+function copyUserCredentials(userId) {
+  const user = allUsersData.find(u => String(u.id) === String(userId));
+  if (!user) return;
+  const roleMeta = getRoleMeta(user.role, user.is_superadmin === 1);
+  const codeVal = user.code || "123456";
+  const message =
+    `بيانات الدخول إلى منصة مدرسة البيان\n` +
+    `اسم المستخدم: ${user.username}\n` +
+    `الدور: ${roleMeta.label}\n` +
+    `رمز الدخول: ${codeVal}`;
+
+  copyToClipboard(message, `تم نسخ بيانات دخول "${user.username}" بنجاح.`);
 }
 
 // ==============================================
 // STUDENTS ACCOUNTS MANAGEMENT
 // ==============================================
-async function loadStudents() {
-  const tbody = document.getElementById("studentsTableBody");
-  const mobileFeed = document.getElementById("studentsMobileFeed");
-  let fetched = false;
+function enrichStudentsList(rawStudents, circlesList, usersList) {
+  const deletedStudents = getDeletedSet("deleted_students");
+  const deletedCircles = getDeletedSet("deleted_circles");
 
+  const circleMap = new Map();
+  (circlesList || []).forEach(c => {
+    if (!c) return;
+    const cid = normalizeEntityId(c.id !== undefined ? c.id : c.local_id, "circles");
+    if (cid === null || deletedCircles.has(String(cid))) return;
+    circleMap.set(String(cid), { ...c, id: cid });
+  });
+
+  const userNameMap = new Map();
+  (usersList || []).forEach(u => {
+    if (u && u.id !== undefined) {
+      userNameMap.set(String(u.id), u.username || u.display_name || "");
+    }
+  });
+
+  const dedup = new Map();
+  (rawStudents || []).forEach((s, idx) => {
+    if (!s || typeof s !== "object") return;
+    const sid = normalizeEntityId(s.id !== undefined ? s.id : (s.student_id !== undefined ? s.student_id : idx), "students");
+    if (sid === null || deletedStudents.has(String(sid))) return;
+    const sName = String(s.name || s.student_name || "").trim();
+    if (!sName) return;
+
+    const cid = normalizeEntityId(s.circle_id, "circles");
+    if (cid !== null && deletedCircles.has(String(cid))) return;
+
+    const circleObj = cid !== null ? circleMap.get(String(cid)) : null;
+    const circleName = (circleObj && circleObj.name) || s.circle_name || "بدون حلقة";
+    let teacherName = (circleObj && circleObj.teacher_name) || "";
+    if (!teacherName && circleObj && circleObj.teacher_id !== undefined) {
+      teacherName = userNameMap.get(String(circleObj.teacher_id)) || "";
+    }
+    if (!teacherName) teacherName = s.teacher_name || "غير محدد";
+
+    const codeDisplay = String(s.code_display !== undefined && s.code_display !== null ? s.code_display : (s.code || "")).trim();
+    const hasCode = codeDisplay.length > 0;
+
+    const existing = dedup.get(String(sid));
+    if (!existing || (hasCode && !existing.has_code)) {
+      dedup.set(String(sid), {
+        ...s,
+        id: sid,
+        name: sName,
+        circle_id: cid,
+        circle_name: circleName,
+        teacher_name: teacherName,
+        code: codeDisplay,
+        code_display: codeDisplay,
+        has_code: hasCode
+      });
+    }
+  });
+
+  return Array.from(dedup.values()).sort((a, b) =>
+    String(a.name).localeCompare(String(b.name), "ar")
+  );
+}
+
+async function loadStudents() {
+  let fetched = false;
+  let rawStudents = [];
+  let rawCircles = [];
+
+  // 1. Try local server API
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 1600);
     const res = await fetch("/api/users/students", { signal: controller.signal });
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
-      allStudentsData = data.students || [];
-      allCirclesData = data.circles || [];
+      rawStudents = data.students || [];
+      rawCircles = data.circles || [];
       fetched = true;
     }
   } catch (err) {}
 
-  // Fallback 1: Direct Firebase RTDB
+  // 2. Fallback: Firebase RTDB (or CirclesService)
   if (!fetched) {
     try {
       const [studentsRes, circlesRes] = await Promise.all([
-        fetch("https://bayan-56e77-default-rtdb.asia-southeast1.firebasedatabase.app/students.json"),
-        fetch("https://bayan-56e77-default-rtdb.asia-southeast1.firebasedatabase.app/circles.json")
+        fetch(`${FB_RTDB_BASE}/students.json`),
+        fetch(`${FB_RTDB_BASE}/circles.json`)
       ]);
+
       if (studentsRes.ok) {
-        const rawStudents = await studentsRes.json();
-        const stdList = [];
-        if (rawStudents) {
-          if (Array.isArray(rawStudents)) {
-            rawStudents.forEach((s, idx) => { if (s) stdList.push({ ...s, id: s.id || idx }); });
+        const rawS = await studentsRes.json();
+        if (rawS) {
+          if (Array.isArray(rawS)) {
+            rawS.forEach((s, idx) => { if (s) rawStudents.push({ ...s, id: s.id || idx }); });
           } else {
-            Object.entries(rawStudents).forEach(([id, s]) => {
-              if (s && typeof s === 'object') stdList.push({ ...s, id });
+            Object.entries(rawS).forEach(([k, s]) => {
+              if (s && typeof s === "object") {
+                const sid = normalizeEntityId(s.id !== undefined ? s.id : k, "students");
+                if (sid !== null) rawStudents.push({ ...s, id: sid });
+              }
             });
           }
+          fetched = true;
         }
-        allStudentsData = stdList;
-        fetched = true;
       }
+
       if (circlesRes.ok) {
-        const rawCircles = await circlesRes.json();
-        const circList = [];
-        if (rawCircles) {
-          if (Array.isArray(rawCircles)) {
-            rawCircles.forEach((c, idx) => { if (c) circList.push({ ...c, id: c.id || idx }); });
+        const rawC = await circlesRes.json();
+        if (rawC) {
+          if (Array.isArray(rawC)) {
+            rawC.forEach((c, idx) => { if (c) rawCircles.push({ ...c, id: c.id || idx }); });
           } else {
-            Object.entries(rawCircles).forEach(([id, c]) => {
-              if (c && typeof c === 'object') circList.push({ ...c, id });
+            Object.entries(rawC).forEach(([k, c]) => {
+              if (c && typeof c === "object") {
+                const cid = normalizeEntityId(c.id !== undefined ? c.id : k, "circles");
+                if (cid !== null) rawCircles.push({ ...c, id: cid });
+              }
             });
           }
         }
-        allCirclesData = circList;
       }
-    } catch(e) {
-      console.warn("Direct Firebase fetch error:", e);
-    }
+    } catch (e) {}
   }
 
-  // Fallback 2: IndexedDB / Cache
+  // 3. Fallback: IndexedDB Cache
   if (!fetched && window.AlbayanLocalDB) {
     try {
-      const cachedCircles = await window.AlbayanLocalDB.getCachedCircles();
+      const cachedCircles = await window.AlbayanLocalDB.getLocalCircles();
       if (Array.isArray(cachedCircles) && cachedCircles.length > 0) {
-        allCirclesData = cachedCircles;
+        rawCircles = cachedCircles;
       }
       const cachedStudents = [];
-      for (const c of allCirclesData) {
-        const st = await window.AlbayanLocalDB.getCachedStudents(c.id);
+      for (const c of rawCircles) {
+        const st = await window.AlbayanLocalDB.getLocalStudents(c.id);
         if (Array.isArray(st)) cachedStudents.push(...st);
       }
       if (cachedStudents.length > 0) {
-        allStudentsData = cachedStudents;
+        rawStudents = cachedStudents;
         fetched = true;
       }
-    } catch(e) {}
+    } catch (e) {}
   }
 
   // Merge pending local student changes if any exist
-  if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getPendingStudentChanges === 'function') {
+  if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getPendingStudentChanges === "function") {
     try {
       const pendingChanges = await window.AlbayanLocalDB.getPendingStudentChanges();
       Object.keys(pendingChanges).forEach(pid => {
         const dirty = pendingChanges[pid];
-        const numPid = Number(pid);
-        const existing = allStudentsData.find(s => Number(s.id) === numPid);
+        const cleanPid = normalizeEntityId(pid, "students");
+        if (cleanPid === null) return;
+        const existing = rawStudents.find(s => String(normalizeEntityId(s.id, "students")) === String(cleanPid));
         if (existing) {
           Object.assign(existing, dirty);
         } else if (dirty && dirty.name) {
-          allStudentsData.push({
-            id: numPid,
+          rawStudents.push({
+            id: cleanPid,
             name: dirty.name,
             circle_id: dirty.circle_id || "",
-            code: dirty.code || null,
+            code: dirty.code || "",
             ...dirty
           });
         }
       });
-    } catch(e) {}
+    } catch (e) {}
   }
+
+  const deletedCircles = getDeletedSet("deleted_circles");
+  allCirclesData = (rawCircles || [])
+    .map(c => ({ ...c, id: normalizeEntityId(c.id, "circles") }))
+    .filter(c => c && c.id !== null && c.name && !deletedCircles.has(String(c.id)));
+
+  allStudentsData = enrichStudentsList(rawStudents, allCirclesData, allUsersData);
 
   const countBadge = document.getElementById("studentsCountBadge");
   if (countBadge) countBadge.textContent = allStudentsData.length;
 
   populateCircleSelects(allCirclesData);
-  renderStudentStats(allStudentsData);
-  filterStudentsTable();
+  if (currentActiveSection === "students") {
+    renderStudentStats(allStudentsData);
+    filterStudentsTable();
+  }
 }
-
 
 function populateCircleSelects(circles) {
   const filterSelect = document.getElementById("filterStudentCircleSelect");
   const modalSelect = document.getElementById("studentCircleSelect");
 
   if (filterSelect) {
-    const currentVal = filterSelect.value;
-    filterSelect.innerHTML = `<option value="all">جميع الحلقات القرآنية (${circles.length})</option>` +
-      circles.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+    const currentVal = filterSelect.value || activeStudentCircleFilter || "all";
+    filterSelect.innerHTML = `<option value="all">كل الحلقات (${circles.length})</option>` +
+      circles.map(c => `<option value="${escapeHtml(String(c.id))}">${escapeHtml(c.name)}</option>`).join("");
     if (currentVal && Array.from(filterSelect.options).some(o => o.value === currentVal)) {
       filterSelect.value = currentVal;
+    } else {
+      filterSelect.value = "all";
     }
+    filterSelect.classList.toggle("has-selection", filterSelect.value !== "all");
   }
 
   if (modalSelect) {
     modalSelect.innerHTML = `<option value="">-- اختر الحلقة القرآنية --</option>` +
-      circles.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+      circles.map(c => `<option value="${escapeHtml(String(c.id))}">${escapeHtml(c.name)}</option>`).join("");
   }
 }
 
+function onStudentCircleFilterChanged() {
+  const filterSelect = document.getElementById("filterStudentCircleSelect");
+  activeStudentCircleFilter = filterSelect ? filterSelect.value : "all";
+  if (filterSelect) {
+    filterSelect.classList.toggle("has-selection", activeStudentCircleFilter !== "all");
+  }
+  filterStudentsTable();
+}
+
 function renderStudentStats(students) {
-  const container = document.getElementById("studentsStatsCards");
-  if (!container) return;
+  const strip = document.getElementById("waSummaryStrip");
+  if (!strip || currentActiveSection !== "students") return;
 
   const total = students.length;
   const withPin = students.filter(s => s.has_code).length;
   const pendingPin = total - withPin;
   const circlesCount = allCirclesData.length;
 
-  container.innerHTML = `
-    <div class="users-kpi-card">
-      <div class="users-kpi-icon blue">
-        <i data-lucide="graduation-cap" style="width:22px; height:22px;"></i>
-      </div>
-      <div class="users-kpi-data">
-        <span class="users-kpi-label">إجمالي الطلاب</span>
-        <strong class="users-kpi-val">${total}</strong>
-      </div>
+  strip.innerHTML = `
+    <div class="wa-stat-chip accent-blue">
+      <strong>${total}</strong>
+      <span>إجمالي الطلاب</span>
     </div>
-
-    <div class="users-kpi-card">
-      <div class="users-kpi-icon green">
-        <i data-lucide="key" style="width:22px; height:22px;"></i>
-      </div>
-      <div class="users-kpi-data">
-        <span class="users-kpi-label">مفعّل برمز سري</span>
-        <strong class="users-kpi-val">${withPin}</strong>
-      </div>
+    <div class="wa-stat-chip accent-green">
+      <strong>${withPin}</strong>
+      <span>مفعّل برمز</span>
     </div>
-
-    <div class="users-kpi-card">
-      <div class="users-kpi-icon amber">
-        <i data-lucide="clock" style="width:22px; height:22px;"></i>
-      </div>
-      <div class="users-kpi-data">
-        <span class="users-kpi-label">بانتظار تعيين الرمز</span>
-        <strong class="users-kpi-val">${pendingPin}</strong>
-      </div>
+    <div class="wa-stat-chip accent-amber">
+      <strong>${pendingPin}</strong>
+      <span>بانتظار الرمز</span>
     </div>
-
-    <div class="users-kpi-card">
-      <div class="users-kpi-icon purple">
-        <i data-lucide="book-open" style="width:22px; height:22px;"></i>
-      </div>
-      <div class="users-kpi-data">
-        <span class="users-kpi-label">الحلقات القرآنية</span>
-        <strong class="users-kpi-val">${circlesCount}</strong>
-      </div>
+    <div class="wa-stat-chip accent-purple">
+      <strong>${circlesCount}</strong>
+      <span>الحلقات</span>
     </div>
   `;
-  if (window.lucide) lucide.createIcons();
 }
 
 function setStudentStatusFilter(status, btnEl) {
-  activeStudentStatusFilter = status;
-  const buttons = document.querySelectorAll("#studentsStatusChips .user-role-chip");
+  activeStudentStatusFilter = status || "all";
+  const buttons = document.querySelectorAll("#studentsFilterPills .wa-filter-pill");
   buttons.forEach(b => b.classList.remove("active"));
-  if (btnEl) btnEl.classList.add("active");
+  if (btnEl) {
+    btnEl.classList.add("active");
+  } else {
+    const matching = document.querySelector(`#studentsFilterPills [data-status="${activeStudentStatusFilter}"]`);
+    if (matching) matching.classList.add("active");
+  }
   filterStudentsTable();
 }
 
-function filterStudentsTable() {
-  const tbody = document.getElementById("studentsTableBody");
-  const mobileFeed = document.getElementById("studentsMobileFeed");
-  const searchQuery = (document.getElementById("searchStudentsInput")?.value || "").trim().toLowerCase();
+function getFilteredStudentsList() {
+  const rawQuery = (document.getElementById("usersSearchInput")?.value || "").trim();
+  const normQuery = normalizeArabicSearch(rawQuery);
   const circleFilter = document.getElementById("filterStudentCircleSelect")?.value || "all";
 
-  const filtered = allStudentsData.filter(s => {
-    const matchQuery = (s.name || "").toLowerCase().includes(searchQuery) ||
-                       (s.circle_name || "").toLowerCase().includes(searchQuery) ||
-                       (s.teacher_name || "").toLowerCase().includes(searchQuery);
+  return allStudentsData.filter(s => {
+    const haystack = normalizeArabicSearch(`${s.name} ${s.circle_name} ${s.teacher_name} ${s.code_display || ""}`);
+    const matchQuery = !normQuery || haystack.includes(normQuery);
 
     let matchCircle = true;
     if (circleFilter !== "all") {
@@ -976,147 +1421,91 @@ function filterStudentsTable() {
 
     return matchQuery && matchCircle && matchStatus;
   });
+}
 
-  const emptyHtml = `
-    <div style="text-align:center; padding:32px 16px; color:var(--muted); background:var(--card-bg); border:1px dashed var(--line); border-radius:16px;">
-      <i data-lucide="search-x" style="width:36px; height:36px; margin-bottom:8px; opacity:0.6;"></i>
-      <p style="margin:0; font-size:14px; font-weight:700;">لا توجد حسابات طلاب تطابق خيارات البحث أو التصفية الحالية.</p>
-    </div>
-  `;
+function filterStudentsTable() {
+  const listEl = document.getElementById("studentsChatList");
+  if (!listEl) return;
 
-  if (!filtered || filtered.length === 0) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px;">${emptyHtml}</td></tr>`;
-    if (mobileFeed) mobileFeed.innerHTML = emptyHtml;
-    if (window.lucide) lucide.createIcons();
+  const filtered = getFilteredStudentsList();
+  const rawQuery = (document.getElementById("usersSearchInput")?.value || "").trim();
+  const circleFilter = document.getElementById("filterStudentCircleSelect")?.value || "all";
+
+  if (filtered.length === 0) {
+    const hasFilter = Boolean(rawQuery) || activeStudentStatusFilter !== "all" || circleFilter !== "all";
+    listEl.innerHTML = `
+      <div class="wa-empty-state">
+        <div style="font-size:15.5px; font-weight:800;">${hasFilter ? "لا توجد حسابات طلاب مطابقة" : "لا يوجد طلاب مسجلون بعد"}</div>
+        <p>${hasFilter ? "جرّب تعديل كلمة البحث أو اختيار حلقة أخرى." : "يمكنك إضافة طالب جديد وتوليد رمز الدخول الخاص به بسهولة."}</p>
+        ${hasFilter ? `
+          <button type="button" class="wa-filter-pill active" onclick="resetStudentFilters()">إعادة ضبط البحث والفلتر</button>
+        ` : `
+          <button type="button" class="wa-filter-pill active" onclick="openAddStudentModal()">إضافة حساب طالب</button>
+        `}
+      </div>
+    `;
     return;
   }
 
-  // 1. Mobile Feed
-  if (mobileFeed) {
-    mobileFeed.innerHTML = filtered.map((s, idx) => {
-      const hasPin = s.has_code;
-      const initialChar = (s.name || "ط").trim().charAt(0).toUpperCase();
+  listEl.innerHTML = filtered.map(s => {
+    const hasPin = s.has_code;
+    const initialChar = (s.name || "ط").trim().charAt(0).toUpperCase();
+    const safeId = escapeJsArg(s.id);
+    const dotCls = hasPin ? "online" : "pending";
 
-      let formattedDateText = "--";
-      if (s.created_at) {
-        if (window.HijriDate) {
-          const dual = window.HijriDate.formatDualDate(s.created_at);
-          formattedDateText = `${dual.hijri} (${dual.gregorian})`;
-        } else {
-          formattedDateText = s.created_at;
-        }
-      }
+    return `
+      <div class="wa-user-row student-row" role="button" tabindex="0" onclick="openEditStudentModal('${safeId}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEditStudentModal('${safeId}');}">
+        <div class="wa-user-avatar-wrap">
+          <div class="wa-user-avatar student" aria-hidden="true">${escapeHtml(initialChar)}</div>
+          <span class="wa-avatar-dot ${dotCls}" title="${hasPin ? 'مفعّل برمز سري' : 'بانتظار تعيين الرمز'}"></span>
+        </div>
 
-      return `
-        <div class="user-mobile-card student-mobile-card">
-          <div class="user-mobile-card-header">
-            <div class="user-mobile-profile">
-              <div class="user-avatar-badge student">
-                <span>${initialChar}</span>
-              </div>
-              <div class="user-mobile-info">
-                <div class="user-mobile-name-row">
-                  <span class="user-mobile-name">${escapeHtml(s.name)}</span>
-                </div>
-                <div style="margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                  <span class="user-badge-role circle-badge"><i data-lucide="book-open" style="width:11px; height:11px;"></i> ${escapeHtml(s.circle_name)}</span>
-                  <span class="user-badge-role teacher-badge"><i data-lucide="user" style="width:11px; height:11px;"></i> ${escapeHtml(s.teacher_name)}</span>
-                </div>
-              </div>
+        <div class="wa-user-info">
+          <div class="wa-user-top-line">
+            <div class="wa-user-name-wrap">
+              <h3 class="wa-user-name">${escapeHtml(s.name)}</h3>
             </div>
-
-            <div class="user-mobile-status-pill ${hasPin ? 'active' : 'pending'}">
-              <span class="status-dot"></span>
-              <span>${hasPin ? 'مفعّل برمز' : 'بدون رمز'}</span>
-            </div>
+            <span class="wa-row-status-text ${hasPin ? "ok" : "pending"}">${hasPin ? "مفعّل برمز" : "بدون رمز"}</span>
           </div>
 
-          <div class="user-mobile-meta-box">
-            <div class="user-mobile-meta-row">
-              <span class="user-mobile-meta-label">
-                <i data-lucide="key" style="width:14px; height:14px;"></i> الرمز السري (PIN)
-              </span>
-              <span class="user-mobile-meta-val">
-                ${hasPin ? `
-                  <div class="user-pwd-cell" id="pwdBoxStudentMob_${s.id}">
-                    <span class="user-pwd-text masked" id="pwdTextStudentMob_${s.id}">••••••</span>
-                    <button type="button" class="btn-icon-eye" onclick="toggleRevealPassword('studentMob', ${s.id}, '${escapeHtml(s.code_display || s.code || '')}')" title="إظهار / إخفاء الرمز">
-                      <i data-lucide="eye" id="pwdEyeStudentMob_${s.id}" style="width:16px; height:16px;"></i>
-                    </button>
-                  </div>
-                ` : '<span style="color:var(--muted); font-size:13px; font-style:italic;">غير معيّن</span>'}
-              </span>
-            </div>
-
-            <div class="user-mobile-meta-row">
-              <span class="user-mobile-meta-label">
-                <i data-lucide="calendar" style="width:14px; height:14px;"></i> تاريخ التسجيل
-              </span>
-              <span class="user-mobile-meta-val" style="font-size:11.5px;">${formattedDateText}</span>
-            </div>
+          <div class="wa-user-meta">
+            <span class="wa-role-inline circle">${escapeHtml(s.circle_name)}</span>
+            <span>•</span>
+            <span>المعلم: ${escapeHtml(s.teacher_name)}</span>
+            ${hasPin ? `<span class="wa-inline-pin-pill" id="inlineStudentPin_${escapeHtml(String(s.id))}">${escapeHtml(s.code_display)}</span>` : ''}
           </div>
         </div>
-      `;
-    }).join("");
+
+        <div class="wa-user-row-actions" onclick="event.stopPropagation()">
+          ${hasPin ? `
+            <button type="button" class="wa-row-icon-btn" onclick="toggleInlinePin('inlineStudentPin_${escapeHtml(String(s.id))}', this)" title="إظهار / إخفاء الرمز السري" aria-label="إظهار أو إخفاء الرمز السري">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          ` : ''}
+          <button type="button" class="wa-row-icon-btn" onclick="copyStudentCredentials('${safeId}')" title="نسخ بيانات الدخول" aria-label="نسخ بيانات الدخول">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
+          <span class="wa-row-chevron" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function resetStudentFilters() {
+  const inp = document.getElementById("usersSearchInput");
+  const clr = document.getElementById("usersSearchClearBtn");
+  const sel = document.getElementById("filterStudentCircleSelect");
+  if (inp) inp.value = "";
+  if (clr) clr.classList.remove("visible");
+  if (sel) {
+    sel.value = "all";
+    sel.classList.remove("has-selection");
   }
-
-  // 2. Desktop Table
-  if (tbody) {
-    tbody.innerHTML = filtered.map((s, idx) => {
-      const hasPin = s.has_code;
-
-      let formattedDateHtml = "--";
-      if (s.created_at) {
-        if (window.HijriDate) {
-          const dual = window.HijriDate.formatDualDate(s.created_at);
-          formattedDateHtml = `<div class="dual-date-wrap"><strong class="date-hijri">${dual.hijri}</strong><small class="date-gregorian">(${dual.gregorian})</small></div>`;
-        } else {
-          formattedDateHtml = s.created_at;
-        }
-      }
-
-      return `
-        <tr>
-          <td style="color:var(--muted); font-weight:700;">${idx + 1}</td>
-          <td>
-            <strong style="font-size:14.5px; color:var(--text);">${escapeHtml(s.name)}</strong>
-          </td>
-          <td style="white-space: nowrap;">
-            <span class="user-badge-role circle-badge"><i data-lucide="book-open" style="width:12px; height:12px;"></i> ${escapeHtml(s.circle_name)}</span>
-          </td>
-          <td style="white-space: nowrap;">
-            <span class="user-badge-role teacher-badge"><i data-lucide="user" style="width:12px; height:12px;"></i> ${escapeHtml(s.teacher_name)}</span>
-          </td>
-          <td style="white-space: nowrap;">
-            ${hasPin ? `
-              <span class="user-mobile-status-pill active" style="font-size:11.5px; padding:3px 10px;">
-                <span class="status-dot"></span> مفعّل برمز
-              </span>
-            ` : `
-              <span class="user-mobile-status-pill pending" style="font-size:11.5px; padding:3px 10px;">
-                <span class="status-dot"></span> بانتظار التعيين
-              </span>
-            `}
-          </td>
-          <td style="white-space: nowrap;">
-            ${hasPin ? `
-              <div class="user-pwd-cell" id="pwdBoxStudent_${s.id}">
-                <span class="user-pwd-text masked" id="pwdTextStudent_${s.id}">••••••</span>
-                <button type="button" class="btn-icon-eye" onclick="toggleRevealPassword('student', ${s.id}, '${escapeHtml(s.code_display || s.code || '')}')" title="إظهار / إخفاء الرمز">
-                  <i data-lucide="eye" id="pwdEyeStudent_${s.id}" style="width:16px; height:16px;"></i>
-                </button>
-              </div>
-            ` : `
-              <span style="color:var(--muted); font-size:13px; font-style:italic;">لم يُعيّن بعد</span>
-            `}
-          </td>
-          <td style="white-space: nowrap;">${formattedDateHtml}</td>
-        </tr>
-      `;
-    }).join("");
-  }
-
-  if (window.lucide) lucide.createIcons();
+  activeStudentCircleFilter = "all";
+  setStudentStatusFilter("all");
 }
 
 function openAddStudentModal() {
@@ -1124,8 +1513,12 @@ function openAddStudentModal() {
   document.getElementById("saveStudentBtn").innerHTML = '<span>حفظ وإضافة الطالب</span> <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>';
   document.getElementById("editStudentId").value = "";
   document.getElementById("studentNameInput").value = "";
-  document.getElementById("studentCircleSelect").value = "";
+  document.getElementById("studentCircleSelect").value = (activeStudentCircleFilter && activeStudentCircleFilter !== "all") ? activeStudentCircleFilter : "";
   document.getElementById("studentPinInput").value = "";
+  document.getElementById("studentPinInput").type = "password";
+
+  const banner = document.getElementById("studentModalProfileBanner");
+  if (banner) banner.style.display = "none";
 
   const resetPinBtn = document.getElementById("btnModalResetPin");
   if (resetPinBtn) resetPinBtn.style.display = "none";
@@ -1136,22 +1529,37 @@ function openAddStudentModal() {
   const shareBox = document.getElementById("studentQuickShareBox");
   if (shareBox) shareBox.style.display = "none";
 
-  const modal = document.getElementById("studentModal");
-  modal.style.display = "flex";
-  setTimeout(() => modal.classList.add("active"), 10);
+  openModal("studentModal");
   if (window.lucide) lucide.createIcons();
 }
 
 function openEditStudentModal(studentId) {
-  const student = allStudentsData.find(s => s.id === studentId);
+  const student = allStudentsData.find(s => String(s.id) === String(studentId));
   if (!student) return;
 
-  document.getElementById("studentModalTitle").textContent = `تعديل حساب الطالب: ${student.name}`;
+  document.getElementById("studentModalTitle").textContent = `إدارة حساب الطالب: ${student.name}`;
   document.getElementById("saveStudentBtn").innerHTML = '<span>حفظ التعديلات</span> <i data-lucide="check" style="width:16px; height:16px;"></i>';
   document.getElementById("editStudentId").value = student.id;
   document.getElementById("studentNameInput").value = student.name;
-  document.getElementById("studentCircleSelect").value = student.circle_id || "";
+  document.getElementById("studentCircleSelect").value = student.circle_id ? String(student.circle_id) : "";
   document.getElementById("studentPinInput").value = student.code_display || "";
+  document.getElementById("studentPinInput").type = "password";
+  const pinEye = document.getElementById("studentPinEyeIcon");
+  if (pinEye) pinEye.setAttribute("data-lucide", "eye");
+
+  // Profile Banner
+  const banner = document.getElementById("studentModalProfileBanner");
+  if (banner) {
+    banner.style.display = "flex";
+    const av = document.getElementById("studentBannerAvatar");
+    if (av) av.textContent = (student.name || "ط").trim().charAt(0).toUpperCase();
+    const bn = document.getElementById("studentBannerName");
+    if (bn) bn.textContent = student.name;
+    const bs = document.getElementById("studentBannerSubtitle");
+    if (bs) bs.textContent = `${student.circle_name} • المعلم: ${student.teacher_name}`;
+    const cvLink = document.getElementById("studentBannerCvLink");
+    if (cvLink) cvLink.href = `student_cv.html?student_id=${encodeURIComponent(student.id)}`;
+  }
 
   const resetPinBtn = document.getElementById("btnModalResetPin");
   if (resetPinBtn) {
@@ -1161,7 +1569,6 @@ function openEditStudentModal(studentId) {
   const deleteBtn = document.getElementById("deleteStudentBtn");
   if (deleteBtn) deleteBtn.style.display = "inline-flex";
 
-  // Share preview text
   const shareBox = document.getElementById("studentQuickShareBox");
   const sharePreview = document.getElementById("studentSharePreviewText");
   if (shareBox && sharePreview) {
@@ -1170,9 +1577,7 @@ function openEditStudentModal(studentId) {
     sharePreview.textContent = `اسم الطالب: ${student.name} | الحلقة: ${student.circle_name} | الرمز: ${pinText}`;
   }
 
-  const modal = document.getElementById("studentModal");
-  modal.style.display = "flex";
-  setTimeout(() => modal.classList.add("active"), 10);
+  openModal("studentModal");
   if (window.lucide) lucide.createIcons();
 }
 
@@ -1181,6 +1586,10 @@ function generateRandomStudentPin() {
   const input = document.getElementById("studentPinInput");
   if (input) {
     input.value = pin;
+    input.type = "text";
+    const pinEye = document.getElementById("studentPinEyeIcon");
+    if (pinEye) pinEye.setAttribute("data-lucide", "eye-off");
+    if (window.lucide) lucide.createIcons();
     input.focus();
     showAlert(`تم توليد رمز سري عشوائي: ${pin}`, "ok");
   }
@@ -1188,7 +1597,7 @@ function generateRandomStudentPin() {
 
 async function saveStudent(e) {
   e.preventDefault();
-  const editId = document.getElementById("editStudentId").value;
+  const editId = document.getElementById("editStudentId").value.trim();
   const name = document.getElementById("studentNameInput").value.trim();
   const circleId = document.getElementById("studentCircleSelect").value;
   const pin = document.getElementById("studentPinInput").value.trim();
@@ -1202,168 +1611,253 @@ async function saveStudent(e) {
     return;
   }
 
+  const saveBtn = document.getElementById("saveStudentBtn");
+  if (saveBtn) saveBtn.disabled = true;
+
+  const cleanCid = normalizeEntityId(circleId, "circles") ?? circleId;
+  const existingStudent = editId ? allStudentsData.find(s => String(s.id) === String(editId)) : null;
+
   const url = editId ? `/api/users/students/${editId}` : "/api/users/students";
   const method = editId ? "PUT" : "POST";
+  const bodyData = { name, circle_id: cleanCid, code: pin || null };
 
-  const cleanCid = parseInt(circleId, 10) || circleId;
-  const bodyData = {
-    name: name,
-    circle_id: cleanCid,
-    code: pin || null
-  };
+  let serverSaved = false;
+  let serverErrorMsg = "";
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 1800);
     const res = await fetch(url, {
-      method: method,
+      method,
       headers: csrfHeaders(),
       body: JSON.stringify(bodyData),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok && data.success) {
-      closeModal("studentModal");
-      showAlert(data.message || "تم حفظ بيانات الطالب بنجاح.", "ok");
-      await loadStudents();
-      return;
-    } else {
-      showAlert(data.message || "تعذر حفظ بيانات الطالب.", "error");
-      return;
+      serverSaved = true;
+    } else if (res.status >= 400 && res.status < 500 && data.message) {
+      serverErrorMsg = data.message;
     }
-  } catch (err) {
-    // Fallback: Direct Firebase RTDB + AlbayanLocalDB
-    const targetSid = editId ? Number(editId) : Date.now();
-    const studentObj = {
+  } catch (err) {}
+
+  if (serverErrorMsg) {
+    if (saveBtn) saveBtn.disabled = false;
+    showAlert(serverErrorMsg, "error");
+    return;
+  }
+
+  // Firebase + LocalDB Sync
+  const targetSid = editId ? (normalizeEntityId(editId, "students") ?? editId) : Date.now();
+  const nowIso = new Date().toISOString();
+  let fbSuccess = false;
+
+  if (editId && existingStudent) {
+    // Handle circle transfer if circle changed
+    if (String(existingStudent.circle_id) !== String(cleanCid) && window.RosterService && typeof window.RosterService.transferStudent === "function") {
+      try {
+        await window.RosterService.transferStudent(targetSid, existingStudent.circle_id, cleanCid);
+      } catch (e) {}
+    }
+
+    const patchPayload = {
       id: targetSid,
-      name: name,
+      name,
       circle_id: cleanCid,
-      code: pin || null
+      code: pin || "",
+      updated_at: nowIso
     };
 
-    let fbSuccess = false;
-    if (typeof window.saveStudentToFirebase === 'function') {
+    try {
+      const fbRes = await fetch(`${FB_RTDB_BASE}/students/${targetSid}.json`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patchPayload)
+      });
+      fbSuccess = fbRes.ok;
+    } catch (e) {}
+
+    if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.enqueueChange === "function") {
       try {
-        const fbRes = await window.saveStudentToFirebase(studentObj);
-        if (fbRes && fbRes.success) fbSuccess = true;
-      } catch (fbErr) {}
+        await window.AlbayanLocalDB.enqueueChange("UPDATE_STUDENT", "students", targetSid, patchPayload);
+      } catch (e) {}
     }
+  } else {
+    const studentObj = {
+      id: targetSid,
+      name,
+      circle_id: cleanCid,
+      code: pin || ""
+    };
 
-    if (window.AlbayanLocalDB) {
+    if (window.RosterService && typeof window.RosterService.addStudent === "function") {
       try {
-        await AlbayanLocalDB.enqueueChange(editId ? 'UPDATE_STUDENT' : 'CREATE_STUDENT', 'students', targetSid, studentObj);
-      } catch (dbErr) {}
-    }
-
-    if (typeof window.triggerInstantSync === 'function') {
-      window.triggerInstantSync();
-    }
-
-    closeModal("studentModal");
-    if (fbSuccess) {
-      showAlert("تم حفظ بيانات الطالب في السحابة بنجاح! ☁️✨", "ok");
+        const res = await window.RosterService.addStudent(cleanCid, name, {}, { id: targetSid, code: pin || "" });
+        if (res && res.synced) fbSuccess = true;
+      } catch (e) {}
     } else {
-      showAlert("تم حفظ بيانات الطالب محلياً على الجهاز. ✨", "ok");
+      try {
+        const fbRes = await fetch(`${FB_RTDB_BASE}/students/${targetSid}.json`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...studentObj, local_id: targetSid, created_at: nowIso, updated_at: nowIso })
+        });
+        fbSuccess = fbRes.ok;
+      } catch (e) {}
     }
-    await loadStudents();
+  }
+
+  if (saveBtn) saveBtn.disabled = false;
+  closeModal("studentModal");
+  await loadStudents();
+
+  if (serverSaved || fbSuccess) {
+    showAlert(editId ? `تم حفظ بيانات الطالب "${name}" بنجاح.` : `تمت إضافة حساب الطالب "${name}" وحفظه في السحابة بنجاح.`, "ok");
+  } else {
+    showAlert("تم حفظ بيانات الطالب محلياً على الجهاز.", "ok");
   }
 }
 
 async function resetCurrentStudentPinFromModal() {
   const editId = document.getElementById("editStudentId").value;
   if (!editId) return;
-  await resetStudentPin(parseInt(editId, 10));
+  await resetStudentPin(editId);
 }
 
 async function resetStudentPin(studentId) {
-  if (!confirm("هل ترغب في تصفير الرمز السري للطالب؟ سيُطلب منه وضع رمز جديد عند تسجيل دخوله القادم.")) return;
+  const confirmed = await confirmAction(
+    "هل ترغب في تصفير الرمز السري للطالب؟ سيُطلب منه وضع رمز جديد عند تسجيل دخوله القادم.",
+    "تصفير الرمز السري",
+    false
+  );
+  if (!confirmed) return;
 
+  let ok = false;
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1600);
     const res = await fetch(`/api/users/students/${studentId}/reset-pin`, {
       method: "POST",
       headers: csrfHeaders(),
-      body: JSON.stringify({})
+      body: JSON.stringify({}),
+      signal: controller.signal
     });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      const pinInput = document.getElementById("studentPinInput");
-      if (pinInput) pinInput.value = "";
-      const resetBtn = document.getElementById("btnModalResetPin");
-      if (resetBtn) resetBtn.style.display = "none";
+    clearTimeout(timeoutId);
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) ok = true;
+  } catch (err) {}
 
-      showAlert(data.message || "تم تصفير الرمز السري بنجاح.", "ok");
-      await loadStudents();
-    } else {
-      showAlert(data.message || "فشل تصفير الرمز.", "error");
-    }
-  } catch (err) {
-    showAlert("تعذر تصفير الرمز.", "error");
-  }
+  try {
+    const fbRes = await fetch(`${FB_RTDB_BASE}/students/${studentId}.json`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "", updated_at: new Date().toISOString() })
+    });
+    if (fbRes.ok) ok = true;
+  } catch (e) {}
+
+  const pinInput = document.getElementById("studentPinInput");
+  if (pinInput) pinInput.value = "";
+  const resetBtn = document.getElementById("btnModalResetPin");
+  if (resetBtn) resetBtn.style.display = "none";
+
+  await loadStudents();
+  showAlert(ok ? "تم تصفير الرمز السري للطالب بنجاح." : "تم تصفير الرمز محلياً.", "ok");
 }
 
 async function deleteCurrentStudentFromModal() {
   const editId = document.getElementById("editStudentId").value;
   if (!editId) return;
-  await deleteStudent(parseInt(editId, 10));
+  await deleteStudent(editId);
 }
 
 async function deleteStudent(studentId) {
-  const student = allStudentsData.find(s => s.id === studentId);
+  const student = allStudentsData.find(s => String(s.id) === String(studentId));
   const stName = student ? student.name : "هذا الطالب";
-  if (!confirm(`هل أنت متأكد تماماً من رغبتك في حذف حساب الطالب '${stName}' وجميع سجلاته القرآنية؟ لن يمكن استرجاع هذه البيانات.`)) return;
+  const confirmed = await confirmAction(
+    `هل أنت متأكد تماماً من رغبتك في حذف حساب الطالب "${stName}" وجميع سجلاته القرآنية؟ لن يمكن استرجاع هذه البيانات.`,
+    "حذف حساب طالب",
+    true
+  );
+  if (!confirmed) return;
 
   try {
-    const res = await fetch(`/api/users/students/${studentId}`, {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1600);
+    await fetch(`/api/users/students/${studentId}`, {
       method: "DELETE",
-      headers: csrfHeaders()
+      headers: csrfHeaders(),
+      signal: controller.signal
     });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      closeModal("studentModal");
-      showAlert(data.message || "تم حذف حساب الطالب بنجاح.", "ok");
-      await loadStudents();
-    } else {
-      showAlert(data.message || "فشل حذف حساب الطالب.", "error");
-    }
-  } catch (err) {
-    showAlert("تعذر حذف الحساب.", "error");
+    clearTimeout(timeoutId);
+  } catch (err) {}
+
+  addDeletedTombstone("deleted_students", studentId);
+
+  if (window.RosterService && typeof window.RosterService.deleteStudent === "function") {
+    try {
+      await window.RosterService.deleteStudent(student ? student.circle_id : null, studentId);
+    } catch (e) {}
+  } else {
+    try {
+      await Promise.all([
+        fetch(`${FB_RTDB_BASE}/students/${studentId}.json`, { method: "DELETE" }),
+        fetch(`${FB_RTDB_BASE}/students/students_${studentId}.json`, { method: "DELETE" })
+      ]);
+    } catch (e) {}
   }
+
+  allStudentsData = allStudentsData.filter(s => String(s.id) !== String(studentId));
+  const countBadge = document.getElementById("studentsCountBadge");
+  if (countBadge) countBadge.textContent = allStudentsData.length;
+
+  closeModal("studentModal");
+  renderStudentStats(allStudentsData);
+  filterStudentsTable();
+  showAlert(`تم حذف حساب الطالب "${stName}" بنجاح.`, "ok");
 }
 
 function copyCurrentStudentCredentials() {
   const editId = document.getElementById("editStudentId").value;
   if (!editId) return;
-  copyStudentCredentials(parseInt(editId, 10));
+  copyStudentCredentials(editId);
 }
 
 function copyStudentCredentials(studentId) {
-  const student = allStudentsData.find(s => s.id === studentId);
+  const student = allStudentsData.find(s => String(s.id) === String(studentId));
   if (!student) return;
 
-  const currentUrl = window.location.origin + "/login";
+  const currentUrl = window.location.origin.startsWith("http")
+    ? (window.location.origin + "/login")
+    : "تطبيق مدرسة البيان (بوابة الطالب)";
   const pinText = student.has_code ? student.code_display : "يتم تعيينه عند الدخول الأول للمنصة";
 
-  const message = `✨ *بيانات تسجيل دخول الطالب - مدرسة البيان لتعليم القرآن الكريم* ✨\n\n` +
-    `👤 *اسم الطالب:* ${student.name}\n` +
-    `⭕ *الحلقة القرآنية:* ${student.circle_name}\n` +
-    `👨‍🏫 *المعلم المشرف:* ${student.teacher_name}\n` +
-    `🔑 *الرمز السري (PIN):* ${pinText}\n\n` +
-    `🌐 *رابط الدخول لمنصة الاختبارات والدرجات:* \n${currentUrl}\n\n` +
-    `_ملاحظة: يرجى الاحتفاظ بهذه البيانات بسرية._`;
+  const message =
+    `بيانات تسجيل دخول الطالب - مدرسة البيان لتعليم القرآن الكريم\n\n` +
+    `اسم الطالب: ${student.name}\n` +
+    `الحلقة القرآنية: ${student.circle_name}\n` +
+    `المعلم المشرف: ${student.teacher_name}\n` +
+    `الرمز السري (PIN): ${pinText}\n\n` +
+    `بوابة الدخول: ${currentUrl}\n` +
+    `ملاحظة: يرجى الاحتفاظ بهذه البيانات بسرية.`;
 
+  copyToClipboard(message, `تم نسخ بيانات دخول الطالب "${student.name}" بنجاح.`);
+}
+
+function copyToClipboard(text, successMsg) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(message).then(() => {
-      showAlert(`تم نسخ بيانات دخول الطالب '${student.name}' بنجاح! يمكنك الآن إرسالها لولي الأمر.`, "ok");
+    navigator.clipboard.writeText(text).then(() => {
+      showAlert(successMsg, "ok");
     }).catch(() => {
-      fallbackCopyText(message, student.name);
+      fallbackCopyText(text, successMsg);
     });
   } else {
-    fallbackCopyText(message, student.name);
+    fallbackCopyText(text, successMsg);
   }
 }
 
-function fallbackCopyText(text, studentName) {
+function fallbackCopyText(text, successMsg) {
   const textArea = document.createElement("textarea");
   textArea.value = text;
   textArea.style.position = "fixed";
@@ -1373,21 +1867,79 @@ function fallbackCopyText(text, studentName) {
   textArea.select();
   try {
     document.execCommand("copy");
-    showAlert(`تم نسخ بيانات دخول الطالب '${studentName}' بنجاح!`, "ok");
+    showAlert(successMsg || "تم النسخ بنجاح.", "ok");
   } catch (err) {
     showAlert("تعذر النسخ التلقائي، يرجى النسخ يدوياً.", "error");
   }
   document.body.removeChild(textArea);
 }
 
-function exportStudentsExcel() {
-  showAlert("جارٍ إعداد وتنزيل كشف حسابات الطلاب...", "ok");
-  window.location.href = "/api/users/students/export-excel";
+async function exportStudentsExcel() {
+  const rows = currentActiveSection === "students" ? getFilteredStudentsList() : allStudentsData;
+  if (!rows || rows.length === 0) {
+    showAlert("لا توجد بيانات طلاب لتصديرها حالياً.", "error");
+    return;
+  }
+
+  const csvCell = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+  const header = ["#", "اسم الطالب", "الحلقة القرآنية", "المعلم المشرف", "حالة الرمز", "الرمز السري (PIN)", "تاريخ التسجيل"];
+  const lines = [header.map(csvCell).join(",")];
+
+  rows.forEach((s, idx) => {
+    lines.push([
+      idx + 1,
+      s.name,
+      s.circle_name || "",
+      s.teacher_name || "",
+      s.has_code ? "مفعل برمز" : "بدون رمز",
+      s.code_display || "غير معين",
+      formatDualDateShort(s.created_at) || ""
+    ].map(csvCell).join(","));
+  });
+
+  const csvContent = "\uFEFF" + lines.join("\r\n");
+  const fileName = `albayan_students_${new Date().toISOString().slice(0, 10)}.csv`;
+
+  // Use native Android plugin when available
+  const capPlugins = window.Capacitor && window.Capacitor.Plugins;
+  if (capPlugins && capPlugins.AlbayanExport && typeof capPlugins.AlbayanExport.saveFileToDownloads === "function") {
+    try {
+      const base64Data = btoa(unescape(encodeURIComponent(csvContent)));
+      await capPlugins.AlbayanExport.saveFileToDownloads({
+        base64Data,
+        fileName,
+        mimeType: "text/csv;charset=utf-8"
+      });
+      showAlert(`تم تصدير كشف الطلاب (${rows.length} طالب) إلى التنزيلات بنجاح.`, "ok");
+      return;
+    } catch (e) {}
+  }
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showAlert(`تم تصدير كشف الطلاب (${rows.length} طالب) بنجاح.`, "ok");
 }
 
 // ==============================================
 // MODAL & UTILITY FUNCTIONS
 // ==============================================
+function openModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  if (typeof window.albayanPushOverlayHistory === "function") {
+    window.albayanPushOverlayHistory();
+  }
+  modal.style.display = "flex";
+  setTimeout(() => modal.classList.add("active"), 10);
+}
+
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) {
@@ -1413,7 +1965,7 @@ function showAlert(msg, type = "ok") {
   }
 
   box.className = `alert-box ${type}`;
-  box.innerHTML = `<i data-lucide="${type === 'ok' ? 'check-circle-2' : 'alert-triangle'}" style="width:18px; height:18px; vertical-align:-3px;"></i> <span>${escapeHtml(msg)}</span>`;
+  box.innerHTML = `<i data-lucide="${type === "ok" ? "check-circle-2" : "alert-triangle"}" style="width:18px; height:18px; vertical-align:-3px;"></i> <span>${escapeHtml(msg)}</span>`;
   box.style.display = "flex";
   box.style.opacity = "1";
   if (window.lucide) lucide.createIcons();
@@ -1424,31 +1976,19 @@ function showAlert(msg, type = "ok") {
       box.style.display = "none";
       box.style.opacity = "1";
     }, 300);
-  }, 4500);
+  }, 4200);
 }
 
-function escapeHtml(str) {
-  if (!str) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-/* Mobile Sidebar Drawer Controller */
 function initMobileSidebar() {
-  if (typeof initMobileBottomNav === 'function') {
+  if (typeof initMobileBottomNav === "function") {
     initMobileBottomNav();
   }
 }
 
-window.toggleSidebar = function() {
-  window.location.href = 'more.html';
+window.toggleSidebar = function () {
+  window.location.href = "more.html";
 };
 
-/* Password reveal and copy helpers for System Admin */
 function toggleInputPasswordVisibility(inputId, iconId) {
   const input = document.getElementById(inputId);
   const icon = document.getElementById(iconId);
@@ -1462,44 +2002,3 @@ function toggleInputPasswordVisibility(inputId, iconId) {
   }
   if (window.lucide) lucide.createIcons();
 }
-
-function toggleRevealPassword(prefix, id, actualCode) {
-  let textId = `pwdText_${id}`;
-  let eyeId = `pwdEye_${id}`;
-  if (prefix === 'userMob') {
-    textId = `pwdTextMob_${id}`;
-    eyeId = `pwdEyeMob_${id}`;
-  } else if (prefix === 'studentMob') {
-    textId = `pwdTextStudentMob_${id}`;
-    eyeId = `pwdEyeStudentMob_${id}`;
-  } else if (prefix === 'student') {
-    textId = `pwdTextStudent_${id}`;
-    eyeId = `pwdEyeStudent_${id}`;
-  }
-
-  const textEl = document.getElementById(textId);
-  const eyeEl = document.getElementById(eyeId);
-  if (!textEl) return;
-
-  if (textEl.classList.contains("masked")) {
-    textEl.textContent = actualCode || "--";
-    textEl.classList.remove("masked");
-    if (eyeEl) eyeEl.setAttribute("data-lucide", "eye-off");
-  } else {
-    textEl.textContent = "••••••";
-    textEl.classList.add("masked");
-    if (eyeEl) eyeEl.setAttribute("data-lucide", "eye");
-  }
-  if (window.lucide) lucide.createIcons();
-}
-
-function copyUserPassword(code) {
-  if (!code) return;
-  navigator.clipboard.writeText(code).then(() => {
-    showAlert(`تم نسخ الرمز (${code}) بنجاح للمشاركة.`, "ok");
-  }).catch(() => {
-    showAlert(`الرمز: ${code}`, "ok");
-  });
-}
-
-
