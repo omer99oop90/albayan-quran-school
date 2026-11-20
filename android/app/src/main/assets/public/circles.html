@@ -124,8 +124,9 @@
     }
 
     .wa-top-bar-title-row {
-      height: 52px;
-      padding: 0 16px;
+      min-height: 52px;
+      height: auto;
+      padding: 8px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -136,12 +137,13 @@
       margin: 0;
       font-size: 22px;
       font-weight: 800;
-      line-height: 1.25;
+      line-height: 1.55;
+      padding-block: 2px;
       color: #0F172A;
       letter-spacing: -0.01em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow: visible;
+      word-break: break-word;
     }
 
     [data-theme="dark"] .wa-top-bar-title-row h1,
@@ -244,9 +246,9 @@
     .wa-more-menu-item,
     button.wa-more-menu-item {
       width: 100%;
-      height: 42px;
+      height: auto !important;
       min-height: 42px !important;
-      padding: 0 12px !important;
+      padding: 9px 12px !important;
       margin: 0 !important;
       border: none !important;
       border-radius: 10px;
@@ -257,13 +259,14 @@
       font-family: inherit;
       font-size: 13.5px;
       font-weight: 600;
+      line-height: 1.5;
       display: flex;
       align-items: center;
       justify-content: flex-start;
       gap: 10px;
       text-decoration: none;
       text-align: right;
-      white-space: nowrap;
+      white-space: normal;
       cursor: pointer;
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
@@ -316,10 +319,11 @@
     }
 
     .wa-search-pill {
-      height: 44px;
+      min-height: 44px;
+      height: auto;
       border-radius: 9999px;
       background: #F1F5F9;
-      padding: 0 16px;
+      padding: 6px 16px;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -363,8 +367,8 @@
       flex: 1 1 auto;
       min-width: 0;
       width: 100% !important;
-      height: 100%;
-      min-height: 0 !important;
+      height: auto;
+      min-height: 30px !important;
       padding: 0 !important;
       margin: 0 !important;
       border: none !important;
@@ -376,6 +380,7 @@
       font-family: inherit;
       font-size: 14px;
       font-weight: 500;
+      line-height: 1.5;
       color: #0F172A;
     }
 
@@ -445,16 +450,16 @@
     }
 
     button.wa-filter-pill {
-      height: 32px;
-      min-height: 32px !important;
-      max-width: 190px;
-      padding: 0 14px !important;
+      height: auto !important;
+      min-height: 36px !important;
+      max-width: none !important;
+      padding: 6px 14px !important;
       margin: 0 !important;
       border-radius: 9999px;
       font-family: inherit;
       font-size: 13px;
       font-weight: 600;
-      line-height: 1;
+      line-height: 1.5 !important;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -472,10 +477,9 @@
 
     button.wa-filter-pill .wa-filter-pill-label {
       display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      overflow: visible;
       white-space: nowrap;
-      max-width: 100%;
+      line-height: 1.5;
     }
 
     [data-theme="dark"] button.wa-filter-pill,
@@ -566,11 +570,12 @@
       margin: 0;
       font-size: 15.5px;
       font-weight: 700;
-      line-height: 1.35;
+      line-height: 1.55;
+      padding-block: 2px;
       color: #0F172A;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow: visible;
+      word-break: break-word;
     }
 
     [data-theme="dark"] .wa-circle-name,
@@ -582,11 +587,12 @@
     .wa-circle-meta {
       font-size: 13px;
       font-weight: 500;
-      line-height: 1.35;
+      line-height: 1.55;
+      padding-block: 1px;
       color: #64748B;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow: visible;
+      word-break: break-word;
     }
 
     [data-theme="dark"] .wa-circle-meta,

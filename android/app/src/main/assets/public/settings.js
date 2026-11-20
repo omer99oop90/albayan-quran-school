@@ -268,9 +268,15 @@ function updateFontCardsUI(fontKey) {
   });
 }
 
+function formatCustomFontDisplayName(rawName) {
+  const withoutExt = String(rawName || "").replace(/\.(ttf|otf|woff2?)$/i, "").trim();
+  const arabicOnly = withoutExt.replace(/[a-zA-Z0-9_\-\.]+/g, " ").replace(/\s+/g, " ").trim();
+  return arabicOnly || "خط مخصص من الجهاز";
+}
+
 function updateCustomFontStatusUI() {
   const customData = localStorage.getItem("appCustomFontData");
-  const customName = localStorage.getItem("appCustomFontName") || "خط مخصص";
+  const customName = formatCustomFontDisplayName(localStorage.getItem("appCustomFontName"));
   const customSize = localStorage.getItem("appCustomFontSize") || "";
   const customContainer = document.getElementById("customFontActiveBox");
   const emptyContainer = document.getElementById("customFontEmptyBox");
