@@ -61,32 +61,56 @@ jobs:
           cp /tmp/orig_capacitor.config.json capacitor.config.json
           cp /tmp/orig_capacitor.config.json android/app/src/main/assets/capacitor.config.json
 
-      - name: Build Android APK via Gradle
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew clean assembleDebug --no-daemon -Dorg.gradle.java.home="$JAVA_HOME"
-
-      - name: Prepare APK artifact
-        run: |
-          mkdir -p release-assets
-          cp android/app/build/outputs/apk/debug/app-debug.apk release-assets/AlbayanApp.apk
-          ls -lh release-assets/AlbayanApp.apk
-
-      - name: Upload APK workflow artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: AlbayanApp-apk
-          path: release-assets/AlbayanApp.apk
-
-      - name: Determine Release tag
+      - name: Determine Release tag & Android version
         id: meta
         run: |
           TAG="${{ github.event.inputs.release_tag }}"
           if [ -z "$TAG" ]; then
             TAG="v3.0.${{ github.run_number }}"
           fi
+          VERSION_NAME="${TAG#v}"
+          VERSION_CODE="${{ github.run_number }}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Decode persistent Android release keystore
+        env:
+          ALBAYAN_KEYSTORE_B64: ${{ secrets.ALBAYAN_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$ALBAYAN_KEYSTORE_B64" ]; then
+            echo "ERROR: ALBAYAN_KEYSTORE_B64 secret is missing!"
+            exit 1
+          fi
+          printf '%s' "$ALBAYAN_KEYSTORE_B64" | base64 -d > "${{ runner.temp }}/albayan-release.jks"
+          ls -lh "${{ runner.temp }}/albayan-release.jks"
+
+      - name: Build signed Release Android APK via Gradle
+        env:
+          ALBAYAN_KEYSTORE_FILE: ${{ runner.temp }}/albayan-release.jks
+          ALBAYAN_KEYSTORE_PASSWORD: ${{ secrets.ALBAYAN_KEYSTORE_PASSWORD }}
+          ALBAYAN_KEY_ALIAS: ${{ secrets.ALBAYAN_KEY_ALIAS }}
+          ALBAYAN_KEY_PASSWORD: ${{ secrets.ALBAYAN_KEY_PASSWORD }}
+          ALBAYAN_VERSION_CODE: ${{ steps.meta.outputs.version_code }}
+          ALBAYAN_VERSION_NAME: ${{ steps.meta.outputs.version_name }}
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew clean assembleRelease --no-daemon -Dorg.gradle.java.home="$JAVA_HOME"
+
+      - name: Prepare & verify APK artifact
+        run: |
+          mkdir -p release-assets
+          cp android/app/build/outputs/apk/release/app-release.apk release-assets/AlbayanApp.apk
+          rm -f "${{ runner.temp }}/albayan-release.jks"
+          ls -lh release-assets/AlbayanApp.apk
+          keytool -printcert -jarfile release-assets/AlbayanApp.apk | grep -E "Owner|SHA256"
+
+      - name: Upload APK workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlbayanApp-apk
+          path: release-assets/AlbayanApp.apk
 
       - name: Create GitHub Release with Direct APK Download
         uses: softprops/action-gh-release@v2
@@ -95,13 +119,10 @@ jobs:
           name: "مدرسة البيان - التحديث ${{ steps.meta.outputs.tag }}"
           body: |
             ### تحديث تطبيق مدرسة البيان (`AlbayanApp.apk`)
-            - تحديث **استوديو الشهادات الاحترافية** (`certificates.html` / `certificates.js` / `certificates.css`):
-              - إصلاح التراجع والإعادة (`Undo` / `Redo`) وحفظ المسودة والقوالب الجاهزة تلقائياً.
-              - قوالب وزخارف افتراضية واضحة وإدارة كاملة للطبقات والشفافية والدوران والخط لكل عنصر.
-              - جلب الطلاب والحلقات ومعايير المتفوقين من Firebase والعمل دون إنترنت مع بحث مباشر.
-              - دعم التصدير الفردي (PNG / PDF) والجماعي (ZIP / PDF مجمع) مع شريط تقدم وإلغاء، والطباعة المباشرة والمشاركة في أندرويد.
+            - رقم الإصدار: `${{ steps.meta.outputs.version_name }}` (`versionCode: ${{ steps.meta.outputs.version_code }}`)
+            - التوقيع: موقّع بشهادة التوقيع الثابتة للتطبيق لدعم التحديث المباشر فوق النسخ المثبّتة بنفس الشهادة.
 
-            **للتثبيت على الجوال:** قم بتنزيل ملف `AlbayanApp.apk` من المرفقات أدناه وافتحه للتثبيت.
+            **للتثبيت على الجوال:** قم بتنزيل ملف `AlbayanApp.apk` من المرفقات أدناه وافتحه للتثبيت أو التحديث.
           files: |
             release-assets/AlbayanApp.apk
           draft: false

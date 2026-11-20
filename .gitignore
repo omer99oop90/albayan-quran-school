@@ -44,3 +44,7 @@ Thumbs.db
 # Local legacy backup folder
 local_server_backup/
 
+# Android signing keystores
+*.jks
+*.keystore
+
