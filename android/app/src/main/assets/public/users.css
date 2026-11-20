@@ -407,8 +407,8 @@ html[data-theme="dark"] button.wa-more-menu-item:hover {
   display: flex;
   align-items: stretch;
   border-bottom: 1px solid #F1F5F9;
-  padding: 0 16px;
-  gap: 8px;
+  padding: 0 12px;
+  gap: 4px;
 }
 
 html[data-theme="dark"] .wa-users-tabs,
@@ -417,10 +417,11 @@ html.dark-theme .wa-users-tabs {
 }
 
 button.wa-users-tab {
-  flex: 1;
+  flex: 1 1 0%;
+  min-width: 0;
   height: 44px;
   min-height: 44px !important;
-  padding: 0 12px !important;
+  padding: 0 6px !important;
   margin: 0 !important;
   border: none !important;
   border-radius: 0 !important;
@@ -429,16 +430,28 @@ button.wa-users-tab {
   box-shadow: none !important;
   color: #64748B;
   font-family: inherit;
-  font-size: 14px;
+  font-size: clamp(12px, 3.3vw, 14px);
   font-weight: 700;
+  white-space: nowrap !important;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 5px;
   cursor: pointer;
   position: relative;
   transition: color 0.16s ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+button.wa-users-tab svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+button.wa-users-tab > span {
+  white-space: nowrap;
 }
 
 button.wa-users-tab::after {
@@ -1181,38 +1194,58 @@ button.wa-fab-btn:active {
 }
 
 /* ====================================================
-   MODALS & WHATSAPP CONTACT BANNER
+   MODALS & WHATSAPP CONTACT BANNER (PORTRAIT-FIRST)
    ==================================================== */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
+body.wa-users-page .modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
   background: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  z-index: 99999;
+  z-index: 100000 !important;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 16px !important;
   opacity: 0;
   transition: opacity 0.22s ease;
+  box-sizing: border-box;
 }
 
-.modal-overlay[style*="display: flex"],
-.modal-overlay.active {
+body.wa-users-page .modal-overlay[style*="display: flex"],
+body.wa-users-page .modal-overlay.active {
   opacity: 1;
 }
 
-.modal-card {
-  width: min(560px, 100%);
-  max-height: 90vh;
-  background: #FFFFFF;
-  border-radius: 20px;
-  border: 1px solid #E2E8F0;
+body.wa-users-page .modal-card {
+  width: min(540px, 100%) !important;
+  max-width: 540px !important;
+  max-height: 90dvh !important;
+  background: #FFFFFF !important;
+  border-radius: 22px !important;
+  border: 1px solid #E2E8F0 !important;
   box-shadow: none !important;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  bottom: auto !important;
+  margin: 0 !important;
   animation: zoomModal 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wa-sheet-handle {
+  display: none;
+  width: 38px;
+  height: 4px;
+  border-radius: 99px;
+  background: #CBD5E1;
+  margin: 8px auto 0;
+  flex-shrink: 0;
+}
+
+html[data-theme="dark"] .wa-sheet-handle {
+  background: #334155;
 }
 
 @keyframes zoomModal {
@@ -1220,49 +1253,78 @@ button.wa-fab-btn:active {
   to { transform: scale(1); opacity: 1; }
 }
 
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #F1F5F9;
-  background: #FFFFFF;
+@keyframes slideUpSheet {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-.modal-header h3 {
-  font-size: 16.5px;
+body.wa-users-page .modal-header {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid #F1F5F9;
+  background: #FFFFFF;
+  flex-shrink: 0;
+}
+
+body.wa-users-page .modal-header h3 {
+  font-size: 15.5px;
   font-weight: 800;
   color: #0F172A;
   margin: 0;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.close-modal-btn {
+body.wa-users-page button.close-modal-btn {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   color: #64748B;
   cursor: pointer;
-  padding: 4px;
-  min-height: 36px;
-  min-width: 36px;
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 36px !important;
+  width: 36px !important;
+  min-height: 36px !important;
+  min-width: 36px !important;
   border-radius: 9999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.close-modal-btn:hover {
+body.wa-users-page button.close-modal-btn:hover {
   background: #F1F5F9 !important;
   color: #EF4444 !important;
 }
 
-.modal-body {
-  padding: 18px 20px 20px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+body.wa-users-page form.modal-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  padding: 16px 18px 20px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
   -webkit-overflow-scrolling: touch;
+  box-sizing: border-box !important;
+}
+
+/* Override global style.css mobile button width:100% inside flex rows */
+body.wa-users-page .modal-body .btn-primary,
+body.wa-users-page .modal-body .btn-secondary,
+body.wa-users-page .modal-body .btn-danger-outline {
+  width: auto !important;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* WhatsApp Contact Profile Banner inside Modals */
@@ -1270,30 +1332,33 @@ button.wa-fab-btn:active {
   background: #F8FAFC;
   border: 1px solid #E2E8F0;
   border-radius: 16px;
-  padding: 12px 14px;
+  padding: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .wa-modal-profile-main {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 180px;
 }
 
 .wa-modal-profile-meta {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .wa-modal-profile-meta strong {
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 800;
   color: #0F172A;
   white-space: nowrap;
@@ -1315,24 +1380,29 @@ button.wa-fab-btn:active {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
-.wa-chip-action {
-  height: 34px;
+.wa-chip-action,
+button.wa-chip-action {
+  height: 34px !important;
   min-height: 34px !important;
   padding: 0 11px !important;
+  margin: 0 !important;
   border-radius: 9999px;
   background: #FFFFFF !important;
   border: 1px solid #CBD5E1 !important;
   color: #0F172A !important;
-  font-size: 12px;
+  font-size: 12px !important;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   text-decoration: none;
   cursor: pointer;
   font-family: inherit;
+  white-space: nowrap;
   box-shadow: none !important;
 }
 
@@ -1346,6 +1416,17 @@ button.wa-fab-btn:active {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.wa-field-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .modal-body label {
@@ -1354,30 +1435,94 @@ button.wa-fab-btn:active {
   color: #0F172A;
 }
 
-.btn-text-action {
-  background: transparent;
-  border: none;
+button.btn-text-action {
+  background: transparent !important;
+  border: none !important;
   color: #2563EB;
-  font-size: 12px;
+  font-size: 12px !important;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 4px;
-  min-height: 28px;
+  padding: 2px 6px !important;
+  margin: 0 !important;
+  min-height: 28px !important;
+  height: auto !important;
   font-family: inherit;
+  white-space: nowrap;
 }
 
-.btn-text-action:hover {
+button.btn-text-action:hover {
   text-decoration: underline;
+}
+
+.wa-pwd-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.wa-pwd-input-wrap input {
+  padding-left: 44px !important;
+}
+
+button.btn-toggle-pwd-input {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #64748B;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.wa-pin-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+button.wa-btn-reset-pin {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 12px !important;
+  border-radius: 12px !important;
+  border: 1px solid #CBD5E1 !important;
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+  font-size: 12.5px !important;
+  font-weight: 700;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .modal-body input[type="text"],
 .modal-body input[type="password"],
 .modal-body select {
   width: 100%;
-  padding: 11px 14px;
+  max-width: 100%;
+  padding: 10px 14px;
   border-radius: 12px;
   border: 1px solid #E2E8F0;
   background: #F8FAFC;
@@ -1396,33 +1541,88 @@ button.wa-fab-btn:active {
   background: #FFFFFF;
 }
 
-.picker-fieldset {
+/* Permissions Card (replaces fieldset/legend so portrait WebView never clips) */
+.wa-perms-card {
   border: 1px solid #E2E8F0;
-  border-radius: 14px;
-  padding: 12px 14px;
+  border-radius: 16px;
+  padding: 12px;
   background: #F8FAFC;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-.picker-fieldset legend {
+.wa-perms-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wa-perms-title {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   color: #0F172A;
-  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wa-perms-bulk-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button.wa-perms-bulk-btn {
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 10px !important;
+  margin: 0 !important;
+  border-radius: 9999px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #64748B !important;
+  font-size: 11.5px !important;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button.wa-perms-bulk-btn.primary {
+  color: #2563EB !important;
+  border-color: rgba(37, 99, 235, 0.25) !important;
+  background: #EFF6FF !important;
+}
+
+.wa-perms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
 }
 
 .perm-checkbox-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 10px;
-  border-radius: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
   user-select: none;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
 }
 
 .perm-checkbox-item:hover {
@@ -1433,42 +1633,61 @@ button.wa-fab-btn:active {
 .perm-checkbox-item input[type="checkbox"] {
   width: 18px;
   height: 18px;
+  flex-shrink: 0;
+  margin: 0;
   accent-color: #2563EB;
+}
+
+.perm-checkbox-item svg {
+  flex-shrink: 0;
+}
+
+.perm-checkbox-item span {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.4;
 }
 
 .student-share-card-box {
   background: #F8FAFC;
   border: 1px solid #E2E8F0;
   border-radius: 14px;
-  padding: 12px 14px;
+  padding: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .student-share-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 6px;
 }
 
-.btn-copy-card {
-  background: #EFF6FF;
-  color: #2563EB;
-  border: 1px solid rgba(37, 99, 235, 0.25);
-  padding: 4px 10px;
-  min-height: 30px;
+button.btn-copy-card {
+  background: #EFF6FF !important;
+  color: #2563EB !important;
+  border: 1px solid rgba(37, 99, 235, 0.25) !important;
+  padding: 0 10px !important;
+  height: 30px !important;
+  min-height: 30px !important;
   border-radius: 8px;
-  font-size: 11.5px;
+  font-size: 11.5px !important;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-family: inherit;
+  white-space: nowrap;
 }
 
-.btn-copy-card:hover {
-  background: #2563EB;
-  color: #FFFFFF;
+button.btn-copy-card:hover {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
 }
 
 .student-share-preview {
@@ -1483,34 +1702,123 @@ button.wa-fab-btn:active {
 }
 
 .wa-modal-footer-actions {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+button.wa-modal-btn-delete {
+  flex: 0 1 auto !important;
+  min-height: 46px !important;
+  padding: 0 14px !important;
+  font-size: 13.5px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+button.wa-modal-btn-save {
+  flex: 1 1 180px !important;
+  min-height: 46px !important;
+  padding: 0 16px !important;
+  font-size: 14px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .wa-summary-strip {
+    gap: 6px;
+    padding: 8px 12px;
+  }
+
+  .wa-stat-chip {
+    padding: 6px 4px;
+  }
+
+  .wa-stat-chip span {
+    font-size: 10.5px;
+  }
+
+  .wa-user-row {
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  body.wa-users-page .modal-overlay {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+
+  body.wa-users-page .modal-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90dvh !important;
+    border-radius: 22px 22px 0 0 !important;
+    border-bottom: none !important;
+    animation: slideUpSheet 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .wa-sheet-handle {
+    display: block;
+  }
+
+  body.wa-users-page .modal-header {
+    padding: 10px 16px 12px !important;
+  }
+
+  body.wa-users-page form.modal-body {
+    padding: 14px 16px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .wa-modal-profile-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wa-modal-profile-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    width: 100%;
+  }
+
+  button.wa-chip-action,
+  a.wa-chip-action {
+    width: 100%;
+  }
 }
 
 /* ====================================================
    DARK THEME MODAL OVERRIDES
    ==================================================== */
-html[data-theme="dark"] .modal-card,
-html[data-theme="dark"] .modal-header {
-  background: #111C2E;
-  border-color: #1E2E4A;
+html[data-theme="dark"] body.wa-users-page .modal-card,
+html[data-theme="dark"] body.wa-users-page .modal-header {
+  background: #111C2E !important;
+  border-color: #1E2E4A !important;
 }
 
-html[data-theme="dark"] .modal-header h3,
+html[data-theme="dark"] body.wa-users-page .modal-header h3,
 html[data-theme="dark"] .modal-body label,
-html[data-theme="dark"] .picker-fieldset legend,
+html[data-theme="dark"] .wa-perms-title,
 html[data-theme="dark"] .wa-modal-profile-meta strong {
   color: #F8FAFC;
 }
 
-html[data-theme="dark"] .close-modal-btn:hover {
+html[data-theme="dark"] body.wa-users-page .close-modal-btn:hover {
   background: rgba(255, 255, 255, 0.08) !important;
 }
 
 html[data-theme="dark"] .wa-modal-profile-banner,
-html[data-theme="dark"] .picker-fieldset,
+html[data-theme="dark"] .wa-perms-card,
 html[data-theme="dark"] .student-share-card-box {
   background: #16233B;
   border-color: #1E2E4A;
@@ -1521,17 +1829,27 @@ html[data-theme="dark"] .wa-modal-profile-meta span {
 }
 
 html[data-theme="dark"] .wa-chip-action,
+html[data-theme="dark"] button.wa-chip-action,
 html[data-theme="dark"] .perm-checkbox-item,
 html[data-theme="dark"] .student-share-preview,
 html[data-theme="dark"] .modal-body input[type="text"],
 html[data-theme="dark"] .modal-body input[type="password"],
-html[data-theme="dark"] .modal-body select {
-  background: #0F172A;
-  border-color: #334155;
-  color: #F8FAFC;
+html[data-theme="dark"] .modal-body select,
+html[data-theme="dark"] button.wa-btn-reset-pin,
+html[data-theme="dark"] button.wa-perms-bulk-btn {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
 }
 
-html[data-theme="dark"] .wa-chip-action:hover {
+html[data-theme="dark"] button.wa-perms-bulk-btn.primary {
+  background: rgba(37, 99, 235, 0.2) !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+  color: #60A5FA !important;
+}
+
+html[data-theme="dark"] .wa-chip-action:hover,
+html[data-theme="dark"] button.wa-chip-action:hover {
   background: rgba(37, 99, 235, 0.2) !important;
   border-color: #60A5FA !important;
   color: #93C5FD !important;

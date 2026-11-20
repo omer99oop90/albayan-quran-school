@@ -254,6 +254,7 @@
   <!-- MODAL 1: CREATE / EDIT STAFF USER -->
   <div id="userModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeModal('userModal')">
     <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="wa-sheet-handle" aria-hidden="true"></div>
       <div class="modal-header">
         <h3 id="userModalTitle">إنشاء حساب كادر وتحديد الصلاحيات</h3>
         <button type="button" class="close-modal-btn" onclick="closeModal('userModal')" aria-label="إغلاق النافذة">
@@ -291,19 +292,19 @@
         </div>
 
         <div class="field">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+          <div class="wa-field-label-row">
             <label for="newCode" style="margin:0;">الرمز الرقمي السري / كلمة المرور <span id="newCodeReqStar" style="color:var(--danger)">*</span></label>
             <button type="button" class="btn-text-action" onclick="generateRandomStaffCode()">
-              <i data-lucide="sparkles" style="width:13px; height:13px;"></i> توليد رمز عشوائي
+              <i data-lucide="sparkles" style="width:13px; height:13px;"></i> توليد رمز
             </button>
           </div>
-          <div style="position:relative; display:flex; align-items:center;">
-            <input type="password" id="newCode" placeholder="ادخل الرمز الرقمي للحساب" required autocomplete="off" style="padding-left:42px;">
-            <button type="button" class="btn-toggle-pwd-input" onclick="toggleInputPasswordVisibility('newCode', 'newCodeEyeIcon')" title="إظهار / إخفاء كلمة المرور" style="position:absolute; left:10px; background:none; border:none; cursor:pointer; color:var(--muted); display:flex; align-items:center; z-index:2;">
+          <div class="wa-pwd-input-wrap">
+            <input type="password" id="newCode" placeholder="ادخل الرمز الرقمي للحساب" required autocomplete="off">
+            <button type="button" class="btn-toggle-pwd-input" onclick="toggleInputPasswordVisibility('newCode', 'newCodeEyeIcon')" title="إظهار / إخفاء كلمة المرور" aria-label="إظهار أو إخفاء كلمة المرور">
               <i data-lucide="eye" id="newCodeEyeIcon" style="width:18px; height:18px;"></i>
             </button>
           </div>
-          <small id="newCodeHelper" style="color:var(--muted); font-size:12px; display:none; margin-top:4px;">يمكن لمشرف النظام رؤية وتعديل الرمز الحالي ومشاركته مع الكادر إذا نسيه.</small>
+          <small id="newCodeHelper" style="color:var(--muted); font-size:12px; display:none; margin-top:2px; line-height:1.45;">يمكن لمشرف النظام رؤية وتعديل الرمز الحالي ومشاركته مع الكادر إذا نسيه.</small>
         </div>
 
         <div class="field">
@@ -323,15 +324,15 @@
           </select>
         </div>
 
-        <fieldset class="picker-fieldset">
-          <legend style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-            <span><i data-lucide="key" style="width:16px; height:16px; vertical-align:-2px; color:var(--user-primary);"></i> تحديد الصلاحيات الممنوحة</span>
-            <span style="font-size:12px; display:flex; gap:8px;">
-              <a href="javascript:void(0)" onclick="toggleAllPerms(true)" style="color:var(--user-primary); text-decoration:none; font-weight:700;">[تحديد الكل]</a>
-              <a href="javascript:void(0)" onclick="toggleAllPerms(false)" style="color:var(--muted); text-decoration:none;">[إلغاء الكل]</a>
-            </span>
-          </legend>
-          <div style="display:flex; flex-direction:column; gap:8px; padding:6px 0;">
+        <div class="wa-perms-card">
+          <div class="wa-perms-header">
+            <span class="wa-perms-title"><i data-lucide="key" style="width:15px; height:15px; color:var(--user-primary);"></i> الصلاحيات الممنوحة</span>
+            <div class="wa-perms-bulk-links">
+              <button type="button" class="wa-perms-bulk-btn primary" onclick="toggleAllPerms(true)">تحديد الكل</button>
+              <button type="button" class="wa-perms-bulk-btn" onclick="toggleAllPerms(false)">إلغاء الكل</button>
+            </div>
+          </div>
+          <div class="wa-perms-list">
             <label class="perm-checkbox-item">
               <input type="checkbox" name="perm" value="circles" checked>
               <i data-lucide="users" style="width:16px; height:16px; color:#059669;"></i>
@@ -363,13 +364,13 @@
               <span>إدارة المستخدمين والصلاحيات (للمسؤولين فقط)</span>
             </label>
           </div>
-        </fieldset>
+        </div>
 
         <div class="wa-modal-footer-actions">
-          <button type="button" id="deleteUserBtn" class="btn-danger-outline" style="display:none; padding:11px 16px; font-size:14px; align-items:center; gap:6px; min-height:44px;" onclick="deleteCurrentUserFromModal()">
-            <i data-lucide="trash-2" style="width:16px; height:16px;"></i> حذف الحساب
+          <button type="button" id="deleteUserBtn" class="btn-danger-outline wa-modal-btn-delete" style="display:none;" onclick="deleteCurrentUserFromModal()">
+            <i data-lucide="trash-2" style="width:16px; height:16px;"></i> <span>حذف الحساب</span>
           </button>
-          <button type="submit" id="saveUserBtn" class="btn-primary" style="flex:1; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+          <button type="submit" id="saveUserBtn" class="btn-primary wa-modal-btn-save">
             <span>حفظ وإنشاء الحساب</span>
             <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
           </button>
@@ -381,6 +382,7 @@
   <!-- MODAL 2: CREATE / EDIT STUDENT ACCOUNT & PIN -->
   <div id="studentModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeModal('studentModal')">
     <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="wa-sheet-handle" aria-hidden="true"></div>
       <div class="modal-header">
         <h3 id="studentModalTitle">إدارة حساب الطالب والرمز السري</h3>
         <button type="button" class="close-modal-btn" onclick="closeModal('studentModal')" aria-label="إغلاق النافذة">
@@ -424,24 +426,24 @@
         </div>
 
         <div class="field">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+          <div class="wa-field-label-row">
             <label for="studentPinInput" style="margin:0;">الرمز السري الخاص بالطالب (PIN)</label>
             <button type="button" class="btn-text-action" onclick="generateRandomStudentPin()">
-              <i data-lucide="sparkles" style="width:13px; height:13px;"></i> توليد رمز عشوائي
+              <i data-lucide="sparkles" style="width:13px; height:13px;"></i> توليد رمز
             </button>
           </div>
-          <div style="position:relative; display:flex; gap:6px;">
-            <div style="position:relative; flex:1; display:flex; align-items:center;">
-              <input type="password" id="studentPinInput" placeholder="مثال: 1234 أو اتركه فارغاً لتعيينه لاحقاً" autocomplete="off" style="font-family:monospace; font-weight:700; letter-spacing:1px; padding-left:42px; width:100%;">
-              <button type="button" class="btn-toggle-pwd-input" onclick="toggleInputPasswordVisibility('studentPinInput', 'studentPinEyeIcon')" title="إظهار / إخفاء الرمز" style="position:absolute; left:10px; background:none; border:none; cursor:pointer; color:var(--muted); display:flex; align-items:center; z-index:2;">
+          <div class="wa-pin-row">
+            <div class="wa-pwd-input-wrap" style="flex:1; min-width:0;">
+              <input type="password" id="studentPinInput" placeholder="مثال: 1234 أو اتركه فارغاً" autocomplete="off" style="font-family:monospace; font-weight:700; letter-spacing:1px;">
+              <button type="button" class="btn-toggle-pwd-input" onclick="toggleInputPasswordVisibility('studentPinInput', 'studentPinEyeIcon')" title="إظهار / إخفاء الرمز" aria-label="إظهار أو إخفاء الرمز">
                 <i data-lucide="eye" id="studentPinEyeIcon" style="width:18px; height:18px;"></i>
               </button>
             </div>
-            <button type="button" id="btnModalResetPin" class="btn-secondary" style="white-space:nowrap; padding:0 12px; font-size:12px; display:none;" onclick="resetCurrentStudentPinFromModal()" title="تصفير الرمز ليقوم الطالب بوضعه عند الدخول">
-              <i data-lucide="rotate-ccw" style="width:14px; height:14px;"></i> تصفير
+            <button type="button" id="btnModalResetPin" class="btn-secondary wa-btn-reset-pin" style="display:none;" onclick="resetCurrentStudentPinFromModal()" title="تصفير الرمز ليقوم الطالب بوضعه عند الدخول">
+              <i data-lucide="rotate-ccw" style="width:14px; height:14px;"></i> <span>تصفير</span>
             </button>
           </div>
-          <small id="studentPinHelper" style="color:var(--muted); font-size:12px; margin-top:4px; display:block;">
+          <small id="studentPinHelper" style="color:var(--muted); font-size:12px; margin-top:2px; display:block; line-height:1.45;">
             إذا تُرك الرمز فارغاً، سيُطلب من الطالب وضع رمزه السري بنفسه عند تسجيل دخوله الأول.
           </small>
         </div>
@@ -457,10 +459,10 @@
         </div>
 
         <div class="wa-modal-footer-actions">
-          <button type="button" id="deleteStudentBtn" class="btn-danger-outline" style="display:none; padding:11px 16px; font-size:14px; align-items:center; gap:6px; min-height:44px;" onclick="deleteCurrentStudentFromModal()">
-            <i data-lucide="trash-2" style="width:16px; height:16px;"></i> حذف الطالب
+          <button type="button" id="deleteStudentBtn" class="btn-danger-outline wa-modal-btn-delete" style="display:none;" onclick="deleteCurrentStudentFromModal()">
+            <i data-lucide="trash-2" style="width:16px; height:16px;"></i> <span>حذف الطالب</span>
           </button>
-          <button type="submit" id="saveStudentBtn" class="btn-primary" style="flex:1; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+          <button type="submit" id="saveStudentBtn" class="btn-primary wa-modal-btn-save">
             <span>حفظ بيانات الحساب</span>
             <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
           </button>

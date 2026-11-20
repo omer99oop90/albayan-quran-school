@@ -725,6 +725,53 @@
       });
     }
 
+    const PERIOD_ORDINALS_AR = [
+      'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس',
+      'السابع', 'الثامن', 'التاسع', 'العاشر', 'الحادي عشر', 'الثاني عشر'
+    ];
+
+    function normalizeAIPeriodType(rawType) {
+      const t = String(rawType || '').trim().toLowerCase();
+      if (t === 'term' || t === 'custom' || t === 'quarterly' || t === 'semester') return 'term';
+      if (t === 'weekly' || t === 'week') return 'weekly';
+      if (t === 'yearly' || t === 'annual' || t === 'year') return 'yearly';
+      if (t === 'daily') return 'daily';
+      if (t === 'monthly' || t === 'month') return 'monthly';
+      return '';
+    }
+
+    function extractPeriodIndex(rawStr) {
+      const s = normAr(rawStr || '');
+      const digitMatch = s.match(/(\d+)/);
+      if (digitMatch) return parseInt(digitMatch[1], 10);
+      const map = [
+        ['الحادي عشر', 11], ['الثاني عشر', 12],
+        ['الاول', 1], ['الثاني', 2], ['الثالث', 3], ['الرابع', 4],
+        ['الخامس', 5], ['السادس', 6], ['السابع', 7], ['الثامن', 8],
+        ['التاسع', 9], ['العاشر', 10]
+      ];
+      for (let i = 0; i < map.length; i++) {
+        if (s.includes(map[i][0])) return map[i][1];
+      }
+      return null;
+    }
+
+    function getCanonicalPeriodKey(rawLabel) {
+      if (window.AlbayanDataNormalizer && typeof window.AlbayanDataNormalizer.normalizeMonthComparisonKey === 'function') {
+        return window.AlbayanDataNormalizer.normalizeMonthComparisonKey(rawLabel);
+      }
+      return normAr(rawLabel || '');
+    }
+
+    function inferPeriodTypeFromLabel(rawLabel) {
+      const s = normAr(rawLabel || '');
+      if (!s) return '';
+      if (s.includes('نهايه السنه') || s === 'سنوي' || s === 'السجل السنوي الشامل') return 'yearly';
+      if (s.includes('فصل')) return 'term';
+      if (s.includes('اسبوع')) return 'weekly';
+      return '';
+    }
+
     function getActivePeriod() {
       let savedMonth = '';
       let savedYear = '';
@@ -735,12 +782,17 @@
 
       if (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.getConfig === 'function') {
         const cfg = window.AlbayanCycleEngine.getConfig();
-        const pType = cfg.mode || cfg.periodType || 'monthly';
+        const pType = normalizeAIPeriodType(cfg.mode || cfg.periodType || 'monthly') || 'monthly';
         const opts = window.AlbayanCycleEngine.buildPeriodOptionsList(cfg);
         const firstOpt = opts && Array.isArray(opts.options) && opts.options.length > 0 ? opts.options[0] : null;
-        const defaultMonth = pType === 'monthly'
-          ? (savedMonth || 'صفر')
-          : ((firstOpt && firstOpt.value) ? firstOpt.value : 'صفر');
+        let defaultMonth = (firstOpt && firstOpt.value) ? firstOpt.value : 'صفر';
+        if (pType === 'monthly') {
+          defaultMonth = (savedMonth && !inferPeriodTypeFromLabel(savedMonth)) ? savedMonth : 'صفر';
+        } else if (pType === 'term' && savedMonth && normAr(savedMonth).includes('فصل')) {
+          defaultMonth = savedMonth;
+        } else if (pType === 'weekly' && savedMonth && normAr(savedMonth).includes('اسبوع')) {
+          defaultMonth = savedMonth;
+        }
         return {
           period_type: pType,
           year: savedYear || '1448',
@@ -749,6 +801,107 @@
         };
       }
       return { period_type: 'monthly', year: savedYear || '1448', month: savedMonth || 'صفر', record_date: '' };
+    }
+
+    function resolveTargetPeriod(args = {}, activePeriod = null, studentRecords = []) {
+      const base = activePeriod || getActivePeriod();
+      const rawLabel = String(
+        args.month || args.term || args.semester || args.period_label || args.period || ''
+      ).trim();
+      const explicitType = normalizeAIPeriodType(args.period_type);
+      const inferredType = inferPeriodTypeFromLabel(rawLabel);
+
+      let pType = inferredType || explicitType || (args.record_date && !rawLabel ? 'daily' : '') || base.period_type || 'monthly';
+      const year = String(args.year || base.year || '1448').replace(/\D/g, '') || '1448';
+      let recordDate = String(args.record_date || (pType === 'daily' ? (rawLabel || new Date().toISOString().slice(0, 10)) : '')).trim();
+
+      const cfg = (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.getConfig === 'function')
+        ? window.AlbayanCycleEngine.getConfig()
+        : { mode: pType, termMonths: 3 };
+      const built = (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.buildPeriodOptionsList === 'function')
+        ? window.AlbayanCycleEngine.buildPeriodOptionsList({ ...cfg, mode: pType, periodType: pType })
+        : { options: [] };
+      const options = Array.isArray(built.options) ? built.options : [];
+
+      let resolvedMonth = rawLabel || base.month || 'صفر';
+
+      if (pType === 'yearly') {
+        resolvedMonth = 'سجل نهاية السنة';
+      } else if (pType === 'term') {
+        const idx = extractPeriodIndex(rawLabel) || extractPeriodIndex(base.month) || 1;
+        const targetCompKey = `الفصل_${idx}`;
+        // 1. Reuse exact existing record label for this student+term+year if already saved
+        const existingRec = (studentRecords || []).find(r => {
+          const rType = normalizeAIPeriodType(r.period_type || inferPeriodTypeFromLabel(r.month) || 'monthly');
+          const rYear = String(r.year || year).replace(/\D/g, '') || year;
+          return rType === 'term' && rYear === year && getCanonicalPeriodKey(r.month) === targetCompKey;
+        });
+        if (existingRec && existingRec.month) {
+          resolvedMonth = existingRec.month;
+        } else {
+          // 2. Match built option from AlbayanCycleEngine (e.g. "الفصل الثاني (3 أشهر)")
+          const matchedOpt = options.find(o => !o.isYearly && getCanonicalPeriodKey(o.value) === targetCompKey);
+          if (matchedOpt) {
+            resolvedMonth = matchedOpt.value;
+          } else {
+            const ord = PERIOD_ORDINALS_AR[idx - 1] || String(idx);
+            const termMonths = Number(cfg.termMonths || 3) || 3;
+            resolvedMonth = `الفصل ${ord} (${termMonths} أشهر)`;
+          }
+        }
+      } else if (pType === 'weekly') {
+        const idx = extractPeriodIndex(rawLabel) || extractPeriodIndex(base.month) || 1;
+        const targetCompKey = `الاسبوع_${idx}`;
+        const existingRec = (studentRecords || []).find(r => {
+          const rType = normalizeAIPeriodType(r.period_type || inferPeriodTypeFromLabel(r.month) || 'monthly');
+          const rYear = String(r.year || year).replace(/\D/g, '') || year;
+          return rType === 'weekly' && rYear === year && getCanonicalPeriodKey(r.month) === targetCompKey;
+        });
+        if (existingRec && existingRec.month) {
+          resolvedMonth = existingRec.month;
+        } else {
+          const matchedOpt = options.find(o => !o.isYearly && getCanonicalPeriodKey(o.value) === targetCompKey);
+          if (matchedOpt) {
+            resolvedMonth = matchedOpt.value;
+          } else {
+            const ord = PERIOD_ORDINALS_AR[idx - 1] || `رقم ${idx}`;
+            resolvedMonth = `الأسبوع ${ord}`;
+          }
+        }
+      } else if (pType === 'daily') {
+        resolvedMonth = recordDate || resolvedMonth;
+      } else {
+        // monthly
+        resolvedMonth = rawLabel.replace(/^شهر\s+/i, '').trim() || (base.period_type === 'monthly' ? base.month : 'صفر');
+      }
+
+      return {
+        period_type: pType,
+        year,
+        month: resolvedMonth,
+        record_date: pType === 'daily' ? recordDate : ''
+      };
+    }
+
+    function isSamePeriodRecord(r, targetPeriod, fallbackActivePeriod = null) {
+      if (!r || !targetPeriod) return false;
+      const rInferred = inferPeriodTypeFromLabel(r.month);
+      let rType = normalizeAIPeriodType(r.period_type || '') || rInferred || 'monthly';
+      if (rInferred && rType === 'monthly') rType = rInferred;
+
+      const tType = normalizeAIPeriodType(targetPeriod.period_type || 'monthly') || 'monthly';
+      if (rType !== tType) return false;
+
+      if (tType === 'daily') {
+        return Boolean(targetPeriod.record_date && r.record_date === targetPeriod.record_date);
+      }
+
+      const tYear = String(targetPeriod.year || '1448').replace(/\D/g, '') || '1448';
+      const rYear = String(r.year || tYear).replace(/\D/g, '') || tYear;
+      if (rYear !== tYear) return false;
+
+      const rMonth = r.month || (fallbackActivePeriod && fallbackActivePeriod.month) || '';
+      return getCanonicalPeriodKey(rMonth) === getCanonicalPeriodKey(targetPeriod.month);
     }
 
     async function cachedLoad(slot, loaderFn, force = false) {
@@ -977,7 +1130,10 @@
         needCircles ? loadCircles(force) : Promise.resolve([]),
         needUsers ? loadUsers(force) : Promise.resolve([]),
         needStuRec ? loadRawStudentsAndRecords(force) : Promise.resolve({ students: [], rawStudents: [], records: [], duplicateIdEntries: [], deletedCircles: new Set(), deletedStudents: new Set() }),
-        needExams ? loadExamsAndResults(force) : Promise.resolve({ exams: [], results: [] })
+        needExams ? loadExamsAndResults(force) : Promise.resolve({ exams: [], results: [] }),
+        (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.pullFromCloud === 'function')
+          ? window.AlbayanCycleEngine.pullFromCloud().catch(() => null)
+          : Promise.resolve(null)
       ]);
 
       const circleById = new Map();
@@ -1030,6 +1186,10 @@
     return {
       invalidateCache,
       getActivePeriod,
+      resolveTargetPeriod,
+      isSamePeriodRecord,
+      getCanonicalPeriodKey,
+      normalizeAIPeriodType,
       loadUsers,
       loadCircles,
       loadRawStudentsAndRecords,
@@ -1917,8 +2077,9 @@
           circle_id: { type: 'string' },
           circle_name: { type: 'string', description: 'اسم الحلقة المستهدفة' },
           force_duplicate: { type: 'boolean', description: 'متابعة الإضافة حتى مع تشابه الاسم' },
-          period_type: { type: 'string', description: 'نوع الفترة: monthly أو weekly أو daily' },
-          month: { type: 'string', description: 'الشهر الهجري (مثل صفر)' },
+          period_type: { type: 'string', description: 'نوع الفترة: monthly (شهري) أو term (فصلي) أو weekly (أسبوعي) أو daily (يومي)' },
+          month: { type: 'string', description: 'اسم الشهر أو الفصل أو الأسبوع (مثل: صفر، الفصل الأول، الفصل الثاني، الأسبوع الأول)' },
+          term: { type: 'string', description: 'اسم الفصل الدراسي إن وجد (مثل: الفصل الأول، الفصل الثاني)' },
           year: { type: 'string', description: 'السنة الهجرية (مثل 1448)' },
           record_date: { type: 'string', description: 'تاريخ اليوم في النظام اليومي' },
           fields: RECORD_FIELDS_SCHEMA
@@ -1969,13 +2130,7 @@
         if (!normRes.ok) return { ok: false, message: normRes.message };
         const initialFields = normRes.fields;
 
-        const period = {
-          ...snap.activePeriod,
-          ...(args.period_type ? { period_type: args.period_type } : {}),
-          ...(args.year ? { year: String(args.year) } : {}),
-          ...(args.month ? { month: args.month } : {}),
-          ...(args.record_date ? { record_date: args.record_date } : {})
-        };
+        const period = AlbayanAIDataContext.resolveTargetPeriod(args, snap.activePeriod, []);
 
         if (!window.RosterService || typeof window.RosterService.addStudent !== 'function') {
           return { ok: false, message: 'خدمة الطلاب (RosterService) غير متاحة حالياً.' };
@@ -2389,14 +2544,17 @@
       name: 'get_student_records',
       category: 'السجلات',
       label: 'قراءة سجلات الطلاب',
-      description: 'يقرأ سجلات الحفظ والمراجعة والغياب والدرجات لطالب أو حلقة أو فترة زمنية.',
+      description: 'يقرأ سجلات الحفظ والمراجعة والغياب والدرجات لطالب أو حلقة أو فترة زمنية (شهرية أو فصلية أو أسبوعية أو يومية).',
       parameters: {
         type: 'object',
         properties: {
           student_name: { type: 'string' },
           student_id: { type: 'string' },
           circle_name: { type: 'string' },
-          month: { type: 'string' },
+          period_type: { type: 'string', description: 'نوع الفترة: monthly أو term أو weekly أو daily' },
+          month: { type: 'string', description: 'اسم الشهر أو الفصل أو الأسبوع (مثل: صفر، الفصل الأول، الفصل الثاني، الأسبوع الأول)' },
+          term: { type: 'string', description: 'اسم الفصل إن وجد (مثل: الفصل الأول)' },
+          year: { type: 'string', description: 'السنة (مثل 1448)' },
           limit: { type: 'number' }
         }
       },
@@ -2419,9 +2577,32 @@
           const matchingSids = new Set(snap.students.filter(s => normAr(s.name).includes(q)).map(s => String(s.id)));
           recs = recs.filter(r => matchingSids.has(String(normStudentId(r.student_id))) || normAr(r.student_name).includes(q));
         }
-        if (args.month) {
-          const mq = normAr(args.month);
-          recs = recs.filter(r => normAr(r.month).includes(mq));
+
+        const rawMonthArg = args.month || args.term || args.period_label || args.period || '';
+        if (args.period_type) {
+          const targetType = AlbayanAIDataContext.normalizeAIPeriodType(args.period_type);
+          recs = recs.filter(r => {
+            const rType = AlbayanAIDataContext.normalizeAIPeriodType(r.period_type || 'monthly');
+            const rComp = AlbayanAIDataContext.getCanonicalPeriodKey(r.month || '');
+            const effectiveType = (rComp.startsWith('الفصل_') && rType === 'monthly')
+              ? 'term'
+              : ((rComp.startsWith('الاسبوع_') && rType === 'monthly') ? 'weekly' : rType);
+            return effectiveType === targetType;
+          });
+        }
+        if (rawMonthArg) {
+          const targetKey = AlbayanAIDataContext.getCanonicalPeriodKey(rawMonthArg);
+          const mq = normAr(rawMonthArg);
+          recs = recs.filter(r =>
+            AlbayanAIDataContext.getCanonicalPeriodKey(r.month || '') === targetKey ||
+            normAr(r.month || '').includes(mq)
+          );
+        }
+        if (args.year) {
+          const targetYear = String(args.year).replace(/\D/g, '');
+          if (targetYear) {
+            recs = recs.filter(r => !r.year || String(r.year).replace(/\D/g, '') === targetYear);
+          }
         }
 
         const stuMap = new Map(snap.students.map(s => [String(s.id), s]));
@@ -2475,15 +2656,17 @@
       name: 'create_student_record',
       category: 'السجلات',
       label: 'إضافة سجل جديد لطالب',
-      description: 'ينشئ سجلاً شهرياً/أسبوعياً/يومياً لطالب محدد مع كافة خانات السجل (الحفظ، المراجعة، السرد، الغياب، النشاط، المصاحبة، الاختبار).',
+      description: 'ينشئ سجلاً شهرياً أو فصلياً (term) أو أسبوعياً أو يومياً لطالب محدد مع كافة خانات السجل (الحفظ، المراجعة، السرد، الغياب، النشاط، المصاحبة، الاختبار).',
       parameters: {
         type: 'object',
         properties: {
           student_id: { type: 'string' },
           student_name: { type: 'string' },
           circle_name: { type: 'string' },
-          period_type: { type: 'string', description: 'monthly أو weekly أو daily' },
-          month: { type: 'string', description: 'الشهر الهجري مثل صفر' },
+          period_type: { type: 'string', description: 'نوع الفترة: monthly (شهري) أو term (فصلي) أو weekly (أسبوعي) أو daily (يومي)' },
+          month: { type: 'string', description: 'اسم الشهر أو الفصل أو الأسبوع (مثل: صفر، الفصل الأول، الفصل الثاني، الأسبوع الأول)' },
+          term: { type: 'string', description: 'اسم الفصل الدراسي إن وجد (مثل: الفصل الأول، الفصل الثاني)' },
+          period_label: { type: 'string', description: 'تسمية الفترة إن وجدت' },
           year: { type: 'string', description: 'السنة مثل 1448' },
           record_date: { type: 'string', description: 'تاريخ اليوم إن كان النظام يومياً' },
           fields: RECORD_FIELDS_SCHEMA
@@ -2500,15 +2683,17 @@
       name: 'update_student_record',
       category: 'السجلات',
       label: 'تعديل سجل طالب',
-      description: 'يعدّل أي خانة في سجل الطالب (الحفظ من سورة/آية إلى سورة/آية، المراجعة، السرد، الغياب، النشاط، الفقه، التفسير، الأذكار، السيرة، الاختبار) مع التحقق التلقائي وحساب أوجه الحفظ والمجموع.',
+      description: 'يعدّل أي خانة في سجل الطالب لأي فترة محددة (شهرية monthly أو فصلية term مثل الفصل الأول/الثاني أو أسبوعية weekly أو يومية daily) مع التحقق التلقائي وحساب أوجه الحفظ والمجموع.',
       parameters: {
         type: 'object',
         properties: {
           student_id: { type: 'string' },
           student_name: { type: 'string' },
           circle_name: { type: 'string' },
-          period_type: { type: 'string', description: 'monthly أو weekly أو daily' },
-          month: { type: 'string', description: 'الشهر الهجري مثل صفر' },
+          period_type: { type: 'string', description: 'نوع الفترة: monthly (شهري) أو term (فصلي) أو weekly (أسبوعي) أو daily (يومي)' },
+          month: { type: 'string', description: 'اسم الشهر أو الفصل أو الأسبوع (مثل: صفر، الفصل الأول، الفصل الثاني، الأسبوع الأول)' },
+          term: { type: 'string', description: 'اسم الفصل الدراسي عند التعديل على فصل (مثل: الفصل الأول، الفصل الثاني)' },
+          period_label: { type: 'string', description: 'تسمية الفترة إن وجدت' },
           year: { type: 'string', description: 'السنة مثل 1448' },
           record_date: { type: 'string', description: 'تاريخ اليوم إن كان النظام يومياً' },
           fields: RECORD_FIELDS_SCHEMA,
@@ -2541,21 +2726,19 @@
         const auth = AlbayanAISecurity.authorizeTool('update_student_record', { circle_id: student.circle_id }, context);
         if (!auth.allowed) return { ok: false, message: auth.reason };
 
-        const period = {
-          ...snap.activePeriod,
-          ...(args.period_type ? { period_type: args.period_type } : {}),
-          ...(args.month ? { month: args.month } : {}),
-          ...(args.year ? { year: String(args.year) } : {}),
-          ...(args.record_date ? { record_date: args.record_date } : {})
-        };
+        const studentRecords = snap.records.filter(r => String(normStudentId(r.student_id)) === String(student.id));
+        const period = AlbayanAIDataContext.resolveTargetPeriod(args, snap.activePeriod, studentRecords);
 
-        const currentRecord = snap.records.find(r => {
-          if (String(normStudentId(r.student_id)) !== String(student.id)) return false;
-          if (period.record_date && r.record_date) return r.record_date === period.record_date;
-          const sameMonth = normAr(r.month || snap.activePeriod.month) === normAr(period.month);
-          const sameYear = !r.year || !period.year || String(r.year) === String(period.year);
-          return sameMonth && sameYear;
-        }) || {};
+        if (period.month === 'سجل نهاية السنة' || period.period_type === 'yearly') {
+          return {
+            ok: false,
+            message: 'سجل نهاية السنة هو محصلة تلقائية محسوبة من الفصول والأشهر ولا يُعدّل يدوياً؛ يرجى تحديد الفصل أو الشهر المراد تعديله.'
+          };
+        }
+
+        const currentRecord = studentRecords.find(r =>
+          AlbayanAIDataContext.isSamePeriodRecord(r, period, snap.activePeriod)
+        ) || {};
 
         // Accept either nested fields object or flat record fields
         const allowedKeys = Object.keys(RECORD_FIELDS_SCHEMA.properties);
@@ -3677,6 +3860,25 @@
     }
 
     function buildSystemPrompt(user) {
+      let cycleDesc = 'النظام الشهري الافتراضي (صفر 1448)';
+      let periodOptionsDesc = '';
+      try {
+        if (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.buildPeriodOptionsList === 'function') {
+          const built = window.AlbayanCycleEngine.buildPeriodOptionsList();
+          const cfg = built.config || {};
+          const modeLabel = cfg.mode === 'term'
+            ? `النظام الفصلي (term • ${cfg.termMonths || 3} أشهر لكل فصل)`
+            : (cfg.mode === 'weekly'
+              ? 'النظام الأسبوعي (weekly)'
+              : (cfg.mode === 'yearly' ? 'النظام السنوي (yearly)' : 'النظام الشهري (monthly)'));
+          const optList = (built.options || []).filter(o => !o.isYearly).map(o => o.value);
+          cycleDesc = `${modeLabel}`;
+          if (optList.length > 0) {
+            periodOptionsDesc = `   - الفترات المتاحة حالياً في النظام: ${optList.join(' | ')}`;
+          }
+        }
+      } catch (e) {}
+
       return [
         'أنت "مساعد البيان الذكي" داخل منظومة مدرسة البيان لتعليم القرآن الكريم.',
         `المستخدم الحالي: ${user ? user.username : 'كادر'} (الدور: ${user ? user.role : 'staff'}).`,
@@ -3686,7 +3888,9 @@
         '1. المحادثة العادية (التحيات مثل "مرحباً"، الشكر، الأسئلة العامة حول قدراتك): أجب بلطف واختصار مباشرةً دون استدعاء أي أداة قاعدة بيانات.',
         '2. استرجاع البيانات المحدد: عند السؤال عن عدد الحلقات أو الطلاب أو المعلمين أو سجل طالب، استدعِ فقط الأداة المحددة المطلوبة (مثل get_all_halaqat أو get_statistics أو get_student_history) ولا تقم بفحص شامل للمدرسة دون طلب.',
         '3. إضافة طالب وتسجيل أي خانة في السجل: يمكنك إضافة طالب مع تعبئة سجله دفعة واحدة عبر create_student (بتمرير fields)، أو تعديل/إنشاء أي خانة في السجل عبر update_student_record / create_student_record.',
-        '   خانات السجل (السجل الشهري الافتراضي: صفر 1448 ما لم يُحدد شهر/سنة أو تاريخ يومي):',
+        `   - نظام المدة النشط حالياً: ${cycleDesc}.`,
+        ...(periodOptionsDesc ? [periodOptionsDesc] : []),
+        '   - قاعدة الفترات والفصول (مهم جداً): عند طلب التعديل أو القراءة على **فصل معين** (مثل: الفصل الأول، الفصل الثاني، الفصل الثالث، الفصل الرابع)، يجب تمرير `period_type: "term"` وتمرير اسم الفصل في `month` (أو `term`) مثل `"الفصل الأول"` أو `"الفصل الثاني"`؛ وعند طلب **أسبوع** مرّر `period_type: "weekly"`؛ وعند طلب **شهر** مرّر `period_type: "monthly"` واسم الشهر؛ وإلا استخدم الفترة النشطة للنظام. يُمنع تعديل سجل الشهر عندما يطلب المستخدم فصلاً دراسياً.',
         '   - الحفظ: from_surah، from_ayah، to_surah، to_ayah، memo_pages (تُحسب تلقائياً عند تحديد نطاق السور والآيات)، memo_grade (0-40).',
         '   - المراجعة والسرد: rev_from_surah، rev_from_ayah، rev_to_surah، rev_to_ayah، sard_pages، rev_grade (0-30).',
         '   - الحضور والنشاط والمناهج المصاحبة: absent_days (0-31)، activity_mark (0-20)، fiqh (0-20)، tafsir (0-20)، adhkar (0-20)، seerah (0-20).',
@@ -4390,10 +4594,25 @@
           }
 
           if (Object.keys(fields).length > 0) {
-            const updRes = await invokeTool('update_student_record', { student_name: stuMatch[1].trim(), fields });
+            const periodArgs = {};
+            const termMatch = raw.match(/(?:في\s+|بـ\s*)?(الفصل(?:\s+الدراسي)?\s+(?:الأول|الاول|الثاني|الثالث|الرابع|الخامس|السادس|\d+))/i);
+            const weekMatch = raw.match(/(?:في\s+|بـ\s*)?(الأسبوع\s+(?:الأول|الاول|الثاني|الثالث|الرابع|الخامس|السادس|السابع|الثامن|التاسع|العاشر|الحادي\s+عشر|الثاني\s+عشر|\d+))/i);
+            const monthMatch = raw.match(/(?:في\s+شهر\s+|شهر\s+)(محرم|صفر|ربيع\s+الأول|ربيع\s+الاول|ربيع\s+الآخر|ربيع\s+الاخر|ربيع\s+الثاني|جمادى\s+الأولى|جمادى\s+الاولى|جمادى\s+الآخرة|جمادى\s+الاخره|جمادى\s+الثانية|رجب|شعبان|رمضان|شوال|ذو\s+القعدة|ذو\s+الحجة)/i);
+            if (termMatch) {
+              periodArgs.period_type = 'term';
+              periodArgs.month = termMatch[1].replace(/\s+الدراسي/i, '').trim();
+            } else if (weekMatch) {
+              periodArgs.period_type = 'weekly';
+              periodArgs.month = weekMatch[1].trim();
+            } else if (monthMatch) {
+              periodArgs.period_type = 'monthly';
+              periodArgs.month = monthMatch[1].trim();
+            }
+
+            const updRes = await invokeTool('update_student_record', { student_name: stuMatch[1].trim(), ...periodArgs, fields });
             return {
               text: updRes.ok
-                ? `تم تحديث سجل الطالب **"${stuMatch[1].trim()}"** بنجاح.`
+                ? `تم تحديث سجل الطالب **"${stuMatch[1].trim()}"** في **${updRes.period?.month || ''}** بنجاح.`
                 : (updRes.message || updRes.error),
               executedTools, tables, operationCards, confirmations
             };

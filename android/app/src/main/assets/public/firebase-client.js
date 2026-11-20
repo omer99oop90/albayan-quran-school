@@ -254,6 +254,30 @@
       return s;
     }
 
+    function normalizePeriodTypeValue(rawType) {
+      const t = String(rawType || '').trim().toLowerCase();
+      if (t === 'term' || t === 'custom' || t === 'quarterly' || t === 'semester') return 'term';
+      if (t === 'weekly' || t === 'week') return 'weekly';
+      if (t === 'yearly' || t === 'annual' || t === 'year') return 'yearly';
+      if (t === 'daily') return 'daily';
+      return 'monthly';
+    }
+
+    function extractArabicIndexFromLabel(normStr) {
+      const digitMatch = normStr.match(/(\d+)/);
+      if (digitMatch) return parseInt(digitMatch[1], 10);
+      const ordinals = [
+        ['الحادي عشر', 11], ['الثاني عشر', 12],
+        ['الاول', 1], ['الثاني', 2], ['الثالث', 3], ['الرابع', 4],
+        ['الخامس', 5], ['السادس', 6], ['السابع', 7], ['الثامن', 8],
+        ['التاسع', 9], ['العاشر', 10]
+      ];
+      for (let i = 0; i < ordinals.length; i++) {
+        if (normStr.indexOf(ordinals[i][0]) !== -1) return ordinals[i][1];
+      }
+      return null;
+    }
+
     function normalizeMonthComparisonKey(rawMonth) {
       if (!rawMonth) return '';
       let s = String(rawMonth)
@@ -267,6 +291,21 @@
       if (s === 'ربيع الثاني') s = 'ربيع الاخر';
       if (s === 'جمادي الثانيه' || s === 'جمادي الاخره') s = 'جمادي الاخره';
       if (s === 'جمادي الاولي') s = 'جمادي الاولي';
+
+      // Canonical comparison keys for terms ("الفصل الأول (3 أشهر)" == "الفصل 1" == "الفصل الأول")
+      if (s.indexOf('فصل') !== -1) {
+        const termIdx = extractArabicIndexFromLabel(s.replace(/\(\s*\d+\s*اشهر\s*\)/g, ''));
+        if (termIdx !== null && termIdx >= 1 && termIdx <= 12) {
+          return `الفصل_${termIdx}`;
+        }
+      }
+      // Canonical comparison keys for weeks ("الأسبوع الأول" == "الاسبوع 1")
+      if (s.indexOf('اسبوع') !== -1) {
+        const weekIdx = extractArabicIndexFromLabel(s);
+        if (weekIdx !== null && weekIdx >= 1 && weekIdx <= 52) {
+          return `الاسبوع_${weekIdx}`;
+        }
+      }
       return s;
     }
 
@@ -277,13 +316,20 @@
     }
 
     function normalizePeriod(period = {}) {
-      const pType = String(period.period_type || 'monthly').trim() || 'monthly';
+      let pType = normalizePeriodTypeValue(period.period_type || 'monthly');
       const rawYear = String(period.year || '1448').replace(/\D/g, '') || '1448';
       const rawMonth = normalizeMonthLabel(
         period.month || (pType === 'daily' ? period.record_date : 'صفر') || 'صفر'
       );
-      const recordDate = String(period.record_date || (pType === 'daily' ? rawMonth : '')).trim();
       const compMonth = normalizeMonthComparisonKey(rawMonth) || 'صفر';
+      if (rawMonth === 'سجل نهاية السنة') {
+        pType = 'yearly';
+      } else if (compMonth.startsWith('الفصل_') && (pType === 'monthly' || !period.period_type)) {
+        pType = 'term';
+      } else if (compMonth.startsWith('الاسبوع_') && (pType === 'monthly' || !period.period_type)) {
+        pType = 'weekly';
+      }
+      const recordDate = String(period.record_date || (pType === 'daily' ? rawMonth : '')).trim();
       const safeMonthKey = rawMonth.replace(/[.#$/\[\]\s]/g, '_');
       return {
         period_type: pType,
@@ -678,11 +724,14 @@
           return { ...student, ...yearlyMerged, id: sid, circle_id: cid };
         }
 
-        // Standard period (monthly / daily / custom)
+        // Standard period (monthly / daily / term / weekly)
         const canonicalKey = getCanonicalRecordKey(sid, normP);
         const matchingCandidates = studentCandidates.filter(({ rtdbKey, rec }) => {
           if (rtdbKey === canonicalKey) return true;
-          const rPType = String(rec.period_type || 'monthly').trim() || 'monthly';
+          const rComp = normalizeMonthComparisonKey(rec.month || '');
+          let rPType = normalizePeriodTypeValue(rec.period_type || 'monthly');
+          if (rComp.startsWith('الفصل_') && rPType === 'monthly') rPType = 'term';
+          if (rComp.startsWith('الاسبوع_') && rPType === 'monthly') rPType = 'weekly';
           const rYear = String(rec.year || '1448').replace(/\D/g, '') || '1448';
           if (rPType !== normP.period_type || rYear !== normP.year) return false;
           if (normP.period_type === 'daily') {

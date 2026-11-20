@@ -212,6 +212,10 @@ async function checkAuth() {
     if (cached) {
       const u = JSON.parse(cached);
       if (u && (u.username || u.student_name)) {
+        if (window.AlbayanPermissions) {
+          window.AlbayanPermissions.applyNavPermissions(u);
+          if (!window.AlbayanPermissions.enforcePageAccess(u)) return;
+        }
         const userElem = document.getElementById("loggedUsername");
         if (userElem) userElem.textContent = u.username || u.student_name || "الكادر التعليمي";
         return;

@@ -774,5 +774,270 @@
       }
     };
   })();
+
+  // 8. Global Real-Time RBAC Permissions Engine (Web + Capacitor APK + Firebase)
+  (function initAlbayanPermissions() {
+    var FB_USERS_URL = 'https://bayan-56e77-default-rtdb.asia-southeast1.firebasedatabase.app/users.json';
+
+    function normName(s) {
+      return String(s || '')
+        .toLowerCase()
+        .replace(/[\u064B-\u065F\u0670]/g, '')
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function parsePermissions(raw) {
+      if (Array.isArray(raw)) return raw.map(String);
+      if (typeof raw === 'string' && raw.trim()) {
+        try {
+          var parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed.map(String);
+        } catch (e) {
+          return raw.split(',').map(function(x) { return x.trim(); }).filter(Boolean);
+        }
+      }
+      return null;
+    }
+
+    function getCurrentUser() {
+      try {
+        var raw = localStorage.getItem('albayan_logged_user');
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function isStaffPage() {
+      var p = (window.location.pathname || window.location.href || '').toLowerCase();
+      if (p.indexOf('login') !== -1 || p.indexOf('mymark') !== -1 || p.indexOf('about_me') !== -1 ||
+          p.indexOf('about-me') !== -1 || p.indexOf('exam.html') !== -1 || p.indexOf('student_settings') !== -1 ||
+          p.endsWith('/index.html') || p === '/' || p === '') {
+        return false;
+      }
+      return true;
+    }
+
+    function hasPermission(permKey, userObj) {
+      var u = userObj || getCurrentUser();
+      if (!u) return false;
+      if (u.role === 'student') return false;
+      var isSuper = Number(u.is_superadmin) === 1 || u.is_superadmin === true;
+      if (isSuper) return true;
+
+      var perms = parsePermissions(u.permissions);
+      if (u.role === 'admin' && perms === null) return true;
+      if (perms !== null) {
+        return perms.indexOf(permKey) !== -1;
+      }
+
+      // Legacy fallback if permissions field was never set
+      if (u.role === 'supervisor') {
+        return ['circles', 'all_circles', 'exams', 'analytics', 'student_cv'].indexOf(permKey) !== -1;
+      }
+      return ['circles', 'exams', 'analytics', 'student_cv'].indexOf(permKey) !== -1;
+    }
+
+    function setElVisible(el, visible, displayVal) {
+      if (!el) return;
+      if (visible) {
+        if (el.getAttribute('data-rbac-hidden') === '1') {
+          el.removeAttribute('data-rbac-hidden');
+          el.style.removeProperty('display');
+          if (displayVal) el.style.display = displayVal;
+        }
+      } else {
+        el.setAttribute('data-rbac-hidden', '1');
+        el.style.setProperty('display', 'none', 'important');
+      }
+    }
+
+    function applyNavPermissions(userObj) {
+      if (typeof document === 'undefined' || !isStaffPage()) return;
+      var u = userObj || getCurrentUser();
+      if (!u || u.role === 'student') return;
+
+      var canCircles = hasPermission('circles', u);
+      var canExams = hasPermission('exams', u);
+      var canAnalytics = hasPermission('analytics', u);
+      var canCv = hasPermission('student_cv', u);
+      var canUsers = hasPermission('users', u);
+
+      // Student CV links (Sidebar + Bottom Nav + Mobile Nav)
+      var cvSelectors = '#studentCvMenuLink, #mobileNavStudentCv, a[href*="student_cv"], a[href*="/student-cv"]';
+      var cvLinks = document.querySelectorAll(cvSelectors);
+      for (var i = 0; i < cvLinks.length; i++) {
+        setElVisible(cvLinks[i], canCv);
+      }
+
+      // Users Management links (Sidebar + More Page + Bottom Nav)
+      var usersSelectors = '#usersMenuLink, #moreUsersLink, #linkUsers, a[href*="users.html"], a[href="/users"]';
+      var usersLinks = document.querySelectorAll(usersSelectors);
+      for (var j = 0; j < usersLinks.length; j++) {
+        setElVisible(usersLinks[j], canUsers);
+      }
+
+      // Exams links
+      var examSelectors = 'a[href*="admin.html"], a[href="/admin"], .bottom-nav-item[data-page="admin"]';
+      var examLinks = document.querySelectorAll(examSelectors);
+      for (var k = 0; k < examLinks.length; k++) {
+        setElVisible(examLinks[k], canExams);
+      }
+
+      // Analytics links (Sidebar + Bottom Nav + Circles 3-dot Menu)
+      var analyticsSelectors = 'a[href*="analytics.html"], a[href="/analytics"], .bottom-nav-item[data-page="analytics"], #menuItemCircleStats, #menuItemStudentStats';
+      var analyticsLinks = document.querySelectorAll(analyticsSelectors);
+      for (var m = 0; m < analyticsLinks.length; m++) {
+        setElVisible(analyticsLinks[m], canAnalytics);
+      }
+
+      // Circles links
+      var circleSelectors = '#mobileNavCircles, .bottom-nav-item[data-page="circles"], .sidebar-menu a[href*="circles.html"], .sidebar-menu a[href="/circles"], .sidebar-nav a[href*="circles.html"]';
+      var circleLinks = document.querySelectorAll(circleSelectors);
+      for (var n = 0; n < circleLinks.length; n++) {
+        setElVisible(circleLinks[n], canCircles);
+      }
+    }
+
+    function getFallbackPage(u) {
+      if (hasPermission('circles', u)) return 'circles.html';
+      if (hasPermission('exams', u)) return 'admin.html';
+      if (hasPermission('analytics', u)) return 'analytics.html';
+      if (hasPermission('student_cv', u)) return 'student_cv.html';
+      return 'more.html';
+    }
+
+    function enforcePageAccess(userObj) {
+      if (typeof window === 'undefined' || !isStaffPage()) return true;
+      var u = userObj || getCurrentUser();
+      if (!u || u.role === 'student') return true;
+
+      var path = (window.location.pathname || window.location.href || '').toLowerCase();
+      var denied = false;
+      if (path.indexOf('student_cv') !== -1 || path.indexOf('student-cv') !== -1) {
+        denied = !hasPermission('student_cv', u);
+      } else if (path.indexOf('admin.html') !== -1 || path.endsWith('/admin')) {
+        denied = !hasPermission('exams', u);
+      } else if (path.indexOf('analytics.html') !== -1 || path.endsWith('/analytics')) {
+        denied = !hasPermission('analytics', u);
+      } else if (path.indexOf('users.html') !== -1 || path.endsWith('/users')) {
+        denied = !hasPermission('users', u);
+      } else if ((path.indexOf('circles.html') !== -1 || path.endsWith('/circles')) && !hasPermission('circles', u)) {
+        denied = true;
+      }
+
+      if (denied) {
+        var target = getFallbackPage(u);
+        if (path.indexOf(target) === -1) {
+          window.location.replace(target);
+        }
+        return false;
+      }
+      return true;
+    }
+
+    async function refreshFromCloud() {
+      if (!isStaffPage()) return;
+      var u = getCurrentUser();
+      if (!u || u.role === 'student' || !u.username) return;
+
+      // 1. Try local server /api/me first if reachable
+      try {
+        var c1 = new AbortController();
+        var t1 = setTimeout(function() { c1.abort(); }, 1500);
+        var r1 = await fetch('/api/me', { signal: c1.signal });
+        clearTimeout(t1);
+        if (r1.ok) {
+          var me = await r1.json();
+          if (me && me.logged_in) {
+            var mergedApi = Object.assign({}, u, me, {
+              permissions: parsePermissions(me.permissions) || u.permissions
+            });
+            try { localStorage.setItem('albayan_logged_user', JSON.stringify(mergedApi)); } catch (e) {}
+            applyNavPermissions(mergedApi);
+            enforcePageAccess(mergedApi);
+            window.dispatchEvent(new CustomEvent('albayan:permissions-updated', { detail: mergedApi }));
+            return;
+          }
+        }
+      } catch (e) {}
+
+      // 2. Sync live from Firebase RTDB /users.json
+      try {
+        var c2 = new AbortController();
+        var t2 = setTimeout(function() { c2.abort(); }, 3500);
+        var r2 = await fetch(FB_USERS_URL, { signal: c2.signal, cache: 'no-store' });
+        clearTimeout(t2);
+        if (!r2.ok) return;
+        var raw = await r2.json();
+        if (!raw || typeof raw !== 'object') return;
+        var entries = Array.isArray(raw) ? raw : Object.values(raw);
+        var targetNorm = normName(u.username);
+        var matched = null;
+        for (var i = 0; i < entries.length; i++) {
+          var cand = entries[i];
+          if (!cand || typeof cand !== 'object') continue;
+          if (u.id !== undefined && u.id !== null && String(cand.id) === String(u.id)) {
+            matched = cand;
+            break;
+          }
+          if (normName(cand.username || cand.display_name || cand.name) === targetNorm) {
+            matched = cand;
+          }
+        }
+        if (!matched) return;
+
+        if (matched.is_active === 0 || matched.is_active === '0' || matched.is_active === false) {
+          if (typeof window.albayanLogout === 'function') {
+            window.albayanLogout();
+          }
+          return;
+        }
+
+        var nextPerms = parsePermissions(matched.permissions);
+        var updatedUser = Object.assign({}, u, {
+          id: matched.id !== undefined ? matched.id : u.id,
+          username: matched.username || u.username,
+          display_name: matched.display_name || matched.username || u.display_name,
+          role: matched.role || u.role,
+          is_superadmin: (matched.is_superadmin === 1 || matched.is_superadmin === '1' || matched.is_superadmin === true) ? 1 : 0,
+          permissions: nextPerms !== null ? nextPerms : u.permissions
+        });
+        try {
+          localStorage.setItem('albayan_logged_user', JSON.stringify(updatedUser));
+          sessionStorage.setItem('albayan_me_cache', JSON.stringify(updatedUser));
+        } catch (e) {}
+
+        applyNavPermissions(updatedUser);
+        enforcePageAccess(updatedUser);
+        window.dispatchEvent(new CustomEvent('albayan:permissions-updated', { detail: updatedUser }));
+      } catch (e) {}
+    }
+
+    window.AlbayanPermissions = {
+      parsePermissions: parsePermissions,
+      getCurrentUser: getCurrentUser,
+      hasPermission: hasPermission,
+      applyNavPermissions: applyNavPermissions,
+      enforcePageAccess: enforcePageAccess,
+      refreshFromCloud: refreshFromCloud
+    };
+
+    // Enforce immediately before page content flashes
+    enforcePageAccess();
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('DOMContentLoaded', function() {
+        applyNavPermissions();
+        enforcePageAccess();
+        refreshFromCloud();
+      });
+    }
+  })();
 })();
 

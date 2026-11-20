@@ -581,15 +581,26 @@ function applyUserData(data) {
   const uEl = document.getElementById("loggedUsername");
   const rEl = document.getElementById("loggedRole");
   if (uEl) uEl.textContent = data.username || "كادر تعليمي";
-  if (rEl) rEl.textContent = data.role === "admin" ? "مسؤول النظام" : "كادر تعليمي";
+  if (rEl) rEl.textContent = data.role === "admin" ? "مسؤول النظام" : (data.role === "supervisor" ? "مشرف تعليمي" : "معلم حلقة");
 
-  const canAccessCv = data.is_superadmin === 1 || data.role === "admin" || data.role === "supervisor" || (Array.isArray(data.permissions) && data.permissions.includes("student_cv"));
+  const hasPerm = (key) => {
+    if (window.AlbayanPermissions && typeof window.AlbayanPermissions.hasPermission === "function") {
+      return window.AlbayanPermissions.hasPermission(key, data);
+    }
+    return data.is_superadmin === 1 || data.role === "admin" || (Array.isArray(data.permissions) && data.permissions.includes(key));
+  };
+
+  const canAccessCv = hasPerm("student_cv");
   const cvLink = document.getElementById("studentCvMenuLink");
   if (cvLink) cvLink.style.display = canAccessCv ? "flex" : "none";
 
-  const canAccessUsers = data.is_superadmin === 1 || data.role === "admin" || (Array.isArray(data.permissions) && data.permissions.includes("users"));
+  const canAccessUsers = hasPerm("users");
   const usersLink = document.getElementById("usersMenuLink");
   if (usersLink) usersLink.style.display = canAccessUsers ? "flex" : "none";
+
+  if (window.AlbayanPermissions && typeof window.AlbayanPermissions.applyNavPermissions === "function") {
+    window.AlbayanPermissions.applyNavPermissions(data);
+  }
 }
 
 async function checkAuth() {
@@ -601,10 +612,11 @@ async function checkAuth() {
       if (u && (u.username || u.student_name)) {
         currentUserData = {
           logged_in: true,
+          id: u.id ?? null,
           username: u.username || "معلم",
           role: u.role || "teacher",
-          is_superadmin: u.role === "admin" ? 1 : 0,
-          permissions: u.permissions || ["all_circles"]
+          is_superadmin: (u.is_superadmin === 1 || u.is_superadmin === "1" || u.is_superadmin === true) ? 1 : 0,
+          permissions: Array.isArray(u.permissions) ? u.permissions : []
         };
         applyUserData(currentUserData);
       }
@@ -646,10 +658,11 @@ async function checkAuth() {
       if (u && (u.username || u.student_name)) {
         currentUserData = {
           logged_in: true,
+          id: u.id ?? null,
           username: u.username || "معلم",
           role: u.role || "teacher",
-          is_superadmin: u.role === "admin" ? 1 : 0,
-          permissions: u.permissions || ["all_circles"]
+          is_superadmin: (u.is_superadmin === 1 || u.is_superadmin === "1" || u.is_superadmin === true) ? 1 : 0,
+          permissions: Array.isArray(u.permissions) ? u.permissions : []
         };
         applyUserData(currentUserData);
         return;
@@ -3845,8 +3858,33 @@ window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
     ? window.renderCirclesGrid
     : (typeof renderCirclesGrid === "function" ? renderCirclesGrid : null);
 
+  function filterCirclesByUserPermission(circlesList) {
+    if (!Array.isArray(circlesList)) return [];
+    const u = (window.AlbayanPermissions && window.AlbayanPermissions.getCurrentUser()) || currentUserData;
+    if (!u) return circlesList;
+    const canAll = window.AlbayanPermissions
+      ? window.AlbayanPermissions.hasPermission("all_circles", u)
+      : (u.is_superadmin === 1 || u.role === "admin" || (Array.isArray(u.permissions) && u.permissions.includes("all_circles")));
+    if (canAll) return circlesList;
+
+    const myId = u.id !== undefined && u.id !== null ? String(u.id).replace(/^users_/, "").trim() : "";
+    const myName = normalizeArabicSearch(u.username || u.display_name || "");
+    let cachedUsers = [];
+    try { cachedUsers = JSON.parse(localStorage.getItem("cached_users_list") || "[]"); } catch (e) {}
+
+    return circlesList.filter((c) => {
+      if (!c) return false;
+      const cid = c.teacher_id !== undefined && c.teacher_id !== null ? String(c.teacher_id).replace(/^users_/, "").trim() : "";
+      if (myId && cid && cid === myId) return true;
+      const resolvedTeacher = normalizeArabicSearch(resolveCircleTeacherName(c, cachedUsers));
+      const directTeacher = normalizeArabicSearch(c.teacher_name || "");
+      return Boolean(myName && (resolvedTeacher === myName || directTeacher === myName));
+    });
+  }
+
   function renderFilteredCircles(sourceCircles) {
-    const dedupedSource = deduplicateCirclesList(Array.isArray(sourceCircles) ? sourceCircles : []);
+    const permissionScoped = filterCirclesByUserPermission(Array.isArray(sourceCircles) ? sourceCircles : []);
+    const dedupedSource = deduplicateCirclesList(permissionScoped);
     latestSourceCircles = dedupedSource;
 
     collectSyncStudentCaches(dedupedSource);
@@ -4032,5 +4070,13 @@ window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
 
   window.addEventListener("albayan:db-synced", () => {
     lastIndexedSignature = "";
+  });
+
+  window.addEventListener("albayan:permissions-updated", (e) => {
+    if (e && e.detail) {
+      currentUserData = e.detail;
+      if (typeof applyUserData === "function") applyUserData(currentUserData);
+      applyFiltersAndRenderGrid();
+    }
   });
 })();

@@ -366,8 +366,14 @@
       } catch (err) {}
 
       if (matchedStaff) {
-        const storedCode = String(matchedStaff.passcode || matchedStaff.code || "123456").trim();
-        if (code !== storedCode && code !== "123456") {
+        if (matchedStaff.is_active === 0 || matchedStaff.is_active === "0" || matchedStaff.is_active === false) {
+          showLoginError("هذا الحساب معطّل من قبل إدارة المدرسة. يرجى التواصل مع المسؤول.");
+          return;
+        }
+        const rawStoredCode = (matchedStaff.passcode !== undefined && matchedStaff.passcode !== null && String(matchedStaff.passcode).trim() !== "")
+          ? String(matchedStaff.passcode).trim()
+          : (matchedStaff.code !== undefined && matchedStaff.code !== null && String(matchedStaff.code).trim() !== "" ? String(matchedStaff.code).trim() : "123456");
+        if (code !== rawStoredCode) {
           showLoginError("اسم المستخدم أو رمز المرور غير صحيح.");
           return;
         }
@@ -378,7 +384,12 @@
           matchedStaff.username || username,
           resolvedRole,
           matchedStaff.display_name || matchedStaff.username || username,
-          "staff_token_" + Date.now()
+          "staff_token_" + Date.now(),
+          {
+            id: matchedStaff.id ?? matchedStaff.local_id ?? null,
+            is_superadmin: (matchedStaff.is_superadmin === 1 || matchedStaff.is_superadmin === "1" || matchedStaff.is_superadmin === true) ? 1 : 0,
+            permissions: matchedStaff.permissions
+          }
         );
         return;
       }
@@ -401,7 +412,12 @@
               data.username || username,
               data.role || selectedStaffRole,
               data.display_name || username,
-              "staff_token_" + Date.now()
+              "staff_token_" + Date.now(),
+              {
+                id: data.id ?? null,
+                is_superadmin: data.is_superadmin ? 1 : 0,
+                permissions: data.permissions
+              }
             );
             return;
           }
@@ -414,17 +430,28 @@
           username,
           "admin",
           username,
-          "staff_token_" + Date.now()
+          "staff_token_" + Date.now(),
+          {
+            is_superadmin: 1,
+            permissions: ["circles", "all_circles", "exams", "analytics", "student_cv", "users"]
+          }
         );
         return;
       }
 
       if (code === "123456") {
+        const fallbackPerms = selectedStaffRole === "supervisor"
+          ? ["circles", "all_circles", "exams", "analytics", "student_cv"]
+          : ["circles", "exams", "analytics", "student_cv"];
         saveSessionAndRedirect(
           username,
           selectedStaffRole,
           username,
-          "staff_token_" + Date.now()
+          "staff_token_" + Date.now(),
+          {
+            is_superadmin: 0,
+            permissions: fallbackPerms
+          }
         );
         return;
       }
@@ -446,22 +473,48 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    function saveSessionAndRedirect(username, role, name, token) {
+    function parseLoginPermissions(rawPerms, staffRole, isSuper) {
+      if (isSuper) {
+        return ["circles", "all_circles", "exams", "analytics", "student_cv", "users"];
+      }
+      if (Array.isArray(rawPerms)) return rawPerms.map(String);
+      if (typeof rawPerms === "string" && rawPerms.trim()) {
+        try {
+          const parsed = JSON.parse(rawPerms);
+          if (Array.isArray(parsed)) return parsed.map(String);
+        } catch (e) {
+          return rawPerms.split(",").map(s => s.trim()).filter(Boolean);
+        }
+      }
+      if (staffRole === "admin") {
+        return ["circles", "all_circles", "exams", "analytics", "student_cv", "users"];
+      }
+      if (staffRole === "supervisor") {
+        return ["circles", "all_circles", "exams", "analytics", "student_cv"];
+      }
+      return ["circles", "exams", "analytics", "student_cv"];
+    }
+
+    function saveSessionAndRedirect(username, role, name, token, extra = {}) {
       const staffRole = (role === "admin" || role === "supervisor" || role === "teacher")
         ? role
         : selectedStaffRole;
+      const isSuper = extra.is_superadmin === 1 ? 1 : 0;
+      const resolvedPermissions = parseLoginPermissions(extra.permissions, staffRole, isSuper === 1);
 
       try {
         localStorage.setItem("albayan_logged_user", JSON.stringify({
           logged_in: true,
+          id: extra.id ?? null,
           username: username,
           role: staffRole,
           display_name: name || username,
-          is_superadmin: staffRole === "admin" ? 1 : 0,
-          permissions: ["dashboard", "circles", "exams", "analytics", "users", "all_circles"]
+          is_superadmin: isSuper,
+          permissions: resolvedPermissions
         }));
         localStorage.setItem("albayan_saved_username", username);
         localStorage.setItem("albayan_saved_token", token || ("staff_token_" + Date.now()));
+        sessionStorage.removeItem("albayan_me_cache");
       } catch (e) {}
 
       window.location.href = "circles.html";

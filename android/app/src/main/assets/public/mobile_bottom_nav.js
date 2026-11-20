@@ -32,7 +32,7 @@
     if (path.includes('circles')) return 'circles';
     if (path.includes('admin')) return 'admin';
     if (path.includes('analytics')) return 'analytics';
-    if (path.includes('student-cv')) return 'student-cv';
+    if (path.includes('student-cv') || path.includes('student_cv')) return 'student-cv';
     if (path.includes('more')) return 'more';
     if (path.includes('certificates')) return 'certificates';
     if (path.includes('users')) return 'users';
@@ -230,29 +230,60 @@
   async function syncPermissions() {
     try {
       let meData = null;
-      const cached = sessionStorage.getItem('albayan_me_cache');
-      if (cached) {
-        try { meData = JSON.parse(cached); } catch (e) {}
-      }
+
+      // Always prefer fresh localStorage user (updated by login.html & AlbayanPermissions)
+      try {
+        const lsUser = localStorage.getItem('albayan_logged_user');
+        if (lsUser) {
+          const parsed = JSON.parse(lsUser);
+          if (parsed && parsed.username) meData = parsed;
+        }
+      } catch (e) {}
+
       if (!meData) {
-        const res = await fetch('/api/me');
-        if (res.ok) {
-          meData = await res.json();
-          sessionStorage.setItem('albayan_me_cache', JSON.stringify(meData));
+        const cached = sessionStorage.getItem('albayan_me_cache');
+        if (cached) {
+          try { meData = JSON.parse(cached); } catch (e) {}
         }
       }
 
-      if (!meData || !meData.logged_in) return;
+      if (!meData && !isStandalone) {
+        try {
+          const res = await fetch('/api/me');
+          if (res.ok) {
+            meData = await res.json();
+            sessionStorage.setItem('albayan_me_cache', JSON.stringify(meData));
+          }
+        } catch (e) {}
+      }
 
-      const isSuper = meData.is_superadmin === 1 || meData.is_superadmin === "1";
+      if (!meData || (!meData.logged_in && !meData.username)) return;
+
+      if (window.AlbayanPermissions && typeof window.AlbayanPermissions.applyNavPermissions === 'function') {
+        window.AlbayanPermissions.applyNavPermissions(meData);
+      }
+
+      const hasPerm = (key) => {
+        if (window.AlbayanPermissions && typeof window.AlbayanPermissions.hasPermission === 'function') {
+          return window.AlbayanPermissions.hasPermission(key, meData);
+        }
+        const isSuper = meData.is_superadmin === 1 || meData.is_superadmin === "1";
+        const isAdmin = meData.role === "admin";
+        const perms = Array.isArray(meData.permissions) ? meData.permissions : [];
+        return isSuper || (isAdmin && !Array.isArray(meData.permissions)) || perms.includes(key);
+      };
+
       const isAdmin = meData.role === "admin";
       const isSupervisor = meData.role === "supervisor";
-      const perms = Array.isArray(meData.permissions) ? meData.permissions : [];
+      const canAccessCircles = hasPerm("circles");
+      const canAccessUsers = hasPerm("users");
+      const canAccessCv = hasPerm("student_cv");
+      const canAccessExams = hasPerm("exams");
+      const canAccessAnalytics = hasPerm("analytics");
 
-      const canAccessUsers = isSuper || isAdmin || perms.includes("users");
-      const canAccessCv = isSuper || isAdmin || isSupervisor || perms.includes("student_cv");
-      const canAccessExams = isSuper || isAdmin || perms.includes("exams");
-      const canAccessAnalytics = isSuper || isAdmin || perms.includes("analytics");
+      // Circles link
+      const navCircles = document.getElementById('mobileNavCircles');
+      if (navCircles) navCircles.style.display = canAccessCircles ? '' : 'none';
 
       // Users link
       const desktopUsersLink = document.getElementById('usersMenuLink');
@@ -267,7 +298,7 @@
       if (navCv) navCv.style.display = canAccessCv ? '' : 'none';
 
       // Exams link
-      const desktopAdminLinks = document.querySelectorAll('a[href="/admin"]');
+      const desktopAdminLinks = document.querySelectorAll('a[href="/admin"], a[href*="admin.html"]');
       desktopAdminLinks.forEach(el => {
         if (!el.classList.contains('bottom-nav-item')) {
           el.style.display = canAccessExams ? '' : 'none';
@@ -277,7 +308,7 @@
       if (navAdmin) navAdmin.style.display = canAccessExams ? '' : 'none';
 
       // Analytics link
-      const desktopAnalyticsLinks = document.querySelectorAll('a[href="/analytics"]');
+      const desktopAnalyticsLinks = document.querySelectorAll('a[href="/analytics"], a[href*="analytics.html"]');
       desktopAnalyticsLinks.forEach(el => {
         if (!el.classList.contains('bottom-nav-item')) {
           el.style.display = canAccessAnalytics ? '' : 'none';

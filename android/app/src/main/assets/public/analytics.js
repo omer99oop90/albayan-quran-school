@@ -82,13 +82,18 @@ async function checkAuth() {
       const userElem = document.getElementById("loggedUsername");
       if (userElem) userElem.textContent = data.username;
     }
-    const canAccessCv = data.is_superadmin === 1 || data.role === "admin" || data.role === "supervisor" || (Array.isArray(data.permissions) && data.permissions.includes("student_cv"));
+    const canAccessCv = window.AlbayanPermissions
+      ? window.AlbayanPermissions.hasPermission("student_cv", data)
+      : (data.is_superadmin === 1 || data.role === "admin" || (Array.isArray(data.permissions) && data.permissions.includes("student_cv")));
     const cvLink = document.getElementById("studentCvMenuLink");
     if (cvLink) cvLink.style.display = canAccessCv ? "flex" : "none";
 
-    const canAccessUsers = data.is_superadmin === 1 || data.role === "admin" || (Array.isArray(data.permissions) && data.permissions.includes("users"));
+    const canAccessUsers = window.AlbayanPermissions
+      ? window.AlbayanPermissions.hasPermission("users", data)
+      : (data.is_superadmin === 1 || data.role === "admin" || (Array.isArray(data.permissions) && data.permissions.includes("users")));
     const usersLink = document.getElementById("usersMenuLink");
     if (usersLink) usersLink.style.display = canAccessUsers ? "flex" : "none";
+    if (window.AlbayanPermissions) window.AlbayanPermissions.applyNavPermissions(data);
   } catch (err) {
     let username = "الكادر التعليمي";
     try {
@@ -96,6 +101,10 @@ async function checkAuth() {
       if (cached) {
         const u = JSON.parse(cached);
         if (u && u.username) username = u.username;
+        if (u && window.AlbayanPermissions) {
+          window.AlbayanPermissions.applyNavPermissions(u);
+          window.AlbayanPermissions.enforcePageAccess(u);
+        }
       }
     } catch(e) {}
     const userElem = document.getElementById("loggedUsername");

@@ -236,6 +236,13 @@ function useCachedUserAuth() {
 
   const perms = parsePermissions(user.permissions);
   const isSuper = user.is_superadmin === 1 || user.is_superadmin === "1";
+  if (window.AlbayanPermissions && !window.AlbayanPermissions.enforcePageAccess(user)) {
+    return;
+  }
+  if (user.role !== "admin" && !isSuper && !perms.includes("users")) {
+    window.location.replace("circles.html");
+    return;
+  }
   const username = user.username || "مسؤول النظام";
   const userEl = document.getElementById("loggedUsername");
   if (userEl) userEl.textContent = username;
@@ -247,6 +254,7 @@ function useCachedUserAuth() {
     else roleBadge.textContent = "كادر تعليمي";
   }
   window.currentUserIsAdmin = (user.role === "admin" || isSuper || perms.includes("users"));
+  if (window.AlbayanPermissions) window.AlbayanPermissions.applyNavPermissions(user);
 }
 
 async function logout() {
@@ -1051,6 +1059,32 @@ async function persistStaffUser({ id, username, code, role, permissions, is_acti
   }
   allUsersData = deduplicateAndFilterUsers(allUsersData);
   await persistUsersCache(allUsersData);
+
+  // If the admin updated their own account, immediately sync current session permissions
+  try {
+    const loggedRaw = localStorage.getItem("albayan_logged_user");
+    if (loggedRaw) {
+      const loggedObj = JSON.parse(loggedRaw);
+      const sameId = loggedObj.id !== undefined && loggedObj.id !== null && String(loggedObj.id) === String(userPayload.id);
+      const sameName = normalizeArabicSearch(loggedObj.username) === normalizeArabicSearch(userPayload.username);
+      if (sameId || sameName) {
+        const nextSession = {
+          ...loggedObj,
+          id: userPayload.id,
+          username: userPayload.username,
+          display_name: userPayload.display_name,
+          role: userPayload.role,
+          is_superadmin: userPayload.is_superadmin,
+          permissions: userPayload.permissions
+        };
+        localStorage.setItem("albayan_logged_user", JSON.stringify(nextSession));
+        sessionStorage.setItem("albayan_me_cache", JSON.stringify(nextSession));
+        if (window.AlbayanPermissions) {
+          window.AlbayanPermissions.applyNavPermissions(nextSession);
+        }
+      }
+    }
+  } catch (e) {}
 
   if (saveBtn) saveBtn.disabled = false;
   closeModal("userModal");
