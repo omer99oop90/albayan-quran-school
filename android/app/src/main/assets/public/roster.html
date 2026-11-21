@@ -226,9 +226,11 @@
       background-image: none !important;
       border: none !important;
       box-shadow: none !important;
+      width: 36px;
       height: 36px;
+      min-width: 36px !important;
       min-height: 36px !important;
-      padding: 0 14px;
+      padding: 0;
       border-radius: 10px;
       color: #FFFFFF !important;
       font-weight: 700;
@@ -237,7 +239,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 0;
       cursor: pointer;
       transition: background-color 0.16s ease, transform 0.14s ease;
       user-select: none;
@@ -253,15 +255,15 @@
     }
 
     .btn-text-action:active {
-      transform: scale(0.97);
+      transform: scale(0.95);
     }
 
     .btn-text-action svg,
     .btn-text-action .lucide {
-      width: 15px;
-      height: 15px;
+      width: 18px;
+      height: 18px;
       margin: 0 !important;
-      stroke-width: 2.4;
+      stroke-width: 2.5;
     }
 
     /* Enhanced Desktop Scrollbar for Roster */
@@ -555,20 +557,20 @@
       }
 
       .btn-text-action {
+        width: 32px !important;
         height: 32px !important;
+        min-width: 32px !important;
         min-height: 32px !important;
-        padding: 0 10px !important;
-        font-size: 12px !important;
-        gap: 4px !important;
+        padding: 0 !important;
+        gap: 0 !important;
         border-radius: 8px !important;
         flex-shrink: 0 !important;
-        white-space: nowrap !important;
       }
 
       .btn-text-action i,
       .btn-text-action svg {
-        width: 14px !important;
-        height: 14px !important;
+        width: 17px !important;
+        height: 17px !important;
       }
 
       .table-scroll-container {
@@ -681,9 +683,8 @@
             <input type="hidden" id="filterYear" value="1448">
           </div>
 
-          <button type="button" class="btn-text-action" onclick="openQuickAddStudentModal()" title="إضافة طالب جديد للحلقة">
+          <button type="button" class="btn-text-action" onclick="openQuickAddStudentModal()" title="إضافة طالب جديد للحلقة" aria-label="إضافة طالب جديد للحلقة">
             <i data-lucide="plus"></i>
-            <span>إضافة طالب</span>
           </button>
         </div>
       </div>
