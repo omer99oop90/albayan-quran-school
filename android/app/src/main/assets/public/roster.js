@@ -287,6 +287,7 @@ window.renderRosterPeriodSelector = renderRosterPeriodSelector;
 document.addEventListener("DOMContentLoaded", () => {
   safeCreateIcons();
   setupDesktopTableScroll();
+  setupTablePinchZoom();
   renderRosterPeriodSelector(null, false);
 
   // Handle URL query param circle_id immediately
@@ -402,6 +403,7 @@ function setupDesktopTableScroll() {
 
   // 1. Mouse wheel horizontal scrolling when scrolling over table
   container.addEventListener("wheel", (e) => {
+    if (e.ctrlKey || e.metaKey) return; // Handled by pinch-to-zoom controller
     if (Math.abs(e.deltaX) > 0) return; // Allow natural trackpad horizontal scroll
 
     if (e.deltaY !== 0 && (container.scrollWidth > container.clientWidth)) {
@@ -448,6 +450,213 @@ function setupDesktopTableScroll() {
     const isRtl = document.documentElement.dir === "rtl" || getComputedStyle(container).direction === "rtl";
     container.scrollLeft = isRtl ? (initialScrollLeft + walk) : (initialScrollLeft - walk);
   });
+}
+
+/* =========================================================================
+   TWO-FINGER PINCH-TO-ZOOM ENGINE FOR ROSTER TABLE
+   ========================================================================= */
+const ROSTER_TABLE_MIN_ZOOM = 0.35;
+const ROSTER_TABLE_MAX_ZOOM = 2.2;
+const ROSTER_ZOOM_SESSION_KEY = "albayan_roster_table_zoom";
+window._rosterTableZoom = 1;
+
+function clampRosterZoom(val) {
+  const num = parseFloat(val);
+  if (!Number.isFinite(num)) return 1;
+  return Math.min(ROSTER_TABLE_MAX_ZOOM, Math.max(ROSTER_TABLE_MIN_ZOOM, Math.round(num * 1000) / 1000));
+}
+
+function getTrueViewportRect(el) {
+  if (!el) return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
+  const rect = el.getBoundingClientRect();
+  const zoom = window._rosterTableZoom || 1;
+  if (Math.abs(zoom - 1) < 0.005) return rect;
+  const table = document.querySelector(".roster-table");
+  if (!table || !table.offsetWidth) return rect;
+  const tableRect = table.getBoundingClientRect();
+  const ratio = tableRect.width / table.offsetWidth;
+  if (Math.abs(ratio - 1) < Math.abs(ratio - zoom)) {
+    return {
+      top: rect.top * zoom,
+      bottom: rect.bottom * zoom,
+      left: rect.left * zoom,
+      right: rect.right * zoom,
+      width: rect.width * zoom,
+      height: rect.height * zoom
+    };
+  }
+  return rect;
+}
+
+function updateTableZoomBadge(scale) {
+  const pill = document.getElementById("tableZoomResetPill");
+  const txt = document.getElementById("tableZoomPercentText");
+  if (!pill || !txt) return;
+  const pct = Math.round(scale * 100);
+  txt.textContent = `${pct}%`;
+  if (Math.abs(scale - 1) >= 0.02) {
+    pill.classList.add("visible");
+  } else {
+    pill.classList.remove("visible");
+  }
+}
+
+function applyRosterTableZoom(scale, persist = true) {
+  const table = document.querySelector(".roster-table");
+  if (!table) return;
+  const clamped = clampRosterZoom(scale);
+  window._rosterTableZoom = clamped;
+
+  const supportsZoom = typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("zoom", "1");
+  if (supportsZoom) {
+    table.style.zoom = Math.abs(clamped - 1) < 0.005 ? "" : String(clamped);
+    table.style.transform = "";
+  } else {
+    table.style.transformOrigin = "top right";
+    table.style.transform = Math.abs(clamped - 1) < 0.005 ? "" : `scale(${clamped})`;
+  }
+
+  updateTableZoomBadge(clamped);
+  if (persist) {
+    try {
+      sessionStorage.setItem(ROSTER_ZOOM_SESSION_KEY, String(clamped));
+    } catch (e) {}
+  }
+}
+
+function resetRosterTableZoom() {
+  applyRosterTableZoom(1, true);
+}
+window.resetRosterTableZoom = resetRosterTableZoom;
+
+function setupTablePinchZoom() {
+  const container = document.querySelector(".table-scroll-container");
+  const table = document.querySelector(".roster-table");
+  if (!container || !table || container._pinchZoomAttached) return;
+  container._pinchZoomAttached = true;
+
+  // Restore zoom within the same session if previously adjusted
+  try {
+    const saved = sessionStorage.getItem(ROSTER_ZOOM_SESSION_KEY);
+    if (saved) applyRosterTableZoom(parseFloat(saved), false);
+  } catch (e) {}
+
+  let isPinching = false;
+  let lastPinchEndTime = 0;
+  let startDist = 0;
+  let startScale = 1;
+  let lastMidX = 0;
+  let lastMidY = 0;
+  let pendingFrame = 0;
+  let latestDist = 0;
+  let latestMidX = 0;
+  let latestMidY = 0;
+
+  const zoomAtFocalPoint = (nextScale, curMidX, curMidY) => {
+    const prevRect = getTrueViewportRect(table);
+    const tWidth = Math.max(1, prevRect.width);
+    const tHeight = Math.max(1, prevRect.height);
+    const fracX = (lastMidX - prevRect.left) / tWidth;
+    const fracY = (lastMidY - prevRect.top) / tHeight;
+
+    applyRosterTableZoom(nextScale, false);
+
+    const newRect = getTrueViewportRect(table);
+    const targetX = newRect.left + fracX * newRect.width;
+    const targetY = newRect.top + fracY * newRect.height;
+
+    container.scrollLeft += (targetX - curMidX);
+    container.scrollTop += (targetY - curMidY);
+
+    lastMidX = curMidX;
+    lastMidY = curMidY;
+  };
+
+  container.addEventListener("touchstart", (e) => {
+    if (e.touches && e.touches.length === 2) {
+      e.preventDefault();
+      isPinching = true;
+      lastPinchEndTime = Date.now();
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      startDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      startScale = window._rosterTableZoom || 1;
+      lastMidX = (t1.clientX + t2.clientX) / 2;
+      lastMidY = (t1.clientY + t2.clientY) / 2;
+      latestDist = startDist;
+      latestMidX = lastMidX;
+      latestMidY = lastMidY;
+
+      // Hide open cell popover if user begins pinching the table
+      const popover = document.getElementById("cellPopover");
+      if (popover && popover.style.display !== "none" && typeof hidePopover === "function") {
+        hidePopover();
+      }
+    }
+  }, { passive: false });
+
+  container.addEventListener("touchmove", (e) => {
+    if (!isPinching || !e.touches || e.touches.length !== 2) return;
+    e.preventDefault();
+    if (startDist < 10) return;
+
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    latestDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    latestMidX = (t1.clientX + t2.clientX) / 2;
+    latestMidY = (t1.clientY + t2.clientY) / 2;
+
+    if (!pendingFrame) {
+      pendingFrame = requestAnimationFrame(() => {
+        pendingFrame = 0;
+        if (!isPinching) return;
+        const nextScale = clampRosterZoom(startScale * (latestDist / startDist));
+        zoomAtFocalPoint(nextScale, latestMidX, latestMidY);
+      });
+    }
+  }, { passive: false });
+
+  const endPinch = (e) => {
+    if (!isPinching) return;
+    if (!e.touches || e.touches.length < 2) {
+      isPinching = false;
+      startDist = 0;
+      lastPinchEndTime = Date.now();
+      if (pendingFrame) {
+        cancelAnimationFrame(pendingFrame);
+        pendingFrame = 0;
+      }
+      try {
+        sessionStorage.setItem(ROSTER_ZOOM_SESSION_KEY, String(window._rosterTableZoom || 1));
+      } catch (err) {}
+    }
+  };
+
+  container.addEventListener("touchend", endPinch, { passive: true });
+  container.addEventListener("touchcancel", endPinch, { passive: true });
+
+  // Prevent accidental cell popover click immediately after a two-finger pinch gesture
+  container.addEventListener("click", (e) => {
+    if (isPinching || (Date.now() - lastPinchEndTime < 320)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+
+  // Trackpad / Ctrl+Wheel pinch zoom on desktop
+  container.addEventListener("wheel", (e) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    const current = window._rosterTableZoom || 1;
+    const factor = e.deltaY > 0 ? 0.92 : 1.08;
+    const nextScale = clampRosterZoom(current * factor);
+    lastMidX = e.clientX;
+    lastMidY = e.clientY;
+    zoomAtFocalPoint(nextScale, e.clientX, e.clientY);
+    try {
+      sessionStorage.setItem(ROSTER_ZOOM_SESSION_KEY, String(window._rosterTableZoom || 1));
+    } catch (err) {}
+  }, { passive: false });
 }
 
 async function checkAuth() {
@@ -1315,7 +1524,7 @@ function showPopoverAtElement(targetElement, contentHtml) {
     popover.style.maxHeight = "";
     popover.style.boxShadow = "none";
 
-    const rect = targetElement ? targetElement.getBoundingClientRect() : { bottom: window.innerHeight / 2, left: Math.max(10, (window.innerWidth - 260) / 2), top: window.innerHeight / 2 };
+    const rect = targetElement ? getTrueViewportRect(targetElement) : { bottom: window.innerHeight / 2, left: Math.max(10, (window.innerWidth - 260) / 2), top: window.innerHeight / 2 };
     const popoverHeight = popover.offsetHeight || 220;
     const popoverWidth = popover.offsetWidth || 240;
 
