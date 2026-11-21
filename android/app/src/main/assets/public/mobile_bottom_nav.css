@@ -4,22 +4,22 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. Desktop Behavior (Hide bottom nav on screens > 768px)
+   1. Desktop Behavior (Hide bottom nav on non-mobile screens > 768px)
    -------------------------------------------------------------------------- */
 @media (min-width: 769px) {
-  .mobile-bottom-nav,
-  .bottom-sheet-overlay,
-  .bottom-more-sheet,
-  .mobile-top-bar,
-  .sidebar-toggle-btn {
+  html:not(.is-mobile-device) .mobile-bottom-nav,
+  html:not(.is-mobile-device) .bottom-sheet-overlay,
+  html:not(.is-mobile-device) .bottom-more-sheet,
+  html:not(.is-mobile-device) .mobile-top-bar,
+  html:not(.is-mobile-device) .sidebar-toggle-btn {
     display: none !important;
   }
 }
 
 /* --------------------------------------------------------------------------
-   2. Mobile Layout Adjustments (Screens <= 768px)
+   2. Mobile Layout Adjustments (Portrait <= 768px & Mobile Landscape)
    -------------------------------------------------------------------------- */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 560px) and (pointer: coarse) {
   /* Hide the desktop sidebar and sidebar toggle buttons on mobile */
   .sidebar,
   .sidebar-overlay,
@@ -41,12 +41,40 @@
     margin-left: 0 !important;
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 16px)) !important;
     max-width: 100vw !important;
+    width: 100% !important;
   }
 
   .app-layout {
     display: block !important;
     width: 100% !important;
   }
+}
+
+html.is-mobile-device .sidebar,
+html.is-mobile-device .sidebar-overlay,
+html.is-mobile-device .sidebar-toggle-btn,
+html.is-mobile-device .mobile-menu-toggle,
+html.is-mobile-device #mobileMenuBtn {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+html.is-mobile-device .main-content,
+html.is-mobile-device .analytics-shell,
+html.is-mobile-device .cert-main-content,
+html.is-mobile-device .settings-mobile-container,
+html.is-mobile-device body {
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom, 16px)) !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+}
+
+html.is-mobile-device .app-layout {
+  display: block !important;
+  width: 100% !important;
 }
 
 /* --------------------------------------------------------------------------

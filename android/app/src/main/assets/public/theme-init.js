@@ -34,6 +34,29 @@
     });
   } catch(e) {}
 
+  // 1b. Mobile Device Detection (persists across portrait & landscape rotation)
+  window.albayanUpdateMobileClass = function() {
+    try {
+      var w = window.innerWidth || document.documentElement.clientWidth || 9999;
+      var h = window.innerHeight || document.documentElement.clientHeight || 9999;
+      var minDim = Math.min(w, h);
+      var isTouch = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+                    ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+      var isMobileUA = /Android.*Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+      var isMobile = (w <= 768) || (isTouch && minDim <= 560) || (isMobileUA && minDim <= 600);
+      if (isMobile) {
+        document.documentElement.classList.add('is-mobile-device');
+      } else {
+        document.documentElement.classList.remove('is-mobile-device');
+      }
+    } catch(e) {}
+  };
+  window.albayanUpdateMobileClass();
+  window.addEventListener('resize', window.albayanUpdateMobileClass);
+  window.addEventListener('orientationchange', function() {
+    setTimeout(window.albayanUpdateMobileClass, 60);
+  });
+
   // 2. Typography & Font System Initialization
   var FONT_MAP = {
     'Cairo': { name: 'كايرو', stack: "'Cairo', system-ui, -apple-system, sans-serif" },

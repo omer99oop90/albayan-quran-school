@@ -242,6 +242,15 @@ function formatArabicStudentsCount(count) {
   return `${n} طالباً`;
 }
 
+function syncRosterPeriodLabel() {
+  const selectEl = document.getElementById("filterMonth");
+  const labelEl = document.getElementById("filterMonthLabel");
+  if (!selectEl || !labelEl) return;
+  const opt = selectEl.options[selectEl.selectedIndex];
+  labelEl.textContent = opt ? opt.text : (selectEl.value || "");
+}
+window.syncRosterPeriodLabel = syncRosterPeriodLabel;
+
 function renderRosterPeriodSelector(configInput = null, reloadIfChanged = false) {
   const selectEl = document.getElementById("filterMonth");
   const eng = window.AlbayanCycleEngine;
@@ -274,6 +283,7 @@ function renderRosterPeriodSelector(configInput = null, reloadIfChanged = false)
   }
 
   if (nextVal) selectEl.value = nextVal;
+  syncRosterPeriodLabel();
   const changed = lastRenderedPeriodSignature !== "" && lastRenderedPeriodSignature !== signature;
   lastRenderedPeriodSignature = signature;
 

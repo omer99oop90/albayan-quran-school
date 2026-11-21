@@ -154,18 +154,21 @@
     }
 
     .period-badge-group {
+      position: relative;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       background: var(--bg, #f1f5f9);
       height: 36px;
-      padding: 0 11px;
+      padding: 0 10px;
       border-radius: 10px;
       border: 1px solid transparent;
       transition: border-color 0.18s ease, background-color 0.18s ease;
       min-width: 0;
+      max-width: 175px;
       box-sizing: border-box;
       cursor: pointer;
+      overflow: hidden;
     }
 
     .period-badge-group:hover,
@@ -173,24 +176,33 @@
       background: #e2e8f0;
     }
 
-    .period-badge-group select {
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      background: transparent;
-      border: none;
+    .period-badge-label {
       font-weight: 700;
       font-size: 13px;
       color: var(--text, #334155);
-      outline: none;
-      cursor: pointer;
-      min-width: 0;
-      text-overflow: ellipsis;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+      pointer-events: none;
+      user-select: none;
+      min-width: 0;
+    }
+
+    .period-badge-group select {
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
+      opacity: 0;
+      cursor: pointer;
+      border: none;
+      margin: 0;
+      padding: 0;
+      z-index: 2;
+      font-size: 14px;
       font-family: inherit;
-      padding: 0 2px;
-      height: 100%;
-      text-align: center;
+      background: transparent;
     }
 
     .period-badge-icon {
@@ -388,6 +400,10 @@
       background: #273549;
     }
 
+    html[data-theme="dark"] .period-badge-label {
+      color: #f1f5f9;
+    }
+
     html[data-theme="dark"] .period-badge-group select {
       color: #f1f5f9;
     }
@@ -429,7 +445,7 @@
       background: #0f172a;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 768px), (max-height: 560px) and (pointer: coarse) {
       .app-layout {
         display: block !important;
         width: 100% !important;
@@ -463,9 +479,7 @@
         margin: 0 !important;
         background: #ffffff !important;
         flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        scrollbar-width: none !important;
-        -webkit-overflow-scrolling: touch !important;
+        overflow: hidden !important;
       }
 
       .roster-content-body {
@@ -484,7 +498,8 @@
         justify-content: flex-start !important;
         gap: 6px !important;
         min-width: 0 !important;
-        flex: 1 1 auto !important;
+        flex: 1 1 0% !important;
+        overflow: hidden !important;
       }
 
       .roster-back-btn {
@@ -502,7 +517,8 @@
 
       .roster-circle-name {
         font-size: 13.5px !important;
-        max-width: calc(100vw - 230px) !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
       }
 
       .roster-title-badge {
@@ -525,13 +541,11 @@
         gap: 4px !important;
         border-radius: 8px !important;
         flex-shrink: 0 !important;
-        max-width: none !important;
+        max-width: 130px !important;
       }
 
-      .period-badge-group select {
+      .period-badge-label {
         font-size: 12px !important;
-        width: auto !important;
-        min-width: 0 !important;
       }
 
       .period-badge-icon,
@@ -562,6 +576,12 @@
         max-height: calc(100dvh - 135px) !important;
         border-radius: 14px !important;
         margin-bottom: 0 !important;
+      }
+    }
+
+    @media (max-width: 440px) {
+      .roster-title-badge {
+        display: none !important;
       }
     }
   </style>
@@ -639,9 +659,10 @@
         </div>
 
         <div class="roster-toolbar-actions">
-          <div class="period-badge-group" title="تغيير الفترة" onclick="const s=document.getElementById('filterMonth'); if(event.target!==s){ if(s && s.showPicker) try{ s.showPicker(); }catch(e){ s.focus(); } else if(s) s.focus(); }">
+          <div class="period-badge-group" title="تغيير الفترة">
             <i data-lucide="calendar" class="period-badge-icon"></i>
-            <select id="filterMonth" onchange="loadStudents()" aria-label="اختر الفترة">
+            <span id="filterMonthLabel" class="period-badge-label">شهر صفر</span>
+            <select id="filterMonth" onchange="if(window.syncRosterPeriodLabel)window.syncRosterPeriodLabel(); loadStudents();" aria-label="اختر الفترة">
               <option value="صفر">شهر صفر</option>
               <option value="محرم">شهر محرم</option>
               <option value="ربيع الأول">شهر ربيع الأول</option>
