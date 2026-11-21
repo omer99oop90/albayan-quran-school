@@ -71,53 +71,52 @@
       width: 34px;
       height: 34px;
       border-radius: 10px;
-      background: var(--bg, #f8fafc);
-      border: 1px solid var(--line, #e2e8f0);
-      color: var(--primary, #2563eb);
+      background: var(--bg, #f1f5f9);
+      border: 1px solid transparent;
+      color: #64748b;
       text-decoration: none;
-      transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+      transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
       flex-shrink: 0;
       box-shadow: none !important;
     }
 
     .roster-back-btn:hover {
-      background: rgba(37, 99, 235, 0.08);
-      border-color: var(--primary, #2563eb);
-      transform: translateX(2px);
+      background: #e2e8f0;
+      color: #334155;
     }
 
     .roster-back-btn i,
     .roster-back-btn svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    .roster-title-box {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      min-width: 0;
-      gap: 1px;
-    }
-
-    .roster-title-badge {
-      font-size: 10px;
-      font-weight: 800;
-      color: var(--primary, #2563eb);
-      letter-spacing: 0.2px;
-      line-height: 1.15;
+      width: 17px;
+      height: 17px;
     }
 
     .roster-circle-name {
       margin: 0;
       font-size: 15.5px;
       font-weight: 800;
-      color: var(--text, #0f172a);
+      color: var(--text, #1e293b);
       line-height: 1.25;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 420px;
+    }
+
+    .roster-title-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #eff6ff;
+      color: #3b82f6;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      line-height: 1.2;
+      white-space: nowrap;
+      flex-shrink: 0;
+      user-select: none;
     }
 
     .roster-toolbar-actions {
@@ -132,45 +131,56 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: var(--bg, #f8fafc);
+      background: var(--bg, #f1f5f9);
       height: 36px;
       padding: 0 11px;
       border-radius: 10px;
-      border: 1px solid var(--line, #e2e8f0);
+      border: 1px solid transparent;
       transition: border-color 0.18s ease, background-color 0.18s ease;
       min-width: 0;
-      max-width: 240px;
       box-sizing: border-box;
+      cursor: pointer;
     }
 
     .period-badge-group:hover,
     .period-badge-group:focus-within {
-      border-color: var(--primary, #2563eb);
+      background: #e2e8f0;
     }
 
     .period-badge-group select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
       background: transparent;
       border: none;
-      font-weight: 800;
+      font-weight: 700;
       font-size: 13px;
-      color: var(--primary, #2563eb);
+      color: var(--text, #334155);
       outline: none;
       cursor: pointer;
       min-width: 0;
-      width: 100%;
-      max-width: 100%;
       text-overflow: ellipsis;
       white-space: nowrap;
       font-family: inherit;
-      padding: 0;
+      padding: 0 2px;
       height: 100%;
+      text-align: center;
     }
 
     .period-badge-icon {
       width: 15px;
       height: 15px;
-      color: var(--primary, #2563eb);
+      color: #64748b;
       flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    .period-chevron-icon {
+      width: 14px;
+      height: 14px;
+      color: #64748b;
+      flex-shrink: 0;
+      pointer-events: none;
     }
 
     .btn-text-action {
@@ -180,10 +190,10 @@
       box-shadow: none !important;
       height: 36px;
       min-height: 36px !important;
-      padding: 0 13px;
+      padding: 0 14px;
       border-radius: 10px;
       color: #FFFFFF !important;
-      font-weight: 800;
+      font-weight: 700;
       font-size: 13px;
       font-family: inherit;
       display: inline-flex;
@@ -213,6 +223,7 @@
       width: 15px;
       height: 15px;
       margin: 0 !important;
+      stroke-width: 2.4;
     }
 
     /* Enhanced Desktop Scrollbar for Roster */
@@ -282,8 +293,13 @@
 
     html[data-theme="dark"] .roster-back-btn {
       background: #1e293b;
-      border-color: #334155;
-      color: #60a5fa;
+      border-color: transparent;
+      color: #94a3b8;
+    }
+
+    html[data-theme="dark"] .roster-back-btn:hover {
+      background: #334155;
+      color: #f8fafc;
     }
 
     html[data-theme="dark"] .roster-circle-name {
@@ -291,7 +307,8 @@
     }
 
     html[data-theme="dark"] .roster-title-badge {
-      color: #60a5fa;
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
     }
 
     html[data-theme="dark"] .period-badge-group {
@@ -299,9 +316,18 @@
       border-color: #334155;
     }
 
-    html[data-theme="dark"] .period-badge-group select,
-    html[data-theme="dark"] .period-badge-icon {
-      color: #60a5fa;
+    html[data-theme="dark"] .period-badge-group:hover,
+    html[data-theme="dark"] .period-badge-group:focus-within {
+      background: #273549;
+    }
+
+    html[data-theme="dark"] .period-badge-group select {
+      color: #f1f5f9;
+    }
+
+    html[data-theme="dark"] .period-badge-icon,
+    html[data-theme="dark"] .period-chevron-icon {
+      color: #94a3b8;
     }
 
     html[data-theme="dark"] .btn-text-action {
@@ -353,26 +379,37 @@
 
       .roster-toolbar {
         display: flex !important;
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 7px !important;
-        padding: 8px 10px !important;
-        border-radius: 14px !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
+        padding: 6px 10px !important;
+        border-radius: 12px !important;
         margin-bottom: 10px !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      .roster-toolbar::-webkit-scrollbar {
+        display: none !important;
       }
 
       .roster-toolbar-main {
         display: flex !important;
         align-items: center !important;
         justify-content: flex-start !important;
-        width: 100% !important;
-        gap: 8px !important;
+        gap: 6px !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
       }
 
       .roster-back-btn {
         width: 32px !important;
         height: 32px !important;
-        border-radius: 9px !important;
+        border-radius: 8px !important;
+        flex-shrink: 0 !important;
       }
 
       .roster-back-btn i,
@@ -382,53 +419,54 @@
       }
 
       .roster-circle-name {
-        font-size: 14.5px !important;
-        max-width: calc(100vw - 88px) !important;
+        font-size: 13.5px !important;
+        max-width: calc(100vw - 230px) !important;
       }
 
       .roster-title-badge {
-        font-size: 9.5px !important;
+        font-size: 10px !important;
+        padding: 2px 7px !important;
       }
 
       .roster-toolbar-actions {
         display: flex !important;
         align-items: center !important;
-        justify-content: space-between !important;
+        justify-content: flex-end !important;
         flex-wrap: nowrap !important;
-        width: 100% !important;
-        gap: 8px !important;
+        gap: 6px !important;
+        flex-shrink: 0 !important;
       }
 
       .period-badge-group {
-        flex: 1 1 0% !important;
-        min-width: 0 !important;
-        height: 34px !important;
-        padding: 0 9px !important;
-        gap: 5px !important;
-        border-radius: 10px !important;
+        height: 32px !important;
+        padding: 0 8px !important;
+        gap: 4px !important;
+        border-radius: 8px !important;
+        flex-shrink: 0 !important;
         max-width: none !important;
       }
 
       .period-badge-group select {
-        font-size: 12.5px !important;
-        width: 100% !important;
+        font-size: 12px !important;
+        width: auto !important;
         min-width: 0 !important;
       }
 
-      .period-badge-icon {
-        width: 14px !important;
-        height: 14px !important;
+      .period-badge-icon,
+      .period-chevron-icon {
+        width: 13px !important;
+        height: 13px !important;
       }
 
       .btn-text-action {
-        height: 34px !important;
-        min-height: 34px !important;
-        padding: 0 12px !important;
-        font-size: 12.5px !important;
-        gap: 5px !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        padding: 0 10px !important;
+        font-size: 12px !important;
+        gap: 4px !important;
+        border-radius: 8px !important;
         flex-shrink: 0 !important;
         white-space: nowrap !important;
-        border-radius: 10px !important;
       }
 
       .btn-text-action i,
@@ -438,7 +476,7 @@
       }
 
       .table-scroll-container {
-        max-height: calc(100vh - 175px) !important;
+        max-height: calc(100vh - 145px) !important;
         border-radius: 14px !important;
       }
     }
@@ -506,20 +544,18 @@
     <!-- Main Content -->
     <main class="main-content">
       
-      <!-- Top Roster Toolbar -->
+      <!-- Top Roster Toolbar (Ultra-Slim Header Bar - Single Line) -->
       <div class="roster-toolbar">
         <div class="roster-toolbar-main">
           <a href="circles.html" class="roster-back-btn" title="العودة للحلقات القرآنية" aria-label="العودة للحلقات">
-            <i data-lucide="arrow-right"></i>
+            <i data-lucide="badge-percent"></i>
           </a>
-          <div class="roster-title-box">
-            <span class="roster-title-badge">سجل الطلاب</span>
-            <h2 id="currentCircleTitle" class="roster-circle-name">الحلقة القرآنية</h2>
-          </div>
+          <h2 id="currentCircleTitle" class="roster-circle-name">الحلقة القرآنية</h2>
+          <span class="roster-title-badge">سجل الطلاب</span>
         </div>
 
         <div class="roster-toolbar-actions">
-          <div class="period-badge-group" title="تغيير الفترة">
+          <div class="period-badge-group" title="تغيير الفترة" onclick="const s=document.getElementById('filterMonth'); if(event.target!==s){ if(s && s.showPicker) try{ s.showPicker(); }catch(e){ s.focus(); } else if(s) s.focus(); }">
             <i data-lucide="calendar" class="period-badge-icon"></i>
             <select id="filterMonth" onchange="loadStudents()" aria-label="اختر الفترة">
               <option value="صفر">شهر صفر</option>
@@ -536,11 +572,12 @@
               <option value="ذو الحجة">شهر ذو الحجة</option>
               <option value="سجل نهاية السنة">🎓 كشف نهاية السنة الشامل</option>
             </select>
+            <i data-lucide="chevron-down" class="period-chevron-icon"></i>
             <input type="hidden" id="filterYear" value="1448">
           </div>
 
           <button type="button" class="btn-text-action" onclick="openQuickAddStudentModal()" title="إضافة طالب جديد للحلقة">
-            <i data-lucide="user-plus"></i>
+            <i data-lucide="plus"></i>
             <span>إضافة طالب</span>
           </button>
         </div>
