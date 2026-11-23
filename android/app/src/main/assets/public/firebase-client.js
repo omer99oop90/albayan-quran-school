@@ -194,7 +194,8 @@
       if (fromIdx === -1 || toIdx === -1) return 0;
 
       let fa = parseInt(fromAyah, 10) || 1;
-      let ta = parseInt(toAyah, 10) || 1;
+      const rawTa = parseInt(toAyah, 10);
+      let ta = (rawTa && rawTa > 0) ? rawTa : (SURAH_LIST[toIdx]?.ayahs || 1);
       if (fromIdx > toIdx || (fromIdx === toIdx && fa > ta)) {
         [fromIdx, toIdx] = [toIdx, fromIdx];
         [fa, ta] = [ta, fa];
@@ -785,7 +786,7 @@
           if (rec.updated_at) merged.updated_at = rec.updated_at;
         });
 
-        if ((!merged.memo_pages || Number(merged.memo_pages) <= 0) && merged.from_surah && merged.to_surah && Number(merged.to_ayah) > 0) {
+        if ((!merged.memo_pages || Number(merged.memo_pages) <= 0) && merged.from_surah && merged.to_surah) {
           merged.memo_pages = calcQuranPages(merged.from_surah, merged.from_ayah, merged.to_surah, merged.to_ayah);
         }
 
@@ -2048,10 +2049,36 @@
       if (!baseStudent && existingStudent && typeof existingStudent === 'object') {
         baseStudent = existingStudent;
       }
-      if (!baseStudent && AlbayanStateStore.state.rawRecordsCache && typeof AlbayanStateStore.state.rawRecordsCache === 'object') {
-        const canonicalKey = AlbayanDataNormalizer.getCanonicalRecordKey(cleanSid, normP);
+      const canonicalKey = AlbayanDataNormalizer.getCanonicalRecordKey(cleanSid, normP);
+      if (AlbayanStateStore.state.rawRecordsCache && typeof AlbayanStateStore.state.rawRecordsCache === 'object') {
         const cachedRec = AlbayanStateStore.state.rawRecordsCache[canonicalKey];
-        if (cachedRec) baseStudent = { ...blankRec, ...cachedRec, id: cleanSid, circle_id: cleanCid };
+        if (cachedRec) {
+          baseStudent = { ...blankRec, ...cachedRec, ...(baseStudent || {}), id: cleanSid, circle_id: cleanCid };
+        }
+      }
+      // If updating from an isolated page (e.g. AI assistant) without roster cache, load existing record first so prior fields aren't wiped by PUT
+      const hasAnyRecordData = baseStudent && (
+        baseStudent.from_surah || baseStudent.to_surah || baseStudent.rev_from_surah || baseStudent.rev_to_surah ||
+        baseStudent.memo_grade !== undefined || baseStudent.rev_grade !== undefined || baseStudent.updated_at
+      );
+      if (!hasAnyRecordData) {
+        let fetchedRec = null;
+        if (window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalStudents === 'function' && cleanCid !== null) {
+          try {
+            const localList = await window.AlbayanLocalDB.getLocalStudents(cleanCid, normP);
+            const foundLocal = Array.isArray(localList) ? localList.find(s => String(s.id) === String(cleanSid)) : null;
+            if (foundLocal) fetchedRec = foundLocal;
+          } catch (e) {}
+        }
+        try {
+          const remoteRes = await AlbayanFirebaseDAL.get(`student_records/${canonicalKey}`, { timeoutMs: 4000, retries: 0 });
+          if (remoteRes && remoteRes.ok && remoteRes.data && typeof remoteRes.data === 'object') {
+            fetchedRec = { ...(fetchedRec || {}), ...remoteRes.data };
+          }
+        } catch (e) {}
+        if (fetchedRec) {
+          baseStudent = { ...blankRec, ...fetchedRec, ...(baseStudent || {}), id: cleanSid, circle_id: cleanCid };
+        }
       }
 
       // Auto-calculate memo_pages if memorization surah/ayah range is updated or cleared
@@ -2066,7 +2093,7 @@
         const fAyah = computedFields.from_ayah !== undefined ? computedFields.from_ayah : refStu.from_ayah;
         const tSurah = computedFields.to_surah !== undefined ? computedFields.to_surah : refStu.to_surah;
         const tAyah = computedFields.to_ayah !== undefined ? computedFields.to_ayah : refStu.to_ayah;
-        if (fSurah && tSurah && Number(tAyah) > 0) {
+        if (fSurah && tSurah) {
           computedFields.memo_pages = AlbayanDataNormalizer.calcQuranPages(fSurah, fAyah, tSurah, tAyah);
         } else {
           computedFields.memo_pages = 0;
@@ -2120,7 +2147,6 @@
 
       // 3. Write full canonical record to `/student_records/<canonicalKey>`
       AlbayanDiagnostics.setConnectionStatus('syncing');
-      const canonicalKey = AlbayanDataNormalizer.getCanonicalRecordKey(cleanSid, normP);
       const recordToSave = {
         id: canonicalKey,
         student_id: cleanSid,

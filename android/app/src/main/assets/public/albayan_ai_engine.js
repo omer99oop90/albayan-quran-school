@@ -1358,29 +1358,56 @@
         : [];
     }
 
+    const SURAH_COMMON_ALIASES = {
+      'الرحمان': 'الرحمن',
+      'رحمان': 'الرحمن',
+      'ياسين': 'يس',
+      'طاها': 'طه',
+      'قاف': 'ق',
+      'صاد': 'ص',
+      'تبارك': 'الملك',
+      'عم': 'النبأ',
+      'براءه': 'التوبة',
+      'الدهر': 'الإنسان',
+      'تبت': 'المسد',
+      'قريش': 'قريش'
+    };
+
     function normalizeSurahName(raw) {
-      if (raw === null || raw === undefined) return { ok: true, value: '' };
-      const str = String(raw).trim();
-      if (!str) return { ok: true, value: '' };
+      if (raw === null || raw === undefined) return { ok: true, value: '', extractedAyah: null };
+      let str = String(raw).trim();
+      if (!str) return { ok: true, value: '', extractedAyah: null };
+
+      // Extract optional inline ayah number such as "البقرة (286)" or "سورة البقرة آية 20"
+      let extractedAyah = null;
+      const inlineAyahMatch = str.match(/^(.*?)\s*(?:\(\s*(\d+)\s*\)|(?:آية|ايه|اية)\s+(\d+))\s*$/);
+      if (inlineAyahMatch && inlineAyahMatch[1].trim()) {
+        str = inlineAyahMatch[1].trim();
+        extractedAyah = Number(inlineAyahMatch[2] || inlineAyahMatch[3]) || null;
+      }
+
       const surahs = getSurahList();
-      if (!surahs.length) return { ok: true, value: str };
+      if (!surahs.length) return { ok: true, value: str, extractedAyah };
 
       if (/^\d+$/.test(str)) {
         const byNum = surahs.find(s => Number(s.id) === Number(str));
-        if (byNum) return { ok: true, value: byNum.name, surah: byNum };
+        if (byNum) return { ok: true, value: byNum.name, surah: byNum, extractedAyah };
         return { ok: false, message: `رقم السورة "${str}" غير صالح (السور من 1 إلى 114).` };
       }
 
-      const q = normAr(str).replace(/^(?:سوره|سورة)\s+/g, '').trim();
+      let q = normAr(str).replace(/^(?:سوره|سورة)\s+/g, '').trim();
+      if (SURAH_COMMON_ALIASES[q]) {
+        q = normAr(SURAH_COMMON_ALIASES[q]);
+      }
       const qNoAl = q.replace(/^ال/, '');
       const exact = surahs.filter(s => {
         const sn = normAr(s.name);
         return sn === q || sn.replace(/^ال/, '') === qNoAl;
       });
-      if (exact.length === 1) return { ok: true, value: exact[0].name, surah: exact[0] };
+      if (exact.length === 1) return { ok: true, value: exact[0].name, surah: exact[0], extractedAyah };
 
       const partial = surahs.filter(s => normAr(s.name).includes(q));
-      if (partial.length === 1) return { ok: true, value: partial[0].name, surah: partial[0] };
+      if (partial.length === 1) return { ok: true, value: partial[0].name, surah: partial[0], extractedAyah };
       if (partial.length > 1) {
         return { ok: false, message: `اسم السورة "${raw}" غامض؛ يرجى التحديد بدقة مثل: ${partial.slice(0, 3).map(s => s.name).join('، ')}.` };
       }
@@ -1440,45 +1467,126 @@
       return { ok: true };
     }
 
+    const REGISTER_FIELD_ALIASES = {
+      from_sura: 'from_surah',
+      memo_from_surah: 'from_surah',
+      memo_from_sura: 'from_surah',
+      start_surah: 'from_surah',
+      to_sura: 'to_surah',
+      memo_to_surah: 'to_surah',
+      memo_to_sura: 'to_surah',
+      end_surah: 'to_surah',
+      memo_from_ayah: 'from_ayah',
+      start_ayah: 'from_ayah',
+      memo_to_ayah: 'to_ayah',
+      end_ayah: 'to_ayah',
+      rev_from_sura: 'rev_from_surah',
+      revision_from_surah: 'rev_from_surah',
+      rev_from: 'rev_from_surah',
+      rev_to_sura: 'rev_to_surah',
+      revision_to_surah: 'rev_to_surah',
+      rev_to: 'rev_to_surah',
+      revision_from_ayah: 'rev_from_ayah',
+      revision_to_ayah: 'rev_to_ayah',
+      memo_mark: 'memo_grade',
+      memorization_grade: 'memo_grade',
+      rev_mark: 'rev_grade',
+      revision_grade: 'rev_grade'
+    };
+
+    function extractRecordFieldsFromArgs(args = {}) {
+      const allowedKeys = Object.keys(RECORD_FIELDS_SCHEMA.properties);
+      const out = {};
+      const sources = [];
+      if (args.fields && typeof args.fields === 'object') sources.push(args.fields);
+      sources.push(args);
+
+      sources.forEach(src => {
+        Object.keys(src || {}).forEach(rawKey => {
+          const v = src[rawKey];
+          if (v === undefined) return;
+          const canonKey = allowedKeys.includes(rawKey) ? rawKey : REGISTER_FIELD_ALIASES[rawKey];
+          if (canonKey && out[canonKey] === undefined) {
+            out[canonKey] = v;
+          }
+        });
+      });
+      return out;
+    }
+
     function normalizeRegisterFields(rawFields, currentRecord = {}) {
       const allowedKeys = Object.keys(RECORD_FIELDS_SCHEMA.properties);
       const fields = {};
-      Object.keys(rawFields || {}).forEach(k => {
-        if (allowedKeys.includes(k) && rawFields[k] !== undefined) {
-          fields[k] = rawFields[k];
+      Object.keys(rawFields || {}).forEach(rawKey => {
+        const v = rawFields[rawKey];
+        if (v === undefined) return;
+        const canonKey = allowedKeys.includes(rawKey) ? rawKey : REGISTER_FIELD_ALIASES[rawKey];
+        if (canonKey && fields[canonKey] === undefined) {
+          fields[canonKey] = v;
         }
       });
 
-      const surahKeys = ['from_surah', 'to_surah', 'rev_from_surah', 'rev_to_surah'];
-      for (const sk of surahKeys) {
+      const surahPairs = [
+        ['from_surah', 'from_ayah'],
+        ['to_surah', 'to_ayah'],
+        ['rev_from_surah', 'rev_from_ayah'],
+        ['rev_to_surah', 'rev_to_ayah']
+      ];
+      const surahInfoMap = {};
+      for (const [sk, ak] of surahPairs) {
         if (fields[sk] !== undefined && fields[sk] !== null) {
           const res = normalizeSurahName(fields[sk]);
           if (!res.ok) return { ok: false, message: res.message };
           fields[sk] = res.value;
+          if (res.surah) surahInfoMap[sk] = res.surah;
+          if (res.extractedAyah && (fields[ak] === undefined || fields[ak] === '' || fields[ak] === null || Number(fields[ak]) <= 0)) {
+            fields[ak] = res.extractedAyah;
+          }
         }
       }
 
       const surahs = getSurahList();
+      const findSurahObj = (surahName) => {
+        if (!surahName || !surahs.length) return null;
+        return surahs.find(s => s.name === surahName || normAr(s.name) === normAr(surahName)) || null;
+      };
+
       const ayahPairs = [
-        ['from_ayah', 'from_surah', 'آية بداية الحفظ'],
-        ['to_ayah', 'to_surah', 'آية نهاية الحفظ'],
-        ['rev_from_ayah', 'rev_from_surah', 'آية بداية المراجعة'],
-        ['rev_to_ayah', 'rev_to_surah', 'آية نهاية المراجعة']
+        ['from_ayah', 'from_surah', 'آية بداية الحفظ', true],
+        ['to_ayah', 'to_surah', 'آية نهاية الحفظ', false],
+        ['rev_from_ayah', 'rev_from_surah', 'آية بداية المراجعة', true],
+        ['rev_to_ayah', 'rev_to_surah', 'آية نهاية المراجعة', false]
       ];
-      for (const [ak, sk, label] of ayahPairs) {
-        if (fields[ak] !== undefined && fields[ak] !== '' && fields[ak] !== null) {
-          const num = Math.floor(Number(fields[ak]));
+      for (const [ak, sk, label, isStart] of ayahPairs) {
+        const rawAyah = fields[ak];
+        const isZeroOrEmpty = rawAyah === '' || rawAyah === null || rawAyah === 0 || rawAyah === '0';
+        if (rawAyah !== undefined && !isZeroOrEmpty) {
+          const num = Math.floor(Number(rawAyah));
           if (!isFinite(num) || num < 1) {
-            return { ok: false, message: `قيمة "${label}" غير صالحة (${fields[ak]}). يجب أن تكون رقماً صحيحاً يبدأ من 1.` };
+            return { ok: false, message: `قيمة "${label}" غير صالحة (${rawAyah}). يجب أن تكون رقماً صحيحاً يبدأ من 1.` };
           }
           const targetSurah = fields[sk] !== undefined ? fields[sk] : currentRecord[sk];
-          if (targetSurah && surahs.length) {
-            const sObj = surahs.find(s => s.name === targetSurah || normAr(s.name) === normAr(targetSurah));
-            if (sObj && num > sObj.ayahs) {
-              return { ok: false, message: `رقم الآية (${num}) يتجاوز عدد آيات سورة ${sObj.name} (${sObj.ayahs} آية).` };
-            }
+          const sObj = surahInfoMap[sk] || findSurahObj(targetSurah);
+          if (sObj && num > sObj.ayahs) {
+            return { ok: false, message: `رقم الآية (${num}) يتجاوز عدد آيات سورة ${sObj.name} (${sObj.ayahs} آية).` };
           }
           fields[ak] = num;
+        } else {
+          // If 0 was explicitly passed for an ayah, treat it as unspecified rather than failing
+          if (isZeroOrEmpty && rawAyah !== undefined) {
+            delete fields[ak];
+          }
+          // When a Surah is set or changed without specifying its Ayah, assign sensible defaults (1 for start, last ayah for end)
+          if (fields[sk] === '') {
+            fields[ak] = 0;
+          } else if (fields[sk]) {
+            const surahChanged = fields[sk] !== currentRecord[sk];
+            const existingAyah = Number(currentRecord[ak] || 0);
+            if (surahChanged || existingAyah <= 0) {
+              const sObj = surahInfoMap[sk] || findSurahObj(fields[sk]);
+              fields[ak] = isStart ? 1 : ((sObj && sObj.ayahs) ? sObj.ayahs : 1);
+            }
+          }
         }
       }
 
@@ -1493,8 +1601,10 @@
         const fAyah = fields.from_ayah !== undefined ? fields.from_ayah : currentRecord.from_ayah;
         const tSurah = fields.to_surah !== undefined ? fields.to_surah : currentRecord.to_surah;
         const tAyah = fields.to_ayah !== undefined ? fields.to_ayah : currentRecord.to_ayah;
-        if (fSurah && tSurah && Number(tAyah) > 0 && window.AlbayanDataNormalizer && typeof window.AlbayanDataNormalizer.calcQuranPages === 'function') {
-          fields.memo_pages = window.AlbayanDataNormalizer.calcQuranPages(fSurah, Number(fAyah) || 1, tSurah, Number(tAyah));
+        if (fSurah && tSurah && window.AlbayanDataNormalizer && typeof window.AlbayanDataNormalizer.calcQuranPages === 'function') {
+          const tSurahObj = surahInfoMap.to_surah || findSurahObj(tSurah);
+          const effToAyah = Number(tAyah) > 0 ? Number(tAyah) : ((tSurahObj && tSurahObj.ayahs) || 1);
+          fields.memo_pages = window.AlbayanDataNormalizer.calcQuranPages(fSurah, Number(fAyah) || 1, tSurah, effToAyah);
         } else if (fSurah === '' || tSurah === '') {
           fields.memo_pages = 0;
         }
@@ -1507,16 +1617,16 @@
       type: 'object',
       description: 'الحقول المراد تعديلها في سجل الطالب',
       properties: {
-        from_surah: { type: 'string', description: 'بداية الحفظ (اسم السورة)' },
-        from_ayah: { type: 'number', description: 'رقم آية البداية' },
-        to_surah: { type: 'string', description: 'نهاية الحفظ (اسم السورة)' },
-        to_ayah: { type: 'number', description: 'رقم آية النهاية' },
+        from_surah: { type: 'string', description: 'بداية الحفظ (اسم سورة «من»، مثل: الفاتحة أو البقرة)' },
+        from_ayah: { type: 'number', description: 'رقم آية بداية الحفظ (اختياري، الافتراضي 1)' },
+        to_surah: { type: 'string', description: 'نهاية الحفظ (اسم سورة «إلى»، مثل: آل عمران أو الناس)' },
+        to_ayah: { type: 'number', description: 'رقم آية نهاية الحفظ (اختياري، الافتراضي آخر آية في السورة)' },
         memo_pages: { type: 'number', description: 'عدد أوجه الحفظ' },
         memo_grade: { type: 'number', description: 'درجة الحفظ من 0 إلى 40' },
-        rev_from_surah: { type: 'string', description: 'بداية المراجعة (اسم السورة)' },
-        rev_from_ayah: { type: 'number', description: 'آية بداية المراجعة' },
-        rev_to_surah: { type: 'string', description: 'نهاية المراجعة (اسم السورة)' },
-        rev_to_ayah: { type: 'number', description: 'آية نهاية المراجعة' },
+        rev_from_surah: { type: 'string', description: 'بداية المراجعة (اسم سورة «من»)' },
+        rev_from_ayah: { type: 'number', description: 'آية بداية المراجعة (اختياري، الافتراضي 1)' },
+        rev_to_surah: { type: 'string', description: 'نهاية المراجعة (اسم سورة «إلى»)' },
+        rev_to_ayah: { type: 'number', description: 'آية نهاية المراجعة (اختياري، الافتراضي آخر آية في السورة)' },
         sard_pages: { type: 'number', description: 'عدد أوجه السرد' },
         rev_grade: { type: 'number', description: 'درجة المراجعة من 0 إلى 30' },
         absent_days: { type: 'number', description: 'أيام الغياب من 0 إلى 31' },
@@ -2206,12 +2316,8 @@
           };
         }
 
-        // Collect & validate optional initial register fields (nested or flat)
-        const allowedKeys = Object.keys(RECORD_FIELDS_SCHEMA.properties);
-        const rawFields = { ...(args.fields && typeof args.fields === 'object' ? args.fields : {}) };
-        allowedKeys.forEach(k => {
-          if (args[k] !== undefined && rawFields[k] === undefined) rawFields[k] = args[k];
-        });
+        // Collect & validate optional initial register fields (nested, flat, or aliases)
+        const rawFields = extractRecordFieldsFromArgs(args);
         const normRes = normalizeRegisterFields(rawFields, {});
         if (!normRes.ok) return { ok: false, message: normRes.message };
         const initialFields = normRes.fields;
@@ -2827,12 +2933,8 @@
           AlbayanAIDataContext.isSamePeriodRecord(r, period, snap.activePeriod)
         ) || {};
 
-        // Accept either nested fields object or flat record fields
-        const allowedKeys = Object.keys(RECORD_FIELDS_SCHEMA.properties);
-        const rawFields = { ...(args.fields && typeof args.fields === 'object' ? args.fields : {}) };
-        allowedKeys.forEach(k => {
-          if (args[k] !== undefined && rawFields[k] === undefined) rawFields[k] = args[k];
-        });
+        // Accept either nested fields object, flat record fields, or common aliases
+        const rawFields = extractRecordFieldsFromArgs(args);
 
         if (Object.keys(rawFields).length === 0) {
           return { ok: false, message: 'يرجى تحديد الحقول والقيم المراد تحديثها في السجل.' };
@@ -2857,6 +2959,7 @@
           });
         });
 
+        const mergedStudentWithRecord = { ...student, ...currentRecord };
         const nextMetrics = computeRecordMetrics({ ...currentRecord, ...fields });
 
         if (args.preview_only) {
@@ -2879,7 +2982,7 @@
           student.id,
           period,
           fields,
-          student
+          mergedStudentWithRecord
         );
         if (!updRes || !updRes.ok) {
           return { ok: false, message: (updRes && updRes.error && updRes.error.message) || 'تعذر حفظ تعديل السجل.' };
@@ -2892,7 +2995,7 @@
           operation: `${args.is_new_record ? 'إنشاء' : 'تعديل'} سجل الطالب "${student.name}" (${period.month})`,
           targetIds: [student.id],
           targetLabel: `${student.name} — ${period.month}`,
-          beforeState: { circle_id: student.circle_id, student_id: student.id, period, fields: beforeFields, studentRow: student },
+          beforeState: { circle_id: student.circle_id, student_id: student.id, period, fields: beforeFields, studentRow: mergedStudentWithRecord },
           afterState: { circle_id: student.circle_id, student_id: student.id, period, fields },
           reversible: true
         });
@@ -3978,8 +4081,8 @@
         `   - نظام المدة النشط حالياً: ${cycleDesc}.`,
         ...(periodOptionsDesc ? [periodOptionsDesc] : []),
         '   - قاعدة الفترات والفصول (للاستدعاء البرمجي الداخلي فقط): عند طلب التعديل أو القراءة على **فصل معين** (مثل: الفصل الأول، الفصل الثاني، الفصل الثالث، الفصل الرابع)، يجب تمرير `period_type: "term"` وتمرير اسم الفصل في `month` (أو `term`) مثل `"الفصل الأول"` أو `"الفصل الثاني"`؛ وعند طلب **أسبوع** مرّر `period_type: "weekly"`؛ وعند طلب **شهر** مرّر `period_type: "monthly"` واسم الشهر؛ وإلا استخدم الفترة النشطة للنظام. يُمنع تعديل سجل الشهر عندما يطلب المستخدم فصلاً دراسياً.',
-        '   - الحفظ (أسماء الحقول البرمجية الداخلية): from_surah، from_ayah، to_surah، to_ayah، memo_pages (تُحسب تلقائياً عند تحديد نطاق السور والآيات)، memo_grade (0-40).',
-        '   - المراجعة والسرد (أسماء الحقول البرمجية الداخلية): rev_from_surah، rev_from_ayah، rev_to_surah، rev_to_ayah، sard_pages، rev_grade (0-30).',
+        '   - الحفظ (أسماء الحقول البرمجية الداخلية): from_surah (سورة البداية)، from_ayah (اختياري، الافتراضي 1)، to_surah (سورة النهاية)، to_ayah (اختياري، الافتراضي آخر آية في السورة)، memo_pages (تُحسب تلقائياً)، memo_grade (0-40). عند تحديد مقدار الحفظ من سورة إلى أخرى أو لسورة واحدة يجب تمرير from_surah و to_surah معاً (حتى لو لم يذكر المستخدم أرقام الآيات).',
+        '   - المراجعة والسرد (أسماء الحقول البرمجية الداخلية): rev_from_surah، rev_from_ayah (اختياري)، rev_to_surah، rev_to_ayah (اختياري)، sard_pages، rev_grade (0-30). يجب تمرير rev_from_surah و rev_to_surah معاً عند تحديد نطاق المراجعة.',
         '   - الحضور والنشاط والمناهج المصاحبة (أسماء الحقول البرمجية الداخلية): absent_days (0-31)، activity_mark (0-20)، fiqh (0-20)، tafsir (0-20)، adhkar (0-20)، seerah (0-20).',
         '   - الاختبارات (أسماء الحقول البرمجية الداخلية): exam_title، exam_grade.',
         '4. التحقق قبل التنفيذ: إذا نقصت بيانات إلزامية (مثل الحلقة عند إضافة طالب) أو تشابهت الأسماء، اسأل المستخدم ولا تخمّن.',
@@ -4584,7 +4687,7 @@
       }
 
       // C. Create Halaqah
-      if (hasAnyKw(q, ['أنشئ', 'انشئ', 'إنشاء', 'أضف', 'اضف', 'إضافة']) && hasAnyKw(q, ['حلقة', 'حلقه'])) {
+      if (hasAnyKw(q, ['أنشئ', 'انشئ', 'إنشاء', 'أضف', 'اضف', 'إضافة']) && hasAnyKw(q, ['حلقة', 'حلقه']) && !hasAnyKw(q, ['طالب'])) {
         const parsed = parseCircleCreationCommand(raw);
         if (!parsed.name) {
           return {
@@ -4625,10 +4728,89 @@
         };
       }
 
-      // E. Add Student (optionally with initial register fields)
-      if (hasAnyKw(q, ['أضف', 'اضف', 'سجل', 'إضافة']) && hasAnyKw(q, ['طالب'])) {
+      // Helper: parse Quran range ("من سورة X إلى سورة Y") or single-end ("إلى سورة Y") with optional ayahs
+      const parseLocalSurahFields = (text) => {
+        const parsedFields = {};
+        const isRev = hasAnyKw(normAr(text), ['مراجعة', 'مراجع']);
+        const cleanedText = text
+          .replace(/(?:في\s+|بـ\s*)?(?:الفصل(?:\s+الدراسي)?\s+(?:الأول|الاول|الثاني|الثالث|الرابع|الخامس|السادس|\d+))/gi, ' ')
+          .replace(/(?:في\s+|بـ\s*)?(?:الأسبوع\s+(?:الأول|الاول|الثاني|الثالث|الرابع|الخامس|السادس|السابع|الثامن|التاسع|العاشر|الحادي\s+عشر|الثاني\s+عشر|\d+))/gi, ' ')
+          .replace(/(?:في\s+شهر\s+|شهر\s+)(?:محرم|صفر|ربيع\s+الأول|ربيع\s+الاول|ربيع\s+الآخر|ربيع\s+الاخر|ربيع\s+الثاني|جمادى\s+الأولى|جمادى\s+الاولى|جمادى\s+الآخرة|جمادى\s+الاخره|جمادى\s+الثانية|رجب|شعبان|رمضان|شوال|ذو\s+القعدة|ذو\s+الحجة)/gi, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const stopLookahead = '(?=\\s+(?:آية|ايه|اية|إلى|الى|درجة|علامة|غياب|فقه|تفسير|أذكار|اذكار|سيرة|سرد|نشاط|في\\b)|[،,.]|$)';
+        const surahRangeRe = new RegExp(
+          `من\\s+(?:سورة\\s+)?((?!آية\\b|ايه\\b|اية\\b)[^\\s،,]+(?:\\s+(?:عمران|ال عمران|آل عمران))?)\\s*(?:(?:آية|ايه|اية)\\s*(\\d+))?\\s*(?:إلى|الى)\\s+(?:(?:سورة\\s+)?((?!آية\\b|ايه\\b|اية\\b)[^\\s،,]+(?:\\s+(?:عمران|ال عمران|آل عمران))?)\\s*)?(?:(?:آية|ايه|اية)\\s*(\\d+))?${stopLookahead}`
+        );
+        const surahRange = cleanedText.match(surahRangeRe);
+        if (surahRange) {
+          let fSurah = (surahRange[1] || '').trim();
+          const fAyah = surahRange[2] ? Number(surahRange[2]) : null;
+          let tSurah = (surahRange[3] || '').trim();
+          const tAyah = surahRange[4] ? Number(surahRange[4]) : null;
+          // Handle "من سورة البقرة آية 1 إلى آية 20" (omitted second surah name)
+          if (!tSurah && tAyah) tSurah = fSurah;
+          if (/^(?:آية|ايه|اية)$/i.test(tSurah)) tSurah = fSurah;
+          if (fSurah) {
+            if (isRev) {
+              parsedFields.rev_from_surah = fSurah;
+              if (fAyah) parsedFields.rev_from_ayah = fAyah;
+              if (tSurah) parsedFields.rev_to_surah = tSurah;
+              if (tAyah) parsedFields.rev_to_ayah = tAyah;
+            } else {
+              parsedFields.from_surah = fSurah;
+              if (fAyah) parsedFields.from_ayah = fAyah;
+              if (tSurah) parsedFields.to_surah = tSurah;
+              if (tAyah) parsedFields.to_ayah = tAyah;
+            }
+            return parsedFields;
+          }
+        }
+
+        // Single endpoint update: e.g. "عدل نهاية الحفظ للطالب خالد إلى سورة النساء"
+        const endOnlyMatch = cleanedText.match(/(?:إلى|الى)\s+(?:سورة\s+)?((?!آية\b|ايه\b|اية\b)[^\s،,]+(?:\s+(?:عمران|ال عمران|آل عمران))?)\s*(?:(?:آية|ايه|اية)\s*(\d+))?\s*$/);
+        if (endOnlyMatch && !/^\d+$/.test(endOnlyMatch[1].trim())) {
+          if (isRev) {
+            parsedFields.rev_to_surah = endOnlyMatch[1].trim();
+            if (endOnlyMatch[2]) parsedFields.rev_to_ayah = Number(endOnlyMatch[2]);
+          } else {
+            parsedFields.to_surah = endOnlyMatch[1].trim();
+            if (endOnlyMatch[2]) parsedFields.to_ayah = Number(endOnlyMatch[2]);
+          }
+          return parsedFields;
+        }
+
+        // Single surah mention without "من/إلى": e.g. "سجل حفظ الطالب خالد سورة النبأ"
+        const singleSurahMatch = cleanedText.match(/سورة\s+([^\s،,]+(?:\s+(?:عمران|ال عمران|آل عمران))?)\s*(?:(?:آية|ايه|اية)\s*(\d+))?/);
+        if (singleSurahMatch) {
+          const sName = singleSurahMatch[1].trim();
+          const sAyah = singleSurahMatch[2] ? Number(singleSurahMatch[2]) : null;
+          if (isRev) {
+            parsedFields.rev_from_surah = sName;
+            parsedFields.rev_to_surah = sName;
+            if (sAyah) {
+              parsedFields.rev_from_ayah = sAyah;
+              parsedFields.rev_to_ayah = sAyah;
+            }
+          } else {
+            parsedFields.from_surah = sName;
+            parsedFields.to_surah = sName;
+            if (sAyah) {
+              parsedFields.from_ayah = sAyah;
+              parsedFields.to_ayah = sAyah;
+            }
+          }
+        }
+        return parsedFields;
+      };
+
+      // E. Add Student (optionally with initial register fields) — only when adding a student (not recording grades/surahs on existing student)
+      const isRecordUpdateIntent = hasAnyKw(q, ['درجة', 'علامة', 'غياب', 'حفظ', 'مراجعة', 'فقه', 'تفسير', 'أذكار', 'سيرة', 'سرد', 'نشاط', 'سورة', 'نهاية', 'بداية']);
+      const isExplicitAddStudent = hasAnyKw(q, ['أضف', 'اضف', 'إضافة']) || hasAnyKw(q, ['حلقة', 'حلقه']);
+      if ((hasAnyKw(q, ['أضف', 'اضف', 'إضافة']) || (q.includes('سجل') && !isRecordUpdateIntent)) && hasAnyKw(q, ['طالب']) && (isExplicitAddStudent || !isRecordUpdateIntent)) {
         const sMatch = raw.match(/(?:طالباً|طالب|الطالب)\s+(?:اسمه|باسم)?\s*["«]?([^"»،,]+?)["»]?(?=\s+(?:إلى|الى|في)\s+|$)/);
-        const cMatch = raw.match(/(?:إلى|الى|في)\s+(?:حلقة\s+)?["«]?([^"»،.\n]+?)["»]?(?=\s+(?:درجة|غياب|نشاط|سرد|من\s+سورة|فقه|تفسير|أذكار|سيرة)|$)/);
+        const cMatch = raw.match(/(?:إلى|الى|في)\s+(?:حلقة\s+)?["«]?([^"»،.\n]+?)["»]?(?=\s+(?:درجة|غياب|نشاط|سرد|حفظ|مراجعة|من\s+سورة|من\s+|فقه|تفسير|أذكار|سيرة)|$)/);
         const sName = sMatch ? sMatch[1].trim() : '';
         const cName = cMatch ? cMatch[1].trim() : '';
         if (!sName || !cName) {
@@ -4637,7 +4819,8 @@
             executedTools, tables, operationCards, confirmations
           };
         }
-        const addRes = await invokeTool('create_student', { name: sName, circle_name: cName });
+        const initialFields = parseLocalSurahFields(raw);
+        const addRes = await invokeTool('create_student', { name: sName, circle_name: cName, ...(Object.keys(initialFields).length ? { fields: initialFields } : {}) });
         return {
           text: addRes.ok
             ? `تمت إضافة الطالب **"${addRes.student.name}"** بنجاح والتحقق من الحفظ في سجل (${addRes.period?.month || 'صفر'} ${addRes.period?.year || '1448'}).`
@@ -4647,27 +4830,14 @@
       }
 
       // F. Update Student Record (surah ranges & all register grades/fields)
-      if (hasAnyKw(q, ['عدل', 'تعديل', 'رصد', 'سجل']) && hasAnyKw(q, ['طالب', 'درجة', 'علامة', 'غياب', 'حفظ', 'مراجعة', 'فقه', 'تفسير', 'أذكار', 'سيرة', 'سرد', 'نشاط', 'سورة'])) {
-        const stuMatch = raw.match(/(?:للطالب|لطالب|الطالب|طالب)\s+["«]?([^"»،,]+?)["»]?(?=\s+(?:إلى|الى|في|بـ|=|:|درجة|علامة|غياب|فقه|تفسير|أذكار|سيرة|سرد|نشاط|من\s+سورة)|$)/);
-        const surahRange = raw.match(/من\s+(?:سورة\s+)?([^\s،,]+(?:\s+[^\s،,]+)?)\s*(?:آية|ايه|اية)?\s*(\d+)?\s*(?:إلى|الى)\s+(?:سورة\s+)?([^\s،,]+(?:\s+[^\s،,]+)?)\s*(?:آية|ايه|اية)?\s*(\d+)/);
+      if (hasAnyKw(q, ['عدل', 'تعديل', 'رصد', 'سجل', 'حدد']) && hasAnyKw(q, ['طالب', 'درجة', 'علامة', 'غياب', 'حفظ', 'مراجعة', 'فقه', 'تفسير', 'أذكار', 'سيرة', 'سرد', 'نشاط', 'سورة'])) {
+        const stuMatch = raw.match(/(?:للطالب|لطالب|الطالب|طالب)\s+["«]?([^"»،,]+?)["»]?(?=\s+(?:إلى|الى|في|بـ|=|:|درجة|علامة|غياب|حفظ|مراجعة|فقه|تفسير|أذكار|سيرة|سرد|نشاط|نهاية|بداية|من\s+)|$)/);
+        const parsedSurahFields = parseLocalSurahFields(raw);
+        const hasSurahFields = Object.keys(parsedSurahFields).length > 0;
         const numMatch = raw.match(/(?:إلى|الى|=|:|\s)(\d+(?:\.\d+)?)\s*$/);
-        if (stuMatch && (surahRange || numMatch)) {
-          const fields = {};
-          if (surahRange) {
-            const isRev = hasAnyKw(q, ['مراجعة', 'مراجع']);
-            if (isRev) {
-              fields.rev_from_surah = surahRange[1].trim();
-              if (surahRange[2]) fields.rev_from_ayah = Number(surahRange[2]);
-              fields.rev_to_surah = surahRange[3].trim();
-              fields.rev_to_ayah = Number(surahRange[4]);
-            } else {
-              fields.from_surah = surahRange[1].trim();
-              if (surahRange[2]) fields.from_ayah = Number(surahRange[2]);
-              fields.to_surah = surahRange[3].trim();
-              fields.to_ayah = Number(surahRange[4]);
-            }
-          }
-          if (numMatch && !surahRange) {
+        if (stuMatch && (hasSurahFields || numMatch)) {
+          const fields = { ...parsedSurahFields };
+          if (numMatch && !hasSurahFields) {
             const val = Number(numMatch[1]);
             if (hasAnyKw(q, ['فقه'])) fields.fiqh = val;
             else if (hasAnyKw(q, ['تفسير'])) fields.tafsir = val;

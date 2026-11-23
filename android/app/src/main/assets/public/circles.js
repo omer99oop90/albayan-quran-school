@@ -244,7 +244,7 @@ async function updateStudentRecord(studentId, fields) {
         ? window.AlbayanDataNormalizer.calcQuranPages
         : (typeof calcClientQuranPages === "function" ? calcClientQuranPages : null);
       if ("from_surah" in normalizedFields || "to_surah" in normalizedFields || "from_ayah" in normalizedFields || "to_ayah" in normalizedFields) {
-        if (st.from_surah && st.to_surah && Number(st.to_ayah) > 0 && calcFn) {
+        if (st.from_surah && st.to_surah && calcFn) {
           st.memo_pages = calcFn(st.from_surah, st.from_ayah, st.to_surah, st.to_ayah);
         } else {
           st.memo_pages = 0;
@@ -1074,17 +1074,28 @@ function generateStudentRowHTML(s, idx, isYearly) {
       pctBadgeStyle = "background:#fff1f2; color:#e11d48; border:1px solid #fecdd3;";
     }
 
-    const memoText = (fromSurah && toSurah && toAyah > 0) 
-      ? `من سورة ${fromSurah} (${fromAyah}) إلى ${toSurah} (${toAyah})` 
-      : (fromSurah ? `من سورة ${fromSurah} (${fromAyah}) <span style="font-size:11px; color:var(--primary); font-weight:700;">(انقر لتحديد إلى)</span>` : `<span style="color:var(--muted)">غير محدد</span>`);
+    const formatCircleSurahRange = (fs, fa, ts, ta) => {
+      const fromAyahTxt = Number(fa) > 0 ? ` (${fa})` : '';
+      const toAyahTxt = Number(ta) > 0 ? ` (${ta})` : '';
+      if (fs && ts) {
+        return `من سورة ${fs}${fromAyahTxt} إلى ${ts}${toAyahTxt}`;
+      }
+      if (fs) {
+        return `من سورة ${fs}${fromAyahTxt} <span style="font-size:11px; color:var(--primary); font-weight:700;">(انقر لتحديد إلى)</span>`;
+      }
+      if (ts) {
+        return `إلى سورة ${ts}${toAyahTxt}`;
+      }
+      return `<span style="color:var(--muted)">غير محدد</span>`;
+    };
+
+    const memoText = formatCircleSurahRange(fromSurah, fromAyah, toSurah, toAyah);
 
     const memoPages = (s.memo_pages !== undefined && s.memo_pages !== null && s.memo_pages > 0)
       ? s.memo_pages
-      : ((fromSurah && toSurah && toAyah > 0) ? calcClientQuranPages(fromSurah, fromAyah, toSurah, toAyah) : 0);
+      : ((fromSurah && toSurah) ? calcClientQuranPages(fromSurah, fromAyah, toSurah, toAyah) : 0);
 
-    const revText = (revFromSurah && revToSurah && revToAyah > 0) 
-      ? `من سورة ${revFromSurah} (${revFromAyah}) إلى ${revToSurah} (${revToAyah})` 
-      : (revFromSurah ? `من سورة ${revFromSurah} (${revFromAyah}) <span style="font-size:11px; color:var(--primary); font-weight:700;">(انقر لتحديد إلى)</span>` : `<span style="color:var(--muted)">غير محدد</span>`);
+    const revText = formatCircleSurahRange(revFromSurah, revFromAyah, revToSurah, revToAyah);
 
     const onCellClick = (fnStr) => isYearly ? `showYearlyRecordNotice()` : fnStr;
 

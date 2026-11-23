@@ -145,8 +145,9 @@ function calcClientQuranPages(fromSurah, fromAyah, toSurah, toAyah) {
   let toIdx = quranSurahs.findIndex(s => s.name === toSurah);
   if (fromIdx === -1 || toIdx === -1) return 0;
 
-  let fa = parseInt(fromAyah) || 1;
-  let ta = parseInt(toAyah) || 1;
+  let fa = parseInt(fromAyah, 10) || 1;
+  let rawTa = parseInt(toAyah, 10);
+  let ta = (rawTa && rawTa > 0) ? rawTa : (quranSurahs[toIdx]?.ayahs || 1);
   if (fromIdx > toIdx || (fromIdx === toIdx && fa > ta)) {
     [fromIdx, toIdx] = [toIdx, fromIdx];
     [fa, ta] = [ta, fa];
@@ -1009,15 +1010,25 @@ function generateRosterRowHTML(s, idx, isYearly) {
 
   const memoPages = (s.memo_pages !== undefined && s.memo_pages !== null && s.memo_pages > 0)
     ? s.memo_pages
-    : ((fromSurah && toSurah && toAyah > 0) ? calcClientQuranPages(fromSurah, fromAyah, toSurah, toAyah) : 0);
+    : ((fromSurah && toSurah) ? calcClientQuranPages(fromSurah, fromAyah, toSurah, toAyah) : 0);
 
-  const memoText = (fromSurah && toSurah && toAyah > 0)
-    ? `من سورة ${fromSurah} (${fromAyah}) إلى ${toSurah} (${toAyah})`
-    : (fromSurah ? `من سورة ${fromSurah} (${fromAyah})` : `<span style="color:var(--muted)">-</span>`);
+  const formatSurahRange = (fs, fa, ts, ta) => {
+    const fromAyahTxt = Number(fa) > 0 ? ` (${fa})` : '';
+    const toAyahTxt = Number(ta) > 0 ? ` (${ta})` : '';
+    if (fs && ts) {
+      return `من سورة ${fs}${fromAyahTxt} إلى ${ts}${toAyahTxt}`;
+    }
+    if (fs) {
+      return `من سورة ${fs}${fromAyahTxt}`;
+    }
+    if (ts) {
+      return `إلى سورة ${ts}${toAyahTxt}`;
+    }
+    return `<span style="color:var(--muted)">-</span>`;
+  };
 
-  const revText = (revFromSurah && revToSurah && revToAyah > 0)
-    ? `من سورة ${revFromSurah} (${revFromAyah}) إلى ${revToSurah} (${revToAyah})`
-    : (revFromSurah ? `من سورة ${revFromSurah} (${revFromAyah})` : `<span style="color:var(--muted)">-</span>`);
+  const memoText = formatSurahRange(fromSurah, fromAyah, toSurah, toAyah);
+  const revText = formatSurahRange(revFromSurah, revFromAyah, revToSurah, revToAyah);
 
   return `
     <tr id="roster-student-row-${s.id}" data-student-id="${s.id}">
@@ -1687,14 +1698,14 @@ async function updateStudentRecord(studentId, fields) {
         : (typeof calcClientQuranPages === "function" ? calcClientQuranPages : null);
 
       if ("from_surah" in normalizedFields || "to_surah" in normalizedFields || "from_ayah" in normalizedFields || "to_ayah" in normalizedFields) {
-        if (st.from_surah && st.to_surah && Number(st.to_ayah) > 0 && calcFn) {
+        if (st.from_surah && st.to_surah && calcFn) {
           st.memo_pages = calcFn(st.from_surah, st.from_ayah, st.to_surah, st.to_ayah);
         } else {
           st.memo_pages = 0;
         }
       }
       if ("rev_from_surah" in normalizedFields || "rev_to_surah" in normalizedFields || "rev_from_ayah" in normalizedFields || "rev_to_ayah" in normalizedFields) {
-        if (st.rev_from_surah && st.rev_to_surah && Number(st.rev_to_ayah) > 0 && calcFn) {
+        if (st.rev_from_surah && st.rev_to_surah && calcFn) {
           st.rev_pages = calcFn(st.rev_from_surah, st.rev_from_ayah, st.rev_to_surah, st.rev_to_ayah);
         } else {
           st.rev_pages = 0;
@@ -1775,10 +1786,12 @@ function openInlineSurahAyahDropdown(event, studentId, targetType, fromSurah, fr
   event.stopPropagation();
 
   const hasValidFrom = Boolean(fromSurah && fromSurah !== 'null' && fromSurah !== 'undefined');
+  const hasValidTo = Boolean(toSurah && toSurah !== 'null' && toSurah !== 'undefined');
   const validFromSurah = hasValidFrom ? fromSurah : "الفاتحة";
-  const validToSurah = (toSurah && toSurah !== 'null' && toSurah !== 'undefined') ? toSurah : validFromSurah;
+  const validToSurah = hasValidTo ? toSurah : validFromSurah;
   const parsedFromAyah = parseInt(fromAyah, 10) || 1;
-  let parsedToAyah = parseInt(toAyah, 10) || parsedFromAyah;
+  const toSurahObj = (quranSurahs || []).find(s => s.name === validToSurah);
+  let parsedToAyah = parseInt(toAyah, 10) || (hasValidTo && toSurahObj ? (toSurahObj.ayahs || toSurahObj.ayah_count || parsedFromAyah) : parsedFromAyah);
 
   const fromIdx = getQuranSurahOrderIndex(validFromSurah);
   const toIdx = getQuranSurahOrderIndex(validToSurah);
@@ -1800,7 +1813,7 @@ function openInlineSurahAyahDropdown(event, studentId, targetType, fromSurah, fr
     toAyah: parsedToAyah,
     fromView: 'surah',
     toView: 'surah',
-    hasExistingPassage: hasValidFrom
+    hasExistingPassage: hasValidFrom || hasValidTo
   };
 
   renderQuranSurahPicker(event.currentTarget);
