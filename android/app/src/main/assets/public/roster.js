@@ -323,14 +323,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 1. 0ms FAST SYNCHRONOUS LOCAL-FIRST RESTORE
   try {
+    const uRaw = localStorage.getItem("albayan_logged_user");
+    if (uRaw) currentUserData = JSON.parse(uRaw);
+  } catch (e) {}
+
+  try {
     const cachedCircles = (window.CirclesService && typeof window.CirclesService.getCachedCircles === 'function')
       ? window.CirclesService.getCachedCircles()
       : JSON.parse(localStorage.getItem("albayan_cached_circles") || "[]");
     if (Array.isArray(cachedCircles) && cachedCircles.length > 0) {
-      circlesList = sortRosterCircles(cachedCircles);
-      if (!activeCircleId) {
-        activeCircleId = normalizeCircleId(circlesList[0].id);
-      }
+      circlesList = sortRosterCircles(scopeRosterCirclesForUser(cachedCircles));
+      validateActiveCircleAccess(circlesList);
       populateCircleSelect(circlesList);
     }
   } catch (e) {}
@@ -670,20 +673,74 @@ function setupTablePinchZoom() {
   }, { passive: false });
 }
 
+function scopeRosterCirclesForUser(list) {
+  if (!Array.isArray(list)) return [];
+  if (window.AlbayanPermissions && typeof window.AlbayanPermissions.filterCirclesForUser === "function") {
+    return window.AlbayanPermissions.filterCirclesForUser(list, currentUserData);
+  }
+  return list;
+}
+
+function validateActiveCircleAccess(allowedList) {
+  if (!Array.isArray(allowedList) || allowedList.length === 0) {
+    activeCircleId = null;
+    try { localStorage.removeItem("albayan_active_circle_id"); } catch (e) {}
+    return false;
+  }
+  if (activeCircleId !== null && activeCircleId !== undefined) {
+    const normActive = String(normalizeCircleId(activeCircleId));
+    const isAllowed = allowedList.some(c => String(normalizeCircleId(c.id)) === normActive);
+    if (isAllowed) return true;
+  }
+  activeCircleId = normalizeCircleId(allowedList[0].id);
+  try { localStorage.setItem("albayan_active_circle_id", activeCircleId); } catch (e) {}
+  return true;
+}
+
 async function checkAuth() {
   try {
     const cached = localStorage.getItem("albayan_logged_user");
     if (cached) {
       currentUserData = JSON.parse(cached);
-      const userElem = document.getElementById("loggedUsername");
-      const roleElem = document.getElementById("loggedRole");
-      if (userElem && currentUserData.student_name) userElem.textContent = currentUserData.student_name;
-      else if (userElem && currentUserData.username) userElem.textContent = currentUserData.username;
-      if (roleElem && currentUserData.role) {
-        roleElem.textContent = currentUserData.role === 'admin' ? 'مدير المنظومة' : 'معلم قرآن كريم';
-      }
     }
   } catch (e) {}
+
+  if (!currentUserData || (!currentUserData.username && !currentUserData.student_name)) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1400);
+      const res = await fetch("/api/me", { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.logged_in) {
+          currentUserData = data;
+          try { localStorage.setItem("albayan_logged_user", JSON.stringify(data)); } catch (e) {}
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (!currentUserData || (!currentUserData.username && !currentUserData.student_name)) {
+    window.location.href = "login.html";
+    return false;
+  }
+
+  if (window.AlbayanPermissions) {
+    window.AlbayanPermissions.applyNavPermissions(currentUserData);
+    if (!window.AlbayanPermissions.enforcePageAccess(currentUserData)) return false;
+  }
+
+  const userElem = document.getElementById("loggedUsername");
+  const roleElem = document.getElementById("loggedRole");
+  if (userElem) userElem.textContent = currentUserData.student_name || currentUserData.username || "كادر تعليمي";
+  if (roleElem && currentUserData.role) {
+    if (currentUserData.is_superadmin === 1) roleElem.textContent = "المسؤول الأول";
+    else if (currentUserData.role === "admin") roleElem.textContent = "مدير المنظومة";
+    else if (currentUserData.role === "supervisor") roleElem.textContent = "مشرف تعليمي";
+    else roleElem.textContent = "معلم قرآن كريم";
+  }
+  return true;
 }
 
 async function loadSurahs() {
@@ -734,7 +791,8 @@ async function loadCirclesDropdown(forceRemote = false) {
       ? window.CirclesService.getCachedCircles()
       : JSON.parse(localStorage.getItem("albayan_cached_circles") || localStorage.getItem("cached_circles_list") || "[]");
     if (Array.isArray(rawList) && rawList.length > 0) {
-      circlesList = sortRosterCircles(rawList);
+      circlesList = sortRosterCircles(scopeRosterCirclesForUser(rawList));
+      validateActiveCircleAccess(circlesList);
       if (selectElem) populateCircleSelect(circlesList);
       updateActiveCircleTitle();
     }
@@ -746,7 +804,8 @@ async function loadCirclesDropdown(forceRemote = false) {
       if (typeof getFunc === 'function') {
         const cached = await getFunc();
         if (Array.isArray(cached) && cached.length > 0) {
-          circlesList = sortRosterCircles(cached);
+          circlesList = sortRosterCircles(scopeRosterCirclesForUser(cached));
+          validateActiveCircleAccess(circlesList);
           if (selectElem) populateCircleSelect(circlesList);
           updateActiveCircleTitle();
         }
@@ -772,15 +831,11 @@ async function loadCirclesDropdown(forceRemote = false) {
     } catch (fbErr) {}
   }
 
-  if (Array.isArray(freshCircles) && freshCircles.length > 0) {
-    circlesList = sortRosterCircles(freshCircles);
+  if (Array.isArray(freshCircles)) {
+    circlesList = sortRosterCircles(scopeRosterCirclesForUser(freshCircles));
+    validateActiveCircleAccess(circlesList);
     if (selectElem) {
       populateCircleSelect(circlesList);
-    }
-
-    if (!activeCircleId && circlesList.length > 0) {
-      activeCircleId = normalizeCircleId(circlesList[0].id);
-      try { localStorage.setItem("albayan_active_circle_id", activeCircleId); } catch (e) {}
     }
 
     updateActiveCircleTitle();
@@ -3010,3 +3065,13 @@ const handleRosterSyncRefresh = () => {
 
 window.addEventListener("albayan:db-synced", handleRosterSyncRefresh);
 window.addEventListener("albayan:cloud_updated", handleRosterSyncRefresh);
+window.addEventListener("albayan:permissions-updated", (e) => {
+  if (e && e.detail) {
+    currentUserData = e.detail;
+    if (typeof loadCirclesDropdown === "function") {
+      loadCirclesDropdown(false).then(() => {
+        if (activeCircleId && typeof loadStudents === "function") loadStudents().catch(() => {});
+      }).catch(() => {});
+    }
+  }
+});

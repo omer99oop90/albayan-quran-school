@@ -604,20 +604,33 @@ function applyUserData(data) {
 }
 
 async function checkAuth() {
+  const parsePerms = (raw) => {
+    if (window.AlbayanPermissions && typeof window.AlbayanPermissions.parsePermissions === "function") {
+      return window.AlbayanPermissions.parsePermissions(raw);
+    }
+    if (Array.isArray(raw)) return raw.map(String);
+    return null;
+  };
+
   // 1. FAST SYNCHRONOUS LOCAL CACHE FIRST (0ms)
   try {
     const cached = localStorage.getItem("albayan_logged_user");
     if (cached) {
       const u = JSON.parse(cached);
       if (u && (u.username || u.student_name)) {
+        const parsedPerms = parsePerms(u.permissions);
         currentUserData = {
           logged_in: true,
           id: u.id ?? null,
           username: u.username || "معلم",
+          display_name: u.display_name || u.username || "معلم",
           role: u.role || "teacher",
           is_superadmin: (u.is_superadmin === 1 || u.is_superadmin === "1" || u.is_superadmin === true) ? 1 : 0,
-          permissions: Array.isArray(u.permissions) ? u.permissions : []
+          permissions: parsedPerms !== null ? parsedPerms : undefined
         };
+        if (window.AlbayanPermissions && !window.AlbayanPermissions.enforcePageAccess(currentUserData)) {
+          return;
+        }
         applyUserData(currentUserData);
       }
     }
@@ -640,9 +653,19 @@ async function checkAuth() {
     if (res.ok) {
       const data = await res.json();
       if (data && data.logged_in) {
-        currentUserData = data;
-        try { localStorage.setItem("albayan_logged_user", JSON.stringify(data)); } catch(e) {}
-        applyUserData(data);
+        const parsedApiPerms = parsePerms(data.permissions);
+        currentUserData = {
+          ...data,
+          permissions: parsedApiPerms !== null ? parsedApiPerms : (currentUserData ? currentUserData.permissions : undefined)
+        };
+        try { localStorage.setItem("albayan_logged_user", JSON.stringify(currentUserData)); } catch(e) {}
+        if (window.AlbayanPermissions && !window.AlbayanPermissions.enforcePageAccess(currentUserData)) {
+          return;
+        }
+        applyUserData(currentUserData);
+        if (typeof renderCirclesGrid === "function" && Array.isArray(cachedCircles) && cachedCircles.length > 0) {
+          renderCirclesGrid(cachedCircles);
+        }
         return;
       }
     }
@@ -651,29 +674,13 @@ async function checkAuth() {
   }
 
   // Fallback to local session cache (works offline or when opening without local server)
-  try {
-    const cached = localStorage.getItem("albayan_logged_user");
-    if (cached) {
-      const u = JSON.parse(cached);
-      if (u && (u.username || u.student_name)) {
-        currentUserData = {
-          logged_in: true,
-          id: u.id ?? null,
-          username: u.username || "معلم",
-          role: u.role || "teacher",
-          is_superadmin: (u.is_superadmin === 1 || u.is_superadmin === "1" || u.is_superadmin === true) ? 1 : 0,
-          permissions: Array.isArray(u.permissions) ? u.permissions : []
-        };
-        applyUserData(currentUserData);
-        return;
-      }
-    }
-  } catch(e) {}
-
-  // If unauthenticated on web, redirect to login page
-  if (!isCap && (!currentUserData || !currentUserData.logged_in)) {
-    window.location.href = "login.html";
+  if (currentUserData && currentUserData.logged_in) {
+    applyUserData(currentUserData);
+    return;
   }
+
+  // If unauthenticated, redirect to login page
+  window.location.href = "login.html";
 }
 
 async function logout() {
@@ -776,8 +783,15 @@ function renderCirclesGrid(circles, totalSourceCirclesCount) {
     ? totalSourceCirclesCount
     : uniqueCircles.length;
 
+  const activeUser = (window.AlbayanPermissions && typeof window.AlbayanPermissions.getCurrentUser === 'function' && window.AlbayanPermissions.getCurrentUser()) || currentUserData;
+  const canManage = window.AlbayanPermissions && typeof window.AlbayanPermissions.canManageCircles === 'function'
+    ? window.AlbayanPermissions.canManageCircles(activeUser)
+    : Boolean(activeUser && (activeUser.role === 'admin' || activeUser.role === 'supervisor' || activeUser.is_superadmin === 1));
+
   if (uniqueCircles.length === 0) {
-    container.innerHTML = `<div class="loading-box" style="grid-column:1/-1;">لا توجد حلقات قرآنية مضافة بعد. افتح قائمة الخيارات (⋮) بالأعلى لإضافة حلقة قرآنية جديدة.</div>`;
+    container.innerHTML = canManage
+      ? `<div class="loading-box" style="grid-column:1/-1;">لا توجد حلقات قرآنية مضافة بعد. افتح قائمة الخيارات (⋮) بالأعلى لإضافة حلقة قرآنية جديدة.</div>`
+      : `<div class="loading-box" style="grid-column:1/-1;">لا توجد حلقات قرآنية مسندة لحسابك حالياً. يرجى التواصل مع إدارة المدرسة.</div>`;
     return;
   }
 
@@ -808,9 +822,13 @@ function renderCirclesGrid(circles, totalSourceCirclesCount) {
   `;
 
   container.innerHTML = uniqueCircles.map(c => {
+    const escapedId = escapeHtmlAttr(String(c.id));
     const escapedName = escapeHtmlAttr(c.name);
     const rawDesc = typeof c.description === 'string' ? c.description : (c.description ? String(c.description) : '');
     const escapedDesc = escapeHtmlAttr(rawDesc);
+    const teacherIdArg = (c.teacher_id !== undefined && c.teacher_id !== null && String(c.teacher_id).trim() !== '')
+      ? `'${escapeHtmlAttr(String(c.teacher_id))}'`
+      : 'null';
     const trimmedDesc = rawDesc.trim();
     const studentCount = Number(c.student_count || 0);
     const studentCountLabel = formatHalaqahStudentCount(studentCount);
@@ -826,16 +844,18 @@ function renderCirclesGrid(circles, totalSourceCirclesCount) {
     const metaLine = metaParts.join(' • ');
 
     return `
-      <div class="wa-circle-row" role="button" tabindex="0" onclick="selectCircle(${c.id}, '${escapedName}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectCircle(${c.id}, '${escapedName}');}">
+      <div class="wa-circle-row" role="button" tabindex="0" onclick="selectCircle('${escapedId}', '${escapedName}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectCircle('${escapedId}', '${escapedName}');}">
         <div class="wa-circle-avatar" aria-hidden="true">${emblemSvg}</div>
         <div class="wa-circle-info">
           <h3 class="wa-circle-name">${escapeHtmlText(c.name)}</h3>
           <div class="wa-circle-meta" title="${escapeHtmlAttr(metaParts.join(' • '))}">${metaLine}</div>
         </div>
         <div class="wa-circle-row-actions" onclick="event.stopPropagation()">
-          <button type="button" class="wa-row-edit-btn" onclick="event.stopPropagation(); openEditCircleModal(event, ${c.id}, '${escapedName}', '${escapedDesc}', ${c.teacher_id || 'null'})" aria-label="تعديل أو حذف الحلقة ${escapedName}" title="تعديل أو حذف الحلقة">
-            ${editPencilSvg}
-          </button>
+          ${canManage ? `
+            <button type="button" class="wa-row-edit-btn" onclick="event.stopPropagation(); openEditCircleModal(event, '${escapedId}', '${escapedName}', '${escapedDesc}', ${teacherIdArg})" aria-label="تعديل أو حذف الحلقة ${escapedName}" title="تعديل أو حذف الحلقة">
+              ${editPencilSvg}
+            </button>
+          ` : ''}
           <span class="wa-row-chevron" aria-hidden="true">${chevronLeftSvg}</span>
         </div>
       </div>
@@ -845,14 +865,16 @@ function renderCirclesGrid(circles, totalSourceCirclesCount) {
   if (window.lucide) lucide.createIcons();
 
   // Teacher role handling: "حلقتي" (single circle) vs "حلقاتي" (multiple circles)
-  const isTeacher = currentUserData && (currentUserData.role === "teacher" || currentUserData.role === "معلم");
+  const isTeacher = activeUser && (activeUser.role === "teacher" || activeUser.role === "معلم");
+  const cameFromRoster = (typeof document !== 'undefined' && (document.referrer || '').toLowerCase().includes('roster'));
+  const urlParams = new URLSearchParams(window.location.search);
 
   if (isTeacher && fullCount === 1 && uniqueCircles.length === 1) {
     const single = uniqueCircles[0];
     const navLabel = document.querySelector('#mobileNavCircles .bottom-nav-label, .bottom-nav-item[data-page="circles"] .bottom-nav-label');
     if (navLabel) navLabel.textContent = "حلقتي";
 
-    const sidebarCircleLink = document.querySelector('.sidebar-menu a[href="/circles"], aside a[href="/circles"]');
+    const sidebarCircleLink = document.querySelector('.sidebar-menu a[href*="circles"], aside a[href*="circles"]');
     if (sidebarCircleLink) {
       sidebarCircleLink.childNodes.forEach(node => {
         if (node.nodeType === Node.TEXT_NODE && (node.textContent.includes('الحلقات') || node.textContent.includes('حلقاتي'))) {
@@ -861,7 +883,7 @@ function renderCirclesGrid(circles, totalSourceCirclesCount) {
       });
     }
 
-    if (!initialCircleAutoSelected) {
+    if (!initialCircleAutoSelected && !cameFromRoster && !urlParams.has('list')) {
       initialCircleAutoSelected = true;
       selectCircle(single.id, single.name);
     }
@@ -869,7 +891,7 @@ function renderCirclesGrid(circles, totalSourceCirclesCount) {
     const navLabel = document.querySelector('#mobileNavCircles .bottom-nav-label, .bottom-nav-item[data-page="circles"] .bottom-nav-label');
     if (navLabel) navLabel.textContent = "حلقاتي";
 
-    const sidebarCircleLink = document.querySelector('.sidebar-menu a[href="/circles"], aside a[href="/circles"]');
+    const sidebarCircleLink = document.querySelector('.sidebar-menu a[href*="circles"], aside a[href*="circles"]');
     if (sidebarCircleLink) {
       sidebarCircleLink.childNodes.forEach(node => {
         if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('الحلقات')) {
@@ -886,7 +908,6 @@ function renderCirclesGrid(circles, totalSourceCirclesCount) {
 
   // Query parameter support: ?circle_id=...
   if (!initialCircleAutoSelected) {
-    const urlParams = new URLSearchParams(window.location.search);
     const paramCircleId = urlParams.get("circle_id");
     if (paramCircleId) {
       const matched = uniqueCircles.find(c => String(c.id) === String(paramCircleId));
@@ -1637,7 +1658,8 @@ async function saveCircleForm(e) {
 
   const isEdit = !!circleId;
   const cleanCid = isEdit ? normalizeCircleId(circleId) : Date.now();
-  const teacherInt = teacher_id ? parseInt(teacher_id, 10) : null;
+  const cleanTidStr = teacher_id ? String(teacher_id).replace(/^users_/i, '').trim() : '';
+  const teacherInt = cleanTidStr ? (/^\d+$/.test(cleanTidStr) ? parseInt(cleanTidStr, 10) : cleanTidStr) : null;
   const teacherSelect = document.getElementById("circleTeacher");
   let teacherName = teacherSelect ? (teacherSelect.selectedOptions[0]?.text?.replace(/^--.*--$/, '') || "") : "";
   teacherName = teacherName.replace(/\s*\([^)]*\)\s*$/, '').trim();
@@ -3873,15 +3895,16 @@ window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
     if (!Array.isArray(circlesList)) return [];
     const u = (window.AlbayanPermissions && window.AlbayanPermissions.getCurrentUser()) || currentUserData;
     if (!u) return circlesList;
-    const canAll = window.AlbayanPermissions
-      ? window.AlbayanPermissions.hasPermission("all_circles", u)
-      : (u.is_superadmin === 1 || u.role === "admin" || (Array.isArray(u.permissions) && u.permissions.includes("all_circles")));
+    let cachedUsers = [];
+    try { cachedUsers = JSON.parse(localStorage.getItem("cached_users_list") || "[]"); } catch (e) {}
+    if (window.AlbayanPermissions && typeof window.AlbayanPermissions.filterCirclesForUser === "function") {
+      return window.AlbayanPermissions.filterCirclesForUser(circlesList, u, cachedUsers);
+    }
+    const canAll = u.is_superadmin === 1 || u.role === "admin" || (Array.isArray(u.permissions) && u.permissions.includes("all_circles"));
     if (canAll) return circlesList;
 
     const myId = u.id !== undefined && u.id !== null ? String(u.id).replace(/^users_/, "").trim() : "";
-    const myName = normalizeArabicSearch(u.username || u.display_name || "");
-    let cachedUsers = [];
-    try { cachedUsers = JSON.parse(localStorage.getItem("cached_users_list") || "[]"); } catch (e) {}
+    const myNames = [normalizeArabicSearch(u.username || ""), normalizeArabicSearch(u.display_name || "")].filter(Boolean);
 
     return circlesList.filter((c) => {
       if (!c) return false;
@@ -3889,7 +3912,7 @@ window.addEventListener("albayan:cloud_updated", handleCirclesSyncRefresh);
       if (myId && cid && cid === myId) return true;
       const resolvedTeacher = normalizeArabicSearch(resolveCircleTeacherName(c, cachedUsers));
       const directTeacher = normalizeArabicSearch(c.teacher_name || "");
-      return Boolean(myName && (resolvedTeacher === myName || directTeacher === myName));
+      return myNames.some(nm => resolvedTeacher === nm || directTeacher === nm);
     });
   }
 

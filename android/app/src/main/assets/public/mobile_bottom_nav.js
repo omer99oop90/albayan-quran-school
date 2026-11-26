@@ -100,8 +100,8 @@
     if (circlesBtn) {
       circlesBtn.addEventListener('click', function(e) {
         if (window.location.pathname.includes('circles') || window.location.href.includes('circles.html')) {
-          e.preventDefault();
           if (typeof window.closeCircleRoster === 'function') {
+            e.preventDefault();
             window.closeCircleRoster();
           }
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -123,40 +123,82 @@
 
   async function checkTeacherCircle() {
     try {
-      // Fast path from sessionStorage cache
-      const cached = sessionStorage.getItem('albayan_teacher_circle_nav') || sessionStorage.getItem('albayan_teacher_single_circle');
-      if (cached) {
+      let meData = null;
+
+      // Always prefer fresh localStorage user (populated by login.html & AlbayanPermissions)
+      try {
+        const lsUser = localStorage.getItem('albayan_logged_user');
+        if (lsUser) {
+          const parsed = JSON.parse(lsUser);
+          if (parsed && (parsed.username || parsed.role)) meData = parsed;
+        }
+      } catch (e) {}
+
+      if (!meData) {
+        const meCached = sessionStorage.getItem('albayan_me_cache');
+        if (meCached) {
+          try { meData = JSON.parse(meCached); } catch (e) {}
+        }
+      }
+
+      if (!meData && !isStandalone) {
         try {
-          const parsed = JSON.parse(cached);
-          if (parsed.type === 'single' || parsed.id) {
-            applySingleCircleNav(parsed.single || parsed);
-          } else if (parsed.type === 'multiple') {
-            applyMultipleCirclesNav();
+          const meRes = await fetch('/api/me');
+          if (meRes.ok) {
+            const fetchedMe = await meRes.json();
+            if (fetchedMe && fetchedMe.logged_in) meData = fetchedMe;
           }
         } catch (e) {}
       }
 
-      let meData = null;
-      const meCached = sessionStorage.getItem('albayan_me_cache');
-      if (meCached) {
-        try { meData = JSON.parse(meCached); } catch (e) {}
-      }
-      if (!meData) {
-        const meRes = await fetch('/api/me');
-        if (!meRes.ok) return;
-        meData = await meRes.json();
-      }
-      if (!meData.logged_in) return;
+      if (!meData || (!meData.logged_in && !meData.username)) return;
 
       const isTeacher = meData.role === 'teacher' || meData.role === 'معلم';
-      if (isTeacher) {
+      const hasAllCircles = window.AlbayanPermissions && typeof window.AlbayanPermissions.hasPermission === 'function'
+        ? window.AlbayanPermissions.hasPermission('all_circles', meData)
+        : (Array.isArray(meData.permissions) && meData.permissions.includes('all_circles'));
+
+      if (isTeacher && !hasAllCircles) {
+        // Fast path from sessionStorage cache
+        const cached = sessionStorage.getItem('albayan_teacher_circle_nav') || sessionStorage.getItem('albayan_teacher_single_circle');
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed.type === 'single' || parsed.id) {
+              applySingleCircleNav(parsed.single || parsed);
+            } else if (parsed.type === 'multiple') {
+              applyMultipleCirclesNav();
+            }
+          } catch (e) {}
+        }
+
         let circles = [];
         if (meData.teacher_circles_count !== undefined && meData.single_circle_id) {
           circles = [{ id: meData.single_circle_id, name: meData.single_circle_name }];
         } else {
-          const circlesRes = await fetch('/api/circles');
-          if (circlesRes.ok) {
-            circles = await circlesRes.json();
+          // 1. Local/Offline circles cache scoped to this teacher
+          let rawCircles = [];
+          try {
+            if (window.CirclesService && typeof window.CirclesService.getCachedCircles === 'function') {
+              rawCircles = window.CirclesService.getCachedCircles() || [];
+            } else {
+              rawCircles = JSON.parse(localStorage.getItem('albayan_cached_circles') || localStorage.getItem('cached_circles_list') || '[]');
+            }
+          } catch (e) {}
+
+          if ((!rawCircles || rawCircles.length === 0) && window.AlbayanLocalDB && typeof window.AlbayanLocalDB.getLocalCircles === 'function') {
+            try { rawCircles = await window.AlbayanLocalDB.getLocalCircles(); } catch (e) {}
+          }
+
+          if (Array.isArray(rawCircles) && rawCircles.length > 0 && window.AlbayanPermissions && typeof window.AlbayanPermissions.filterCirclesForUser === 'function') {
+            circles = window.AlbayanPermissions.filterCirclesForUser(rawCircles, meData);
+          } else if (!isStandalone) {
+            try {
+              const circlesRes = await fetch('/api/circles');
+              if (circlesRes.ok) {
+                circles = await circlesRes.json();
+              }
+            } catch (e) {}
           }
         }
 
@@ -184,22 +226,20 @@
     if (navItem) {
       const label = navItem.querySelector('.bottom-nav-label');
       if (label) label.textContent = 'حلقتي';
-      navItem.href = `/circles?circle_id=${single.id}`;
+      navItem.href = `roster.html?circle_id=${single.id}`;
 
       navItem.onclick = function (e) {
-        if (window.location.pathname.includes('circles')) {
+        if (window.location.pathname.includes('roster') || window.location.href.includes('roster.html')) {
           e.preventDefault();
-          if (typeof window.selectCircle === 'function') {
-            window.selectCircle(single.id, single.name);
-          }
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       };
     }
 
     // Also update desktop sidebar if present
-    const sidebarCircleLink = document.querySelector('.sidebar-menu a[href="/circles"], aside a[href="/circles"]');
+    const sidebarCircleLink = document.querySelector('.sidebar-menu a[href*="circles"], .sidebar-nav a[href*="circles"], aside a[href*="circles"]');
     if (sidebarCircleLink) {
-      sidebarCircleLink.href = `/circles?circle_id=${single.id}`;
+      sidebarCircleLink.href = `roster.html?circle_id=${single.id}`;
       sidebarCircleLink.childNodes.forEach(node => {
         if (node.nodeType === Node.TEXT_NODE && (node.textContent.includes('الحلقات') || node.textContent.includes('حلقاتي'))) {
           node.textContent = ' حلقتي';
@@ -213,12 +253,12 @@
     if (navItem) {
       const label = navItem.querySelector('.bottom-nav-label');
       if (label) label.textContent = 'حلقاتي';
-      navItem.href = '/circles';
+      navItem.href = 'circles.html';
     }
 
-    const sidebarCircleLink = document.querySelector('.sidebar-menu a[href="/circles"], aside a[href="/circles"]');
+    const sidebarCircleLink = document.querySelector('.sidebar-menu a[href*="circles"], .sidebar-nav a[href*="circles"], aside a[href*="circles"]');
     if (sidebarCircleLink) {
-      sidebarCircleLink.href = '/circles';
+      sidebarCircleLink.href = 'circles.html';
       sidebarCircleLink.childNodes.forEach(node => {
         if (node.nodeType === Node.TEXT_NODE && (node.textContent.includes('الحلقات') || node.textContent.includes('حلقتي'))) {
           node.textContent = ' حلقاتي';
@@ -375,9 +415,14 @@
     }
   };
 
-  // Observer to keep permissions synced dynamically if scripts update roles later
+  // Observer to keep permissions synced dynamically if scripts update roles later (re-entrancy guarded)
+  let _isSyncingPerms = false;
   const observer = new MutationObserver(function () {
-    syncPermissions();
+    if (_isSyncingPerms) return;
+    _isSyncingPerms = true;
+    Promise.resolve(syncPermissions()).finally(() => {
+      _isSyncingPerms = false;
+    });
   });
 
   // Self initialize
@@ -385,12 +430,12 @@
     document.addEventListener('DOMContentLoaded', function () {
       initMobileBottomNav();
       const sidebar = document.querySelector('.sidebar');
-      if (sidebar) observer.observe(sidebar, { attributes: true, subtree: true, childList: true });
+      if (sidebar) observer.observe(sidebar, { childList: true });
     });
   } else {
     initMobileBottomNav();
     const sidebar = document.querySelector('.sidebar');
-    if (sidebar) observer.observe(sidebar, { attributes: true, subtree: true, childList: true });
+    if (sidebar) observer.observe(sidebar, { childList: true });
   }
 
   window.initMobileBottomNav = initMobileBottomNav;

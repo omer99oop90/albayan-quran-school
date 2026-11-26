@@ -343,29 +343,96 @@
 
       const normUser = normalizeArabicName(username);
 
+      function isDeletedUser(u) {
+        return Boolean(!u || typeof u !== "object" || u.deleted || u.is_deleted === 1 || u.is_deleted === "1" || u.is_deleted === true);
+      }
+
+      function findMatchingStaff(list) {
+        if (!Array.isArray(list)) return null;
+        let exactMatch = null;
+        let normMatch = null;
+        for (const u of list) {
+          if (isDeletedUser(u)) continue;
+          const candidates = [u.username, u.display_name, u.name]
+            .map(v => String(v || "").trim())
+            .filter(Boolean);
+          if (candidates.some(c => c.toLowerCase() === username.toLowerCase())) {
+            exactMatch = u;
+            break;
+          }
+          if (!normMatch && candidates.some(c => normalizeArabicName(c) === normUser)) {
+            normMatch = u;
+          }
+        }
+        return exactMatch || normMatch;
+      }
+
+      function normalizeStaffId(rawId, fallbackKey = null) {
+        const val = (rawId !== undefined && rawId !== null && String(rawId).trim() !== "") ? rawId : fallbackKey;
+        if (val === null || val === undefined) return null;
+        const clean = String(val).replace(/^users_/i, "").trim();
+        if (!clean) return null;
+        const num = Number(clean);
+        return (!Number.isNaN(num) && String(num) === clean) ? num : clean;
+      }
+
       let matchedStaff = null;
+      let fbUsersList = [];
+      let fbFetched = false;
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2800);
-        const res = await fetch(`${FB_BASE}/users.json`, { signal: controller.signal });
+        const timeoutId = setTimeout(() => controller.abort(), 3200);
+        const res = await fetch(`${FB_BASE}/users.json`, { signal: controller.signal, cache: "no-store" });
         clearTimeout(timeoutId);
         if (res.ok) {
+          fbFetched = true;
           const raw = await res.json();
           if (raw && typeof raw === "object") {
-            const list = Array.isArray(raw) ? raw : Object.values(raw);
-            for (const u of list) {
-              if (!u) continue;
-              const uName = (u.username || u.name || "").trim();
-              if (uName.toLowerCase() === username.toLowerCase() || normalizeArabicName(uName) === normUser) {
-                matchedStaff = u;
-                break;
+            const entries = Array.isArray(raw)
+              ? raw.map((u, idx) => [String(idx), u])
+              : Object.entries(raw);
+            const dedup = new Map();
+            for (const [k, u] of entries) {
+              if (isDeletedUser(u)) continue;
+              const uid = normalizeStaffId(u.id !== undefined ? u.id : u.local_id, k);
+              const normalized = { ...u, id: uid, local_id: uid };
+              const mapKey = uid !== null ? String(uid) : String(k);
+              const existing = dedup.get(mapKey);
+              if (!existing || String(k) === String(uid)) {
+                dedup.set(mapKey, normalized);
               }
             }
+            fbUsersList = Array.from(dedup.values());
+            try {
+              if (fbUsersList.length > 0) {
+                localStorage.setItem("cached_users_list", JSON.stringify(fbUsersList));
+              }
+            } catch (e) {}
+            matchedStaff = findMatchingStaff(fbUsersList);
           }
         }
       } catch (err) {}
 
+      // Offline fallback: check locally cached staff accounts before any server/bootstrap fallback
+      let localUsersLoaded = false;
+      if (!matchedStaff && !fbFetched) {
+        try {
+          const cachedRaw = localStorage.getItem("cached_users_list");
+          if (cachedRaw) {
+            const cachedList = JSON.parse(cachedRaw);
+            if (Array.isArray(cachedList) && cachedList.length > 0) {
+              localUsersLoaded = true;
+              matchedStaff = findMatchingStaff(cachedList);
+            }
+          }
+        } catch (e) {}
+      }
+
       if (matchedStaff) {
+        if (matchedStaff.role === "student") {
+          showLoginError("هذا الحساب مخصص لبوابة الطلاب ولا يمكن تسجيل الدخول به هنا.");
+          return;
+        }
         if (matchedStaff.is_active === 0 || matchedStaff.is_active === "0" || matchedStaff.is_active === false) {
           showLoginError("هذا الحساب معطّل من قبل إدارة المدرسة. يرجى التواصل مع المسؤول.");
           return;
@@ -377,16 +444,16 @@
           showLoginError("اسم المستخدم أو رمز المرور غير صحيح.");
           return;
         }
-        const resolvedRole = matchedStaff.role === "student"
-          ? selectedStaffRole
-          : (matchedStaff.role || (matchedStaff.is_superadmin ? "admin" : selectedStaffRole));
+        const resolvedRole = (matchedStaff.role === "admin" || matchedStaff.role === "supervisor" || matchedStaff.role === "teacher")
+          ? matchedStaff.role
+          : (matchedStaff.is_superadmin ? "admin" : selectedStaffRole);
         saveSessionAndRedirect(
-          matchedStaff.username || username,
+          matchedStaff.username || matchedStaff.display_name || username,
           resolvedRole,
           matchedStaff.display_name || matchedStaff.username || username,
           "staff_token_" + Date.now(),
           {
-            id: matchedStaff.id ?? matchedStaff.local_id ?? null,
+            id: normalizeStaffId(matchedStaff.id, matchedStaff.local_id),
             is_superadmin: (matchedStaff.is_superadmin === 1 || matchedStaff.is_superadmin === "1" || matchedStaff.is_superadmin === true) ? 1 : 0,
             permissions: matchedStaff.permissions
           }
@@ -414,7 +481,7 @@
               data.display_name || username,
               "staff_token_" + Date.now(),
               {
-                id: data.id ?? null,
+                id: normalizeStaffId(data.id),
                 is_superadmin: data.is_superadmin ? 1 : 0,
                 permissions: data.permissions
               }
@@ -424,8 +491,10 @@
         }
       } catch (err) {}
 
-      const isAdminKeyword = (normUser === "admin" || normUser === "مشرف" || normUser === "مدير" || username.toLowerCase() === "admin");
-      if (isAdminKeyword && code === "123456") {
+      // Bootstrap admin only when no staff database exists yet (first-run setup)
+      const hasAnyKnownUsers = (fbFetched && fbUsersList.length > 0) || localUsersLoaded;
+      const isBootstrapAdmin = (normUser === "admin" || normUser === "مدير" || username.toLowerCase() === "admin");
+      if (!hasAnyKnownUsers && isBootstrapAdmin && code === "123456") {
         saveSessionAndRedirect(
           username,
           "admin",
@@ -434,23 +503,6 @@
           {
             is_superadmin: 1,
             permissions: ["circles", "all_circles", "exams", "analytics", "student_cv", "users"]
-          }
-        );
-        return;
-      }
-
-      if (code === "123456") {
-        const fallbackPerms = selectedStaffRole === "supervisor"
-          ? ["circles", "all_circles", "exams", "analytics", "student_cv"]
-          : ["circles", "exams", "analytics", "student_cv"];
-        saveSessionAndRedirect(
-          username,
-          selectedStaffRole,
-          username,
-          "staff_token_" + Date.now(),
-          {
-            is_superadmin: 0,
-            permissions: fallbackPerms
           }
         );
         return;
@@ -495,6 +547,17 @@
       return ["circles", "exams", "analytics", "student_cv"];
     }
 
+    function resolveLandingPage(staffRole, isSuper, perms) {
+      if (isSuper || staffRole === "admin") return "circles.html";
+      const list = Array.isArray(perms) ? perms : [];
+      if (list.includes("circles")) return "circles.html";
+      if (list.includes("exams")) return "admin.html";
+      if (list.includes("analytics")) return "analytics.html";
+      if (list.includes("student_cv")) return "student_cv.html";
+      if (list.includes("users")) return "users.html";
+      return "more.html";
+    }
+
     function saveSessionAndRedirect(username, role, name, token, extra = {}) {
       const staffRole = (role === "admin" || role === "supervisor" || role === "teacher")
         ? role
@@ -514,10 +577,13 @@
         }));
         localStorage.setItem("albayan_saved_username", username);
         localStorage.setItem("albayan_saved_token", token || ("staff_token_" + Date.now()));
+        localStorage.removeItem("albayan_active_circle_id");
         sessionStorage.removeItem("albayan_me_cache");
+        sessionStorage.removeItem("albayan_teacher_circle_nav");
+        sessionStorage.removeItem("albayan_teacher_single_circle");
       } catch (e) {}
 
-      window.location.href = "circles.html";
+      window.location.href = resolveLandingPage(staffRole, isSuper === 1, resolvedPermissions);
     }
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -528,6 +594,7 @@
         if (urlParams.has("logout") || urlParams.has("force")) {
           localStorage.removeItem("albayan_logged_user");
           localStorage.removeItem("albayan_saved_token");
+          localStorage.removeItem("albayan_active_circle_id");
           sessionStorage.clear();
         }
       } catch (e) {}

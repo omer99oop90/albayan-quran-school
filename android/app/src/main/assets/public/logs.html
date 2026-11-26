@@ -483,15 +483,30 @@
     });
 
     async function checkUserAuth() {
+      let resolvedUser = null;
       try {
         const res = await fetch("/api/me");
-        const data = await res.json();
-        if (data.logged_in) {
-          isAdmin = data.role === "admin" || data.is_superadmin === 1;
-          const clearBtn = document.getElementById("btnClearLogs");
-          if (clearBtn && isAdmin) clearBtn.style.display = "inline-flex";
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.logged_in) resolvedUser = data;
         }
       } catch (e) {}
+
+      if (!resolvedUser) {
+        try {
+          const cached = localStorage.getItem("albayan_logged_user");
+          if (cached) resolvedUser = JSON.parse(cached);
+        } catch (e) {}
+      }
+
+      if (!resolvedUser || !resolvedUser.username) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      isAdmin = resolvedUser.role === "admin" || resolvedUser.is_superadmin === 1 || resolvedUser.is_superadmin === "1";
+      const clearBtn = document.getElementById("btnClearLogs");
+      if (clearBtn && isAdmin) clearBtn.style.display = "inline-flex";
     }
 
     function setCategory(cat, btn) {

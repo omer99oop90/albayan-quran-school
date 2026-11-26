@@ -49,7 +49,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   initMobileSidebar();
   initOverflowMenu();
   applyStatsStripVisibility();
-  await checkAuth();
+  const authed = await checkAuth();
+  if (!authed) return;
   await refreshAllAccounts(false);
 
   // Re-sync automatically when global background sync finishes
@@ -189,19 +190,16 @@ async function checkAuth() {
     if (!data.logged_in) {
       if (!isStandalone) {
         window.location.href = "login.html";
-        return;
+        return false;
       }
-      useCachedUserAuth();
-      return;
+      return useCachedUserAuth();
     }
 
     const perms = parsePermissions(data.permissions);
     const isSuper = data.is_superadmin === 1 || data.is_superadmin === "1";
     if (data.role !== "admin" && !isSuper && !perms.includes("users")) {
-      if (!isStandalone) {
-        window.location.href = "circles.html";
-        return;
-      }
+      window.location.replace("circles.html");
+      return false;
     }
 
     document.getElementById("loggedUsername").textContent = data.username || "مسؤول النظام";
@@ -213,12 +211,14 @@ async function checkAuth() {
       else roleBadge.textContent = "معلم حلقة";
     }
 
-    window.currentUserIsAdmin = (isSuper || data.role === "admin" || isStandalone);
+    window.currentUserIsAdmin = (isSuper || data.role === "admin" || perms.includes("users"));
     const canAccessCv = isSuper || data.role === "admin" || data.role === "supervisor" || perms.includes("student_cv");
     const cvLink = document.getElementById("studentCvMenuLink");
     if (cvLink) cvLink.style.display = canAccessCv ? "flex" : "none";
+    if (window.AlbayanPermissions) window.AlbayanPermissions.applyNavPermissions(data);
+    return true;
   } catch (err) {
-    useCachedUserAuth();
+    return useCachedUserAuth();
   }
 }
 
@@ -231,17 +231,17 @@ function useCachedUserAuth() {
 
   if (!user || (!user.username && !user.student_name)) {
     window.location.href = "login.html";
-    return;
+    return false;
   }
 
   const perms = parsePermissions(user.permissions);
   const isSuper = user.is_superadmin === 1 || user.is_superadmin === "1";
   if (window.AlbayanPermissions && !window.AlbayanPermissions.enforcePageAccess(user)) {
-    return;
+    return false;
   }
   if (user.role !== "admin" && !isSuper && !perms.includes("users")) {
     window.location.replace("circles.html");
-    return;
+    return false;
   }
   const username = user.username || "مسؤول النظام";
   const userEl = document.getElementById("loggedUsername");
@@ -255,6 +255,7 @@ function useCachedUserAuth() {
   }
   window.currentUserIsAdmin = (user.role === "admin" || isSuper || perms.includes("users"));
   if (window.AlbayanPermissions) window.AlbayanPermissions.applyNavPermissions(user);
+  return true;
 }
 
 async function logout() {

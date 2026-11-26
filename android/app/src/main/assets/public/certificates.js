@@ -212,11 +212,16 @@
       const roleElem = document.getElementById('loggedRole');
       if (roleElem && u.role) {
         const rolesMap = { admin: 'مدير النظام', teacher: 'معلم الحلقة', supervisor: 'مشرف تعليمي', student: 'طالب' };
-        roleElem.textContent = rolesMap[u.role] || u.role;
+        roleElem.textContent = u.is_superadmin === 1 ? 'المسؤول الأول' : (rolesMap[u.role] || u.role);
       }
-      const usersLink = document.getElementById('usersMenuLink');
-      if (usersLink && u.role && u.role !== 'admin') {
-        usersLink.style.display = 'none';
+      if (window.AlbayanPermissions) {
+        window.AlbayanPermissions.applyNavPermissions(u);
+        window.AlbayanPermissions.enforcePageAccess(u);
+      } else {
+        const usersLink = document.getElementById('usersMenuLink');
+        if (usersLink && u.role && u.role !== 'admin') {
+          usersLink.style.display = 'none';
+        }
       }
     };
 
@@ -2238,7 +2243,9 @@
         if (res.ok) {
           const data = await res.json();
           if (data && Array.isArray(data.circles)) {
-            state.circles = data.circles;
+            state.circles = (window.AlbayanPermissions && typeof window.AlbayanPermissions.filterCirclesForUser === 'function')
+              ? window.AlbayanPermissions.filterCirclesForUser(data.circles)
+              : data.circles;
             populateFilterDropdowns(state.circles, data.months, data.years, data.current_year);
             return;
           }
@@ -2258,6 +2265,9 @@
         const localCircles = await window.AlbayanLocalDB.getLocalCircles();
         if (Array.isArray(localCircles) && localCircles.length > 0) loadedCircles = localCircles;
       } catch (e) {}
+    }
+    if (window.AlbayanPermissions && typeof window.AlbayanPermissions.filterCirclesForUser === 'function') {
+      loadedCircles = window.AlbayanPermissions.filterCirclesForUser(loadedCircles);
     }
     state.circles = loadedCircles;
     populateFilterDropdowns(state.circles, HIJRI_MONTHS_LIST, null, null);
@@ -2815,6 +2825,8 @@
 
     if (rawStudents.length === 0) return [];
 
+    const canAllCircles = !window.AlbayanPermissions || window.AlbayanPermissions.hasPermission('all_circles');
+    const allowedCircleIdsSet = new Set((state.circles || []).map((c) => normCircleIdStr(c.id)).filter(Boolean));
     const wantCircleId = state.selectedCircleId !== 'all' ? normCircleIdStr(state.selectedCircleId) : null;
     const normalizedStudents = [];
     const seenIds = new Set();
@@ -2824,6 +2836,7 @@
       const sid = normStudentIdStr(s.id !== undefined ? s.id : s.student_id);
       if (!sid || seenIds.has(sid)) continue;
       const cid = normCircleIdStr(s.circle_id);
+      if (!canAllCircles && (!cid || !allowedCircleIdsSet.has(cid))) continue;
       if (wantCircleId && cid !== wantCircleId) continue;
       seenIds.add(sid);
 

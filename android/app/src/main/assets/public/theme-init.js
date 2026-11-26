@@ -607,6 +607,7 @@
     try {
       localStorage.removeItem('albayan_logged_user');
       localStorage.removeItem('albayan_saved_token');
+      localStorage.removeItem('albayan_active_circle_id');
       sessionStorage.clear();
     } catch(e) {}
 
@@ -880,6 +881,81 @@
       }
     }
 
+    function isAdminUser(userObj) {
+      var u = userObj || getCurrentUser();
+      if (!u) return false;
+      return u.role === 'admin' || Number(u.is_superadmin) === 1 || u.is_superadmin === true;
+    }
+
+    function canManageCircles(userObj) {
+      var u = userObj || getCurrentUser();
+      if (!u || u.role === 'student') return false;
+      if (isAdminUser(u)) return true;
+      return u.role === 'supervisor' || hasPermission('all_circles', u) || hasPermission('users', u);
+    }
+
+    function normalizeEntityUid(val) {
+      if (val === undefined || val === null || val === '') return '';
+      return String(val).replace(/^users_/i, '').trim();
+    }
+
+    function filterCirclesForUser(circlesList, userObj, usersList) {
+      if (!Array.isArray(circlesList)) return [];
+      var u = userObj || getCurrentUser();
+      if (!u) return circlesList;
+      if (hasPermission('all_circles', u)) return circlesList;
+
+      var cachedUsers = Array.isArray(usersList) ? usersList : [];
+      if (cachedUsers.length === 0) {
+        try { cachedUsers = JSON.parse(localStorage.getItem('cached_users_list') || '[]'); } catch (e) {}
+      }
+
+      var myId = normalizeEntityUid(u.id);
+      var myNames = [];
+      if (u.username) myNames.push(normName(u.username));
+      if (u.display_name && normName(u.display_name) !== normName(u.username)) {
+        myNames.push(normName(u.display_name));
+      }
+
+      if (!myId && myNames.length > 0 && cachedUsers.length > 0) {
+        for (var k = 0; k < cachedUsers.length; k++) {
+          var cu = cachedUsers[k];
+          if (!cu || cu.deleted) continue;
+          var cuName = normName(cu.username || cu.display_name || cu.name);
+          if (cuName && myNames.indexOf(cuName) !== -1) {
+            myId = normalizeEntityUid(cu.id !== undefined ? cu.id : cu.local_id);
+            break;
+          }
+        }
+      }
+
+      var userMap = {};
+      for (var m = 0; m < cachedUsers.length; m++) {
+        var usr = cachedUsers[m];
+        if (!usr || usr.deleted) continue;
+        var uid = normalizeEntityUid(usr.id !== undefined ? usr.id : usr.local_id);
+        if (uid) userMap[uid] = usr;
+      }
+
+      return circlesList.filter(function(c) {
+        if (!c || c.deleted || c.is_deleted === 1 || c.is_deleted === true) return false;
+        var tid = normalizeEntityUid(c.teacher_id);
+        if (myId && tid && tid === myId) return true;
+        var teacherObj = tid ? userMap[tid] : null;
+        var teacherUserNames = [];
+        if (c.teacher_name) teacherUserNames.push(normName(c.teacher_name));
+        if (c.teacher) teacherUserNames.push(normName(c.teacher));
+        if (teacherObj) {
+          if (teacherObj.username) teacherUserNames.push(normName(teacherObj.username));
+          if (teacherObj.display_name) teacherUserNames.push(normName(teacherObj.display_name));
+        }
+        for (var n = 0; n < myNames.length; n++) {
+          if (myNames[n] && teacherUserNames.indexOf(myNames[n]) !== -1) return true;
+        }
+        return false;
+      });
+    }
+
     function applyNavPermissions(userObj) {
       if (typeof document === 'undefined' || !isStaffPage()) return;
       var u = userObj || getCurrentUser();
@@ -890,6 +966,7 @@
       var canAnalytics = hasPermission('analytics', u);
       var canCv = hasPermission('student_cv', u);
       var canUsers = hasPermission('users', u);
+      var canManageC = canManageCircles(u);
 
       // Student CV links (Sidebar + Bottom Nav + Mobile Nav)
       var cvSelectors = '#studentCvMenuLink, #mobileNavStudentCv, a[href*="student_cv"], a[href*="/student-cv"]';
@@ -925,6 +1002,16 @@
       for (var n = 0; n < circleLinks.length; n++) {
         setElVisible(circleLinks[n], canCircles);
       }
+
+      // Circle management (Create / Edit / Delete circles) restricted to Admin / Supervisor / all_circles / users
+      var addCircleBtn = document.getElementById('menuItemAddCircle');
+      if (addCircleBtn) {
+        setElVisible(addCircleBtn, canManageC);
+      }
+      var moreMenuWrap = document.getElementById('circlesMoreMenuWrap');
+      if (moreMenuWrap) {
+        setElVisible(moreMenuWrap, canManageC || canAnalytics);
+      }
     }
 
     function getFallbackPage(u) {
@@ -932,13 +1019,21 @@
       if (hasPermission('exams', u)) return 'admin.html';
       if (hasPermission('analytics', u)) return 'analytics.html';
       if (hasPermission('student_cv', u)) return 'student_cv.html';
+      if (hasPermission('users', u)) return 'users.html';
       return 'more.html';
     }
 
     function enforcePageAccess(userObj) {
       if (typeof window === 'undefined' || !isStaffPage()) return true;
       var u = userObj || getCurrentUser();
-      if (!u || u.role === 'student') return true;
+      if (!u || (!u.username && !u.student_name && !u.role)) {
+        window.location.replace('login.html');
+        return false;
+      }
+      if (u.role === 'student') {
+        window.location.replace('mymark.html');
+        return false;
+      }
 
       var path = (window.location.pathname || window.location.href || '').toLowerCase();
       var denied = false;
@@ -950,7 +1045,7 @@
         denied = !hasPermission('analytics', u);
       } else if (path.indexOf('users.html') !== -1 || path.endsWith('/users')) {
         denied = !hasPermission('users', u);
-      } else if ((path.indexOf('circles.html') !== -1 || path.endsWith('/circles')) && !hasPermission('circles', u)) {
+      } else if ((path.indexOf('circles.html') !== -1 || path.endsWith('/circles') || path.indexOf('roster.html') !== -1 || path.endsWith('/roster')) && !hasPermission('circles', u)) {
         denied = true;
       }
 
@@ -978,8 +1073,9 @@
         if (r1.ok) {
           var me = await r1.json();
           if (me && me.logged_in) {
+            var parsedApiPerms = parsePermissions(me.permissions);
             var mergedApi = Object.assign({}, u, me, {
-              permissions: parsePermissions(me.permissions) || u.permissions
+              permissions: parsedApiPerms !== null ? parsedApiPerms : u.permissions
             });
             try { localStorage.setItem('albayan_logged_user', JSON.stringify(mergedApi)); } catch (e) {}
             applyNavPermissions(mergedApi);
@@ -999,18 +1095,28 @@
         if (!r2.ok) return;
         var raw = await r2.json();
         if (!raw || typeof raw !== 'object') return;
-        var entries = Array.isArray(raw) ? raw : Object.values(raw);
+        var rawEntries = Array.isArray(raw)
+          ? raw.map(function(item, idx) { return [String(idx), item]; })
+          : Object.entries(raw);
+        var targetUid = normalizeEntityUid(u.id);
         var targetNorm = normName(u.username);
+        var targetDisplayNorm = normName(u.display_name);
         var matched = null;
-        for (var i = 0; i < entries.length; i++) {
-          var cand = entries[i];
+        for (var i = 0; i < rawEntries.length; i++) {
+          var k = rawEntries[i][0];
+          var cand = rawEntries[i][1];
           if (!cand || typeof cand !== 'object') continue;
-          if (u.id !== undefined && u.id !== null && String(cand.id) === String(u.id)) {
-            matched = cand;
+          if (cand.deleted || cand.is_deleted === 1 || cand.is_deleted === '1' || cand.is_deleted === true) continue;
+          var candUid = normalizeEntityUid(cand.id !== undefined ? cand.id : (cand.local_id !== undefined ? cand.local_id : k));
+          if (targetUid && candUid && candUid === targetUid) {
+            matched = Object.assign({}, cand, { id: cand.id !== undefined ? cand.id : candUid });
             break;
           }
-          if (normName(cand.username || cand.display_name || cand.name) === targetNorm) {
-            matched = cand;
+          var candName = normName(cand.username || cand.display_name || cand.name);
+          var candDisp = normName(cand.display_name || cand.username || cand.name);
+          if ((targetNorm && (candName === targetNorm || candDisp === targetNorm)) ||
+              (targetDisplayNorm && (candName === targetDisplayNorm || candDisp === targetDisplayNorm))) {
+            matched = Object.assign({}, cand, { id: cand.id !== undefined ? cand.id : candUid });
           }
         }
         if (!matched) return;
@@ -1023,8 +1129,11 @@
         }
 
         var nextPerms = parsePermissions(matched.permissions);
+        var resolvedId = normalizeEntityUid(matched.id !== undefined ? matched.id : u.id);
+        var numId = Number(resolvedId);
+        var finalId = (resolvedId && !Number.isNaN(numId) && String(numId) === resolvedId) ? numId : (resolvedId || u.id);
         var updatedUser = Object.assign({}, u, {
-          id: matched.id !== undefined ? matched.id : u.id,
+          id: finalId,
           username: matched.username || u.username,
           display_name: matched.display_name || matched.username || u.display_name,
           role: matched.role || u.role,
@@ -1045,6 +1154,9 @@
     window.AlbayanPermissions = {
       parsePermissions: parsePermissions,
       getCurrentUser: getCurrentUser,
+      isAdminUser: isAdminUser,
+      canManageCircles: canManageCircles,
+      filterCirclesForUser: filterCirclesForUser,
       hasPermission: hasPermission,
       applyNavPermissions: applyNavPermissions,
       enforcePageAccess: enforcePageAccess,

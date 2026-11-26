@@ -677,7 +677,7 @@
           <strong id="loggedUsername">كادر تعليمي</strong>
           <small id="loggedRole">مدرسة البيان</small>
         </div>
-        <button type="button" class="btn-danger-outline" onclick="window.location.href='login.html?logout=1'">
+        <button type="button" class="btn-danger-outline" onclick="window.albayanLogout ? window.albayanLogout() : (window.location.href='login.html?logout=1')">
           تسجيل الخروج <i data-lucide="log-out" style="width:16px; height:16px;"></i>
         </button>
       </div>

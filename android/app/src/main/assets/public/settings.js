@@ -382,6 +382,11 @@ function isValidFullEmail(val) {
 async function loadUserProfile() {
   const isStandalone = window.IS_CAPACITOR_APP || window.location.protocol === 'file:' || window.location.origin.includes('capacitor://') || (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80'));
   let fetchedData = null;
+  let cachedUser = null;
+  try {
+    const cached = localStorage.getItem("albayan_logged_user");
+    if (cached) cachedUser = JSON.parse(cached);
+  } catch (e) {}
 
   try {
     const controller = new AbortController();
@@ -389,7 +394,7 @@ async function loadUserProfile() {
     const res = await fetch("/api/account/profile", { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!res.ok) {
-      if (res.status === 401 && !isStandalone) {
+      if (res.status === 401 && !isStandalone && (!cachedUser || !cachedUser.username)) {
         window.location.href = "login.html";
         return;
       }
@@ -398,23 +403,17 @@ async function loadUserProfile() {
     fetchedData = await res.json();
     currentUserData = fetchedData.user;
   } catch (err) {
-    let username = "مسؤول النظام";
-    let role = "admin";
-    let email = "";
-    try {
-      const cached = localStorage.getItem("albayan_logged_user");
-      if (cached) {
-        const u = JSON.parse(cached);
-        if (u && u.username) username = u.username;
-        if (u && u.role) role = u.role;
-        if (u && u.email) email = u.email;
-      }
-    } catch (e) {}
+    if (!cachedUser || (!cachedUser.username && !cachedUser.student_name)) {
+      window.location.href = "login.html";
+      return;
+    }
+    const role = cachedUser.role || "teacher";
     currentUserData = {
-      username,
+      ...cachedUser,
+      username: cachedUser.username || "كادر تعليمي",
       role,
-      email,
-      is_superadmin: role === "admin" ? 1 : 0
+      email: cachedUser.email || "",
+      is_superadmin: (cachedUser.is_superadmin === 1 || cachedUser.is_superadmin === "1" || cachedUser.is_superadmin === true) ? 1 : 0
     };
   }
 
@@ -468,6 +467,71 @@ async function loadUserProfile() {
   refreshRecordPeriodBadgesAndDraft(false);
 }
 
+async function resolveCloudStaffRecord(cachedUser) {
+  if (!cachedUser) return null;
+  const normUser = (v) => String(v || "").trim().toLowerCase()
+    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, " ");
+
+  const cleanUid = cachedUser.id !== undefined && cachedUser.id !== null
+    ? String(cachedUser.id).replace(/^users_/i, "").trim()
+    : "";
+
+  if (cleanUid && window.AlbayanFirebaseDAL) {
+    try {
+      const uRes = await window.AlbayanFirebaseDAL.get(`users/${cleanUid}`);
+      if (uRes && uRes.ok && uRes.data && typeof uRes.data === "object") {
+        return { key: cleanUid, data: { ...uRes.data, id: uRes.data.id ?? cleanUid } };
+      }
+    } catch (e) {}
+  }
+
+  // Lookup by username across /users when id is missing or prefixed
+  if (window.AlbayanFirebaseDAL) {
+    try {
+      const allRes = await window.AlbayanFirebaseDAL.get("users");
+      if (allRes && allRes.ok && allRes.data && typeof allRes.data === "object") {
+        const entries = Array.isArray(allRes.data)
+          ? allRes.data.map((u, idx) => [String(idx), u])
+          : Object.entries(allRes.data);
+        const targetNorm = normUser(cachedUser.username || cachedUser.display_name);
+        for (const [k, u] of entries) {
+          if (!u || typeof u !== "object" || u.deleted) continue;
+          const kClean = String(u.id !== undefined ? u.id : k).replace(/^users_/i, "").trim();
+          if (cleanUid && kClean === cleanUid) {
+            return { key: k, data: { ...u, id: u.id ?? kClean } };
+          }
+          const uNorm = normUser(u.username || u.display_name || u.name);
+          if (targetNorm && uNorm === targetNorm) {
+            return { key: k, data: { ...u, id: u.id ?? kClean } };
+          }
+        }
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
+function updateLocalUsersCacheEntry(userObj) {
+  if (!userObj) return;
+  try {
+    const raw = localStorage.getItem("cached_users_list");
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        const idx = list.findIndex(u => u && String(u.id).replace(/^users_/i, "") === String(userObj.id).replace(/^users_/i, ""));
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...userObj };
+          localStorage.setItem("cached_users_list", JSON.stringify(list));
+        }
+      }
+    }
+  } catch (e) {}
+}
+
 async function handleUpdateProfile(e) {
   e.preventDefault();
   const btn = document.getElementById("btnSaveProfile");
@@ -492,21 +556,39 @@ async function handleUpdateProfile(e) {
     if (res.ok && data.success) savedRemote = true;
   } catch (err) {}
 
-  // Always update local session cache seamlessly for offline/Capacitor mode
+  // Always update Firebase & local session cache seamlessly so refreshFromCloud stays consistent
   try {
     const cachedRaw = localStorage.getItem("albayan_logged_user");
     const cached = cachedRaw ? JSON.parse(cachedRaw) : {};
+    const found = await resolveCloudStaffRecord(cached);
+    if (found && found.data && window.AlbayanFirebaseDAL) {
+      const nextCloud = {
+        ...found.data,
+        username,
+        display_name: username,
+        updated_at: new Date().toISOString()
+      };
+      const fbRes = await window.AlbayanFirebaseDAL.put(`users/${found.key}`, nextCloud);
+      if (fbRes && fbRes.ok) savedRemote = true;
+      updateLocalUsersCacheEntry(nextCloud);
+      if (cached.id === undefined || cached.id === null) cached.id = found.data.id;
+    }
     cached.username = username;
+    cached.display_name = username;
     localStorage.setItem("albayan_logged_user", JSON.stringify(cached));
+    localStorage.setItem("albayan_saved_username", username);
   } catch (e) {}
 
-  if (currentUserData) currentUserData.username = username;
+  if (currentUserData) {
+    currentUserData.username = username;
+    currentUserData.display_name = username;
+  }
   const heroUser = document.getElementById("heroUsername");
   const initialsEl = document.getElementById("profileInitials");
   if (heroUser) heroUser.textContent = username;
   if (initialsEl) initialsEl.textContent = username.charAt(0).toUpperCase() || "م";
 
-  showAlert(savedRemote ? "تم تحديث الاسم الشخصي بنجاح" : "تم حفظ الاسم الشخصي بنجاح", true);
+  showAlert(savedRemote ? "تم تحديث الاسم الشخصي وحفظه سحابياً بنجاح" : "تم حفظ الاسم الشخصي بنجاح", true);
   setTimeout(() => closeSheet("sheet-profile"), 550);
 
   btn.disabled = false;
@@ -585,32 +667,48 @@ async function handleChangeCode(e) {
     const data = await res.json();
     if (res.ok && data.success) {
       updated = true;
-    } else if (data && data.message) {
+    } else if (res.status !== 401 && res.status !== 404 && data && data.message) {
       showAlert(data.message, false);
       btn.disabled = false;
       btn.innerHTML = `<i data-lucide="lock" style="width:17px; height:17px;"></i><span>تحديث الرمز السرّي</span>`;
       safeCreateIcons();
       return;
     }
-  } catch (err) {
-    // Offline/Cloud fallback via AlbayanFirebaseDAL for matching current user
+  } catch (err) {}
+
+  // Cloud/Firebase update (runs for Capacitor/serverless or Firebase-logged staff when /api/account/change-code unavailable or 401)
+  if (!updated) {
     try {
       const cachedRaw = localStorage.getItem("albayan_logged_user");
       const cachedUser = cachedRaw ? JSON.parse(cachedRaw) : null;
-      if (cachedUser && cachedUser.id && window.AlbayanFirebaseDAL) {
-        const uRes = await window.AlbayanFirebaseDAL.get(`users/${cachedUser.id}`);
-        if (uRes && uRes.ok && uRes.data) {
-          const cloudUser = uRes.data;
-          if (!cloudUser.passcode || String(cloudUser.passcode) === current_code || String(cloudUser.password || "") === current_code) {
-            await window.AlbayanFirebaseDAL.put(`users/${cachedUser.id}/passcode`, new_code);
+      const found = await resolveCloudStaffRecord(cachedUser);
+      if (found && found.data && window.AlbayanFirebaseDAL) {
+        const cloudUser = found.data;
+        const storedSecret = String(
+          (cloudUser.passcode !== undefined && cloudUser.passcode !== null && String(cloudUser.passcode).trim() !== "")
+            ? cloudUser.passcode
+            : (cloudUser.code !== undefined && cloudUser.code !== null && String(cloudUser.code).trim() !== ""
+              ? cloudUser.code
+              : (cloudUser.password || "123456"))
+        ).trim();
+        if (storedSecret === current_code) {
+          const nextCloud = {
+            ...cloudUser,
+            code: new_code,
+            passcode: new_code,
+            updated_at: new Date().toISOString()
+          };
+          const fbRes = await window.AlbayanFirebaseDAL.put(`users/${found.key}`, nextCloud);
+          if (fbRes && fbRes.ok) {
             updated = true;
-          } else {
-            showAlert("الرمز السرّي الحالي غير صحيح.", false);
-            btn.disabled = false;
-            btn.innerHTML = `<i data-lucide="lock" style="width:17px; height:17px;"></i><span>تحديث الرمز السرّي</span>`;
-            safeCreateIcons();
-            return;
+            updateLocalUsersCacheEntry(nextCloud);
           }
+        } else {
+          showAlert("الرمز السرّي الحالي غير صحيح.", false);
+          btn.disabled = false;
+          btn.innerHTML = `<i data-lucide="lock" style="width:17px; height:17px;"></i><span>تحديث الرمز السرّي</span>`;
+          safeCreateIcons();
+          return;
         }
       }
     } catch (fbErr) {}

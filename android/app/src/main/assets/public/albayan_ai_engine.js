@@ -474,12 +474,28 @@
       return !!(u && (u.role === 'teacher' || u.role === 'معلم'));
     }
 
+    function parseUserPerms(rawPerms) {
+      if (Array.isArray(rawPerms)) return rawPerms.map(String);
+      if (typeof rawPerms === 'string' && rawPerms.trim()) {
+        try {
+          const parsed = JSON.parse(rawPerms);
+          if (Array.isArray(parsed)) return parsed.map(String);
+        } catch (e) {
+          return rawPerms.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+      return [];
+    }
+
     function hasPermission(perm, user = null) {
       const u = user || getCurrentUser();
       if (!u) return false;
       if (isAdmin(u)) return true;
       if (u.role === 'student') return false;
-      const perms = Array.isArray(u.permissions) ? u.permissions : [];
+      if (window.AlbayanPermissions && typeof window.AlbayanPermissions.hasPermission === 'function') {
+        return window.AlbayanPermissions.hasPermission(perm, u);
+      }
+      const perms = parseUserPerms(u.permissions);
       return perms.includes(perm) || perms.includes('*');
     }
 
@@ -521,10 +537,10 @@
         };
       }
 
-      if (isTeacher(user) && !hasPermission('all_circles', user) && args && args.circle_id !== undefined && Array.isArray(context.teacherCircleIds)) {
+      if (!isAdmin(user) && !hasPermission('all_circles', user) && args && args.circle_id !== undefined && Array.isArray(context.teacherCircleIds)) {
         const targetCid = String(normCircleId(args.circle_id));
         if (targetCid && !context.teacherCircleIds.includes(targetCid) &&
-            ['create_student', 'update_student', 'create_student_record', 'update_student_record', 'get_halaqah_details'].includes(toolName)) {
+            ['create_student', 'update_student', 'create_student_record', 'update_student_record', 'get_halaqah_details', 'get_student_details', 'get_student_history'].includes(toolName)) {
           return {
             allowed: false,
             reason: 'غير مصرح لك بالوصول أو التعديل على طلاب وسجلات خارج نطاق حلقاتك المسندة إليك.'
@@ -1687,9 +1703,13 @@
           offset: { type: 'number', description: 'إزاحة البداية للنتائج (افتراضي 0)' }
         }
       },
-      async execute(args = {}) {
+      async execute(args = {}, context = {}) {
         const snap = await AlbayanAIDataContext.loadSnapshot({ circles: true, users: true, students: true, records: false, exams: false });
         let list = snap.circles;
+        const activeUser = context.user || AlbayanAISecurity.getCurrentUser();
+        if (activeUser && !AlbayanAISecurity.isAdmin(activeUser) && !AlbayanAISecurity.hasPermission('all_circles', activeUser) && Array.isArray(context.teacherCircleIds)) {
+          list = list.filter(c => context.teacherCircleIds.includes(String(normCircleId(c.id))));
+        }
         if (args.query) {
           const q = normAr(args.query);
           list = list.filter(c => normAr(c.name).includes(q) || normAr(c.resolved_teacher_name).includes(q) || normAr(c.description).includes(q));
@@ -2056,9 +2076,13 @@
           offset: { type: 'number' }
         }
       },
-      async execute(args = {}) {
+      async execute(args = {}, context = {}) {
         const snap = await AlbayanAIDataContext.loadSnapshot({ circles: true, users: false, students: true, records: false, exams: false });
         let list = snap.students;
+        const activeUser = context.user || AlbayanAISecurity.getCurrentUser();
+        if (activeUser && !AlbayanAISecurity.isAdmin(activeUser) && !AlbayanAISecurity.hasPermission('all_circles', activeUser) && Array.isArray(context.teacherCircleIds)) {
+          list = list.filter(s => context.teacherCircleIds.includes(String(normCircleId(s.circle_id))));
+        }
         if (args.circle_id || args.circle_name) {
           const cRes = resolveCircleInList(snap.circles, args.circle_id || args.circle_name);
           if (cRes.exact) {
@@ -2101,7 +2125,7 @@
           circle_name: { type: 'string' }
         }
       },
-      async execute(args = {}) {
+      async execute(args = {}, context = {}) {
         const snap = await AlbayanAIDataContext.loadFullSnapshot(false);
         let cFilter = null;
         if (args.circle_name) {
@@ -2123,6 +2147,8 @@
           };
         }
         const student = sRes.exact;
+        const auth = AlbayanAISecurity.authorizeTool('get_student_details', { circle_id: student.circle_id }, context);
+        if (!auth.allowed) return { ok: false, error: auth.reason };
         const circle = snap.circleById.get(String(normCircleId(student.circle_id)));
         const stuRecords = snap.records.filter(r => String(normStudentId(r.student_id)) === String(student.id));
         const stuExamResults = snap.examResults.filter(er =>
@@ -2157,7 +2183,7 @@
           circle_name: { type: 'string' }
         }
       },
-      async execute(args = {}) {
+      async execute(args = {}, context = {}) {
         const snap = await AlbayanAIDataContext.loadFullSnapshot(false);
         let cFilter = null;
         if (args.circle_name) {
@@ -2180,6 +2206,8 @@
         }
 
         const student = sRes.exact;
+        const auth = AlbayanAISecurity.authorizeTool('get_student_history', { circle_id: student.circle_id }, context);
+        if (!auth.allowed) return { ok: false, error: auth.reason };
         const circle = snap.circleById.get(String(normCircleId(student.circle_id)));
         let historyRows = [];
         if (window.RosterService && typeof window.RosterService.fetchStudentHistory === 'function') {
@@ -5101,12 +5129,17 @@
         onStreamDelta: options.onStreamDelta || null
       };
 
-      if (AlbayanAISecurity.isTeacher(user)) {
+      if (user && !AlbayanAISecurity.isAdmin(user) && !AlbayanAISecurity.hasPermission('all_circles', user)) {
         try {
           const circles = await AlbayanAIDataContext.loadCircles(false);
           const uid = String(normUserId(user.id || ''));
+          const myNames = [normAr(user.username || ''), normAr(user.display_name || '')].filter(Boolean);
           context.teacherCircleIds = circles
-            .filter(c => (c.teacher_id && String(normUserId(c.teacher_id)) === uid) || (user.username && normAr(c.teacher_name) === normAr(user.username)))
+            .filter(c => {
+              if (uid && c.teacher_id && String(normUserId(c.teacher_id)) === uid) return true;
+              const tCandidates = [normAr(c.teacher_name || ''), normAr(c.resolved_teacher_name || '')].filter(Boolean);
+              return myNames.some(nm => tCandidates.includes(nm));
+            })
             .map(c => String(normCircleId(c.id)));
         } catch (e) {}
       }

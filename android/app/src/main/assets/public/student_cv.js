@@ -206,18 +206,31 @@ function initPopoverCloseListeners() {
 }
 
 async function checkAuth() {
+  const applyCvUserUI = (u) => {
+    if (!u) return;
+    if (window.AlbayanPermissions) {
+      window.AlbayanPermissions.applyNavPermissions(u);
+      if (!window.AlbayanPermissions.enforcePageAccess(u)) return false;
+    }
+    const userElem = document.getElementById("loggedUsername");
+    if (userElem) userElem.textContent = u.username || u.student_name || "الكادر التعليمي";
+    const roleElem = document.getElementById("loggedRole");
+    if (roleElem && u.role) {
+      if (u.is_superadmin === 1) roleElem.textContent = "المسؤول الأول";
+      else if (u.role === "admin") roleElem.textContent = "مسؤول النظام";
+      else if (u.role === "supervisor") roleElem.textContent = "مشرف تعليمي";
+      else roleElem.textContent = "معلم حلقة";
+    }
+    return true;
+  };
+
   // 1. Fast local cache inspection (0ms)
   try {
     const cached = localStorage.getItem("albayan_logged_user");
     if (cached) {
       const u = JSON.parse(cached);
       if (u && (u.username || u.student_name)) {
-        if (window.AlbayanPermissions) {
-          window.AlbayanPermissions.applyNavPermissions(u);
-          if (!window.AlbayanPermissions.enforcePageAccess(u)) return;
-        }
-        const userElem = document.getElementById("loggedUsername");
-        if (userElem) userElem.textContent = u.username || u.student_name || "الكادر التعليمي";
+        applyCvUserUI(u);
         return;
       }
     }
@@ -232,17 +245,14 @@ async function checkAuth() {
     if (res.ok) {
       const data = await res.json();
       if (data && data.logged_in) {
-        const userElem = document.getElementById("loggedUsername");
-        if (userElem) userElem.textContent = data.username || "الكادر التعليمي";
         try { localStorage.setItem("albayan_logged_user", JSON.stringify(data)); } catch (e) {}
+        applyCvUserUI(data);
         return;
       }
     }
   } catch (err) {}
 
-  // 3. Fallback default user for offline & mobile standalone
-  const userElem = document.getElementById("loggedUsername");
-  if (userElem) userElem.textContent = "الكادر التعليمي";
+  window.location.href = "login.html";
 }
 
 async function logout() {
@@ -860,6 +870,19 @@ async function loadLookups() {
     };
   });
 
+  // Scope circles & students to assigned circles when user lacks all_circles permission
+  if (window.AlbayanPermissions && typeof window.AlbayanPermissions.hasPermission === "function" && !window.AlbayanPermissions.hasPermission("all_circles")) {
+    circles = window.AlbayanPermissions.filterCirclesForUser(circles || []);
+    const allowedCids = new Set(circles.map(c => String(c.id !== undefined ? c.id : (c.circle_id || "")).replace(/^circles_/, "")));
+    const allowedCNames = new Set(circles.map(c => String(c.name || "").trim()).filter(Boolean));
+    students = (students || []).filter(s => {
+      const scid = s.circle_id !== undefined && s.circle_id !== null ? String(s.circle_id).replace(/^circles_/, "") : "";
+      if (scid && allowedCids.has(scid)) return true;
+      const scname = String(s.circle_name || "").trim();
+      return Boolean(scname && allowedCNames.has(scname));
+    });
+  }
+
   lookupData = { circles: circles || [], students: students || [] };
   populateCircleFilter(lookupData.circles);
   populateDraftStudentsDropdown(lookupData.students);
@@ -955,6 +978,19 @@ async function loadStudentCvs(targetId = null, targetMonth = null) {
 
   // Always merge lookupData.students so every student in every circle has a CV card!
   allStudentCvs = mergeLookupStudentsIntoCvs(loadedCvs, lookupData.students, lookupData.circles);
+
+  if (window.AlbayanPermissions && typeof window.AlbayanPermissions.hasPermission === "function" && !window.AlbayanPermissions.hasPermission("all_circles")) {
+    const allowedCids = new Set((lookupData.circles || []).map(c => String(c.id !== undefined ? c.id : (c.circle_id || "")).replace(/^circles_/, "")));
+    const allowedCNames = new Set((lookupData.circles || []).map(c => String(c.name || "").trim()).filter(Boolean));
+    const allowedSids = new Set((lookupData.students || []).map(s => String(s.id !== undefined ? s.id : s.student_id).replace(/^students_/, "")));
+    allStudentCvs = allStudentCvs.filter(cv => {
+      const sid = String(cv.student_id || cv.id || "").replace(/^students_/, "");
+      if (sid && allowedSids.has(sid)) return true;
+      const cid = cv.circle_id !== undefined && cv.circle_id !== null ? String(cv.circle_id).replace(/^circles_/, "") : "";
+      if (cid && allowedCids.has(cid)) return true;
+      return Boolean(cv.circle_name && allowedCNames.has(String(cv.circle_name).trim()));
+    });
+  }
 
   if (allStudentCvs.length > 0 && window.AlbayanLocalDB && typeof window.AlbayanLocalDB.cacheStudentCvs === "function") {
     window.AlbayanLocalDB.cacheStudentCvs(allStudentCvs).catch(() => {});

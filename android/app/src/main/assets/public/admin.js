@@ -76,55 +76,69 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function checkAuth() {
   const isStandalone = window.IS_CAPACITOR_APP || window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80'));
+  let cachedUser = null;
+  try {
+    const cached = localStorage.getItem("albayan_logged_user");
+    if (cached) cachedUser = JSON.parse(cached);
+  } catch (e) {}
+
+  const applyAdminUserUI = (u) => {
+    if (!u) return;
+    const userElem = document.getElementById("loggedUsername");
+    if (userElem && u.username) userElem.textContent = u.username;
+    const roleElem = document.getElementById("loggedRole");
+    if (roleElem && u.role) {
+      if (u.is_superadmin === 1) roleElem.textContent = "المسؤول الأول";
+      else if (u.role === "admin") roleElem.textContent = "مسؤول النظام";
+      else if (u.role === "supervisor") roleElem.textContent = "مشرف تعليمي";
+      else roleElem.textContent = "معلم حلقة";
+    }
+    const canAccessCv = window.AlbayanPermissions
+      ? window.AlbayanPermissions.hasPermission("student_cv", u)
+      : (u.is_superadmin === 1 || u.role === "admin" || (Array.isArray(u.permissions) && u.permissions.includes("student_cv")));
+    const cvLink = document.getElementById("studentCvMenuLink");
+    if (cvLink) cvLink.style.display = canAccessCv ? "flex" : "none";
+
+    const canAccessUsers = window.AlbayanPermissions
+      ? window.AlbayanPermissions.hasPermission("users", u)
+      : (u.is_superadmin === 1 || u.role === "admin" || (Array.isArray(u.permissions) && u.permissions.includes("users")));
+    const usersLink = document.getElementById("usersMenuLink");
+    if (usersLink) usersLink.style.display = canAccessUsers ? "flex" : "none";
+    if (window.AlbayanPermissions) {
+      window.AlbayanPermissions.applyNavPermissions(u);
+      window.AlbayanPermissions.enforcePageAccess(u);
+    }
+  };
+
+  if (cachedUser && cachedUser.username) {
+    applyAdminUserUI(cachedUser);
+    if (isStandalone) return;
+  }
+
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
     const res = await fetch("/api/me", { signal: controller.signal });
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
-      if (!data.logged_in) {
-        if (!isStandalone) {
-          window.location.href = "login.html";
-          return;
-        }
-      } else {
-        const userElem = document.getElementById("loggedUsername");
-        if (userElem) userElem.textContent = data.username;
-        const canAccessCv = window.AlbayanPermissions
-          ? window.AlbayanPermissions.hasPermission("student_cv", data)
-          : (data.is_superadmin === 1 || data.role === "admin" || (Array.isArray(data.permissions) && data.permissions.includes("student_cv")));
-        const cvLink = document.getElementById("studentCvMenuLink");
-        if (cvLink) cvLink.style.display = canAccessCv ? "flex" : "none";
-
-        const canAccessUsers = window.AlbayanPermissions
-          ? window.AlbayanPermissions.hasPermission("users", data)
-          : (data.is_superadmin === 1 || data.role === "admin" || (Array.isArray(data.permissions) && data.permissions.includes("users")));
-        const usersLink = document.getElementById("usersMenuLink");
-        if (usersLink) usersLink.style.display = canAccessUsers ? "flex" : "none";
-        if (window.AlbayanPermissions) window.AlbayanPermissions.applyNavPermissions(data);
+      if (data && data.logged_in) {
+        applyAdminUserUI(data);
+        return;
+      }
+      if (!isStandalone && !cachedUser) {
+        window.location.href = "login.html";
         return;
       }
     }
   } catch (err) {
-    // Offline / standalone: keep supervisor access
+    // Offline / standalone: use cached Firebase session
   }
 
-  try {
-    const cached = localStorage.getItem("albayan_logged_user");
-    if (cached) {
-      const u = JSON.parse(cached);
-      const userElem = document.getElementById("loggedUsername");
-      if (userElem && u && u.username) {
-        userElem.textContent = u.username;
-        if (window.AlbayanPermissions) {
-          window.AlbayanPermissions.applyNavPermissions(u);
-          window.AlbayanPermissions.enforcePageAccess(u);
-        }
-        return;
-      }
-    }
-  } catch(e) {}
+  if (cachedUser && cachedUser.username) {
+    applyAdminUserUI(cachedUser);
+    return;
+  }
 
   // If unauthenticated, redirect to login.html
   window.location.href = "login.html";
@@ -215,17 +229,25 @@ async function loadExams() {
     const res = await fetch("/api/exams?_t=" + Date.now(), { signal: controller.signal });
     clearTimeout(timeoutId);
     if (res.status === 401 || res.status === 403) {
-      if (container && (!exams || exams.length === 0)) {
-        container.innerHTML = `
-          <div class="loading-box" style="grid-column:1/-1; color:#ef4444; background:#fef2f2; border:1px solid #fecaca;">
-            ⚠️ انتهت جلسة الدخول الخاصة بالمشرف. 
-            <br><a href="login.html" style="color:#2563eb; font-weight:800; text-decoration:underline; margin-top:8px; display:inline-block;">انقر هنا لتسجيل الدخول مجدداً</a>
-          </div>`;
+      let hasLocalStaffSession = false;
+      try {
+        const rawU = localStorage.getItem("albayan_logged_user");
+        const parsedU = rawU ? JSON.parse(rawU) : null;
+        hasLocalStaffSession = Boolean(parsedU && parsedU.username && parsedU.role !== "student");
+      } catch (e) {}
+      if (!hasLocalStaffSession && !isStandalone) {
+        if (container && (!exams || exams.length === 0)) {
+          container.innerHTML = `
+            <div class="loading-box" style="grid-column:1/-1; color:#ef4444; background:#fef2f2; border:1px solid #fecaca;">
+              ⚠️ انتهت جلسة الدخول. 
+              <br><a href="login.html" style="color:#2563eb; font-weight:800; text-decoration:underline; margin-top:8px; display:inline-block;">انقر هنا لتسجيل الدخول مجدداً</a>
+            </div>`;
+        }
+        setTimeout(() => { window.location.href = "login.html"; }, 1500);
+        return;
       }
-      setTimeout(() => { window.location.href = "login.html"; }, 1500);
-      return;
-    }
-    if (res.ok) {
+      // Fall through to Firebase RTDB when authenticated via Firebase/standalone
+    } else if (res.ok) {
       const liveExams = await res.json();
       if (Array.isArray(liveExams)) {
         exams = liveExams.filter(e => e && typeof e === "object");

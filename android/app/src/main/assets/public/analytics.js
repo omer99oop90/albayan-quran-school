@@ -130,18 +130,25 @@ function filterCirclesByPermission(circlesList, usersList = []) {
   if (!Array.isArray(circlesList)) return [];
   const u = getCurrentAnalyticsUser();
   if (!u) return circlesList;
+  if (window.AlbayanPermissions && typeof window.AlbayanPermissions.filterCirclesForUser === "function") {
+    return window.AlbayanPermissions.filterCirclesForUser(circlesList, u, usersList);
+  }
   const canAll = window.AlbayanPermissions
     ? window.AlbayanPermissions.hasPermission("all_circles", u)
     : (u.is_superadmin === 1 || u.role === "admin" || (Array.isArray(u.permissions) && u.permissions.includes("all_circles")));
   if (canAll) return circlesList;
 
-  const myId = normalizeEntityId(u.id, "users_");
-  const myName = normalizeArabicSearch(u.username || u.display_name || "");
+  let myId = normalizeEntityId(u.id, "users_");
+  const myNames = [normalizeArabicSearch(u.username || ""), normalizeArabicSearch(u.display_name || "")].filter(Boolean);
   const usersMap = new Map();
   (usersList || []).forEach(usr => {
-    if (!usr) return;
+    if (!usr || usr.deleted) return;
     const uid = normalizeEntityId(usr.id, "users_");
     if (uid) usersMap.set(uid, usr);
+    if (!myId && myNames.length > 0) {
+      const uname = normalizeArabicSearch(usr.username || usr.display_name || "");
+      if (uname && myNames.includes(uname)) myId = uid;
+    }
   });
 
   return circlesList.filter(c => {
@@ -149,8 +156,13 @@ function filterCirclesByPermission(circlesList, usersList = []) {
     const tid = normalizeEntityId(c.teacher_id, "users_");
     if (myId && tid && tid === myId) return true;
     const userObj = tid ? usersMap.get(tid) : null;
-    const resolvedTeacher = normalizeArabicSearch(c.teacher_name || c.teacher || (userObj && (userObj.username || userObj.display_name)) || "");
-    return Boolean(myName && resolvedTeacher === myName);
+    const candidates = [
+      normalizeArabicSearch(c.teacher_name || ""),
+      normalizeArabicSearch(c.teacher || ""),
+      normalizeArabicSearch((userObj && userObj.username) || ""),
+      normalizeArabicSearch((userObj && userObj.display_name) || "")
+    ].filter(Boolean);
+    return myNames.some(nm => candidates.includes(nm));
   });
 }
 
@@ -224,57 +236,71 @@ function isStandaloneRuntime() {
 
 async function checkAuth() {
   const isStandalone = isStandaloneRuntime();
+  let cachedUser = null;
+  try {
+    const cached = localStorage.getItem("albayan_logged_user");
+    if (cached) cachedUser = JSON.parse(cached);
+  } catch (e) {}
+
+  const applyAnalyticsUserUI = (u) => {
+    if (!u) return;
+    _analyticsAuthUser = u;
+    const userElem = document.getElementById("loggedUsername");
+    if (userElem) userElem.textContent = u.username || "الكادر التعليمي";
+    const roleElem = document.getElementById("loggedRole");
+    if (roleElem && u.role) {
+      if (u.is_superadmin === 1) roleElem.textContent = "المسؤول الأول";
+      else if (u.role === "admin") roleElem.textContent = "مسؤول النظام";
+      else if (u.role === "supervisor") roleElem.textContent = "مشرف تعليمي";
+      else roleElem.textContent = "معلم حلقة";
+    }
+
+    const canAccessCv = window.AlbayanPermissions
+      ? window.AlbayanPermissions.hasPermission("student_cv", u)
+      : (u.is_superadmin === 1 || u.role === "admin" || (Array.isArray(u.permissions) && u.permissions.includes("student_cv")));
+    const cvLink = document.getElementById("studentCvMenuLink");
+    if (cvLink) cvLink.style.display = canAccessCv ? "flex" : "none";
+
+    const canAccessUsers = window.AlbayanPermissions
+      ? window.AlbayanPermissions.hasPermission("users", u)
+      : (u.is_superadmin === 1 || u.role === "admin" || (Array.isArray(u.permissions) && u.permissions.includes("users")));
+    const usersLink = document.getElementById("usersMenuLink");
+    if (usersLink) usersLink.style.display = canAccessUsers ? "flex" : "none";
+
+    if (window.AlbayanPermissions) {
+      window.AlbayanPermissions.applyNavPermissions(u);
+      window.AlbayanPermissions.enforcePageAccess(u);
+    }
+  };
+
+  if (cachedUser && cachedUser.username) {
+    applyAnalyticsUserUI(cachedUser);
+  }
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
     const res = await fetch("/api/me", { signal: controller.signal });
     clearTimeout(timeoutId);
-    if (!res.ok) throw new Error("Auth check failed");
-
-    const data = await res.json();
-    if (!data.logged_in) {
-      if (!isStandalone) {
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.logged_in) {
+        applyAnalyticsUserUI(data);
+        return;
+      }
+      if (!isStandalone && !cachedUser) {
         window.location.href = "login.html";
         return;
       }
-    } else {
-      _analyticsAuthUser = data;
-      const userElem = document.getElementById("loggedUsername");
-      if (userElem) userElem.textContent = data.username || "الكادر التعليمي";
     }
-    const canAccessCv = window.AlbayanPermissions
-      ? window.AlbayanPermissions.hasPermission("student_cv", data)
-      : (data.is_superadmin === 1 || data.role === "admin" || (Array.isArray(data.permissions) && data.permissions.includes("student_cv")));
-    const cvLink = document.getElementById("studentCvMenuLink");
-    if (cvLink) cvLink.style.display = canAccessCv ? "flex" : "none";
+  } catch (err) {}
 
-    const canAccessUsers = window.AlbayanPermissions
-      ? window.AlbayanPermissions.hasPermission("users", data)
-      : (data.is_superadmin === 1 || data.role === "admin" || (Array.isArray(data.permissions) && data.permissions.includes("users")));
-    const usersLink = document.getElementById("usersMenuLink");
-    if (usersLink) usersLink.style.display = canAccessUsers ? "flex" : "none";
-    if (window.AlbayanPermissions) {
-      window.AlbayanPermissions.applyNavPermissions(data);
-      window.AlbayanPermissions.enforcePageAccess(data);
-    }
-  } catch (err) {
-    let username = "الكادر التعليمي";
-    try {
-      const cached = localStorage.getItem("albayan_logged_user");
-      if (cached) {
-        const u = JSON.parse(cached);
-        _analyticsAuthUser = u;
-        if (u && u.username) username = u.username;
-        if (u && window.AlbayanPermissions) {
-          window.AlbayanPermissions.applyNavPermissions(u);
-          window.AlbayanPermissions.enforcePageAccess(u);
-        }
-      }
-    } catch(e) {}
-    const userElem = document.getElementById("loggedUsername");
-    if (userElem) userElem.textContent = username;
+  if (cachedUser && cachedUser.username) {
+    applyAnalyticsUserUI(cachedUser);
+    return;
   }
+
+  window.location.href = "login.html";
 }
 
 function switchAnalyticsView(viewType) {
@@ -620,6 +646,20 @@ async function buildServerlessAnalytics(year, month, requestedExamId) {
         };
       });
     }
+  }
+
+  // Scope online exam results to allowed circles/students when user lacks all_circles
+  if (!canAllCircles) {
+    const allowedStudentIds = new Set(students.map(s => String(normalizeEntityId(s.id, "students_") || s.id)));
+    const allowedStudentNames = new Set(students.map(s => normalizeArabicSearch(s.name)).filter(Boolean));
+    results = results.filter(r => {
+      const rCid = normalizeEntityId(r.circle_id, "circles_");
+      if (rCid && allowedCircleIds.has(String(rCid))) return true;
+      const rSid = normalizeEntityId(r.student_id, "students_");
+      if (rSid && allowedStudentIds.has(String(rSid))) return true;
+      const rName = normalizeArabicSearch(r.student_name);
+      return Boolean(rName && allowedStudentNames.has(rName));
+    });
   }
 
   // Enrich students with latest online exam result if available
@@ -992,8 +1032,16 @@ async function loadAnalyticsData() {
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       if (res.status === 401 && !isStandalone) {
-        window.location.href = "login.html";
-        return;
+        let hasLocalStaffSession = false;
+        try {
+          const rawU = localStorage.getItem("albayan_logged_user");
+          const parsedU = rawU ? JSON.parse(rawU) : null;
+          hasLocalStaffSession = Boolean(parsedU && parsedU.username && parsedU.role !== "student");
+        } catch (e) {}
+        if (!hasLocalStaffSession) {
+          window.location.href = "login.html";
+          return;
+        }
       }
       if (res.ok) {
         data = await res.json();
