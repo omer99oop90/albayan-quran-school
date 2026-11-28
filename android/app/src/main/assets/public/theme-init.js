@@ -143,8 +143,20 @@
   } catch(e) {}
 
   // Apply Font globally across document
+  var DEFAULT_APP_FONT = 'Tajawal';
+  try {
+    if (!localStorage.getItem('albayan_default_font_migrated_v2')) {
+      localStorage.setItem('albayan_default_font_migrated_v2', '1');
+      var prevSavedFont = localStorage.getItem('appFontFamily');
+      if (!prevSavedFont || prevSavedFont === 'Cairo') {
+        localStorage.setItem('appFontFamily', DEFAULT_APP_FONT);
+      }
+    }
+  } catch(e) {}
+
   function applyAppFont(fontKey) {
-    var fontInfo = FONT_MAP[fontKey] || FONT_MAP['Cairo'];
+    var resolvedKey = FONT_MAP[fontKey] ? fontKey : DEFAULT_APP_FONT;
+    var fontInfo = FONT_MAP[resolvedKey];
     var fontStack = fontInfo.stack;
 
     document.documentElement.style.setProperty('--app-font-family', fontStack);
@@ -159,14 +171,14 @@
     overrideStyle.textContent = "body, button, input, select, textarea, table, .roster-table, .circle-card, .sidebar-menu, .content-header h1, h1, h2, h3, h4, h5, h6, span, p, a, div { font-family: " + fontStack + " !important; } .lucide, .nav-svg, svg, i[data-lucide] { font-family: inherit !important; }";
 
     try {
-      localStorage.setItem('appFontFamily', fontKey);
+      localStorage.setItem('appFontFamily', resolvedKey);
     } catch(e) {}
   }
   window.applyAppFont = applyAppFont;
 
   // Initial Font Application on Page Load
   try {
-    var savedFont = localStorage.getItem('appFontFamily') || 'Cairo';
+    var savedFont = localStorage.getItem('appFontFamily') || DEFAULT_APP_FONT;
     applyAppFont(savedFont);
   } catch(e) {}
 
@@ -209,7 +221,7 @@
     document.addEventListener("DOMContentLoaded", function() {
       // Re-apply font to ensure newly rendered elements inherit it
       try {
-        var currentFont = localStorage.getItem('appFontFamily') || 'Cairo';
+        var currentFont = localStorage.getItem('appFontFamily') || DEFAULT_APP_FONT;
         applyAppFont(currentFont);
       } catch(e) {}
 
@@ -894,6 +906,14 @@
       return u.role === 'supervisor' || hasPermission('all_circles', u) || hasPermission('users', u);
     }
 
+    function canManageRecordSystem(userObj) {
+      var u = userObj || getCurrentUser();
+      if (!u || u.role === 'student') return false;
+      if (isAdminUser(u)) return true;
+      var roleStr = String(u.role || '').trim().toLowerCase();
+      return roleStr === 'supervisor' || roleStr === 'مشرف';
+    }
+
     function normalizeEntityUid(val) {
       if (val === undefined || val === null || val === '') return '';
       return String(val).replace(/^users_/i, '').trim();
@@ -1156,6 +1176,7 @@
       getCurrentUser: getCurrentUser,
       isAdminUser: isAdminUser,
       canManageCircles: canManageCircles,
+      canManageRecordSystem: canManageRecordSystem,
       filterCirclesForUser: filterCirclesForUser,
       hasPermission: hasPermission,
       applyNavPermissions: applyNavPermissions,

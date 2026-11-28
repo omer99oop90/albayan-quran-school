@@ -2827,7 +2827,40 @@
     const CONFIG_KEY = 'albayan_quran_cycle_v1';
     const RECORD_CFG_KEY = 'albayan_record_period_config';
     const ARCHIVE_KEY = 'albayan_cycle_archives_v1';
+    const PENDING_SYNC_KEY = 'albayan_cycle_pending_sync_v1';
     let archiveInFlight = false;
+    let lastCloudPullMs = 0;
+    let pullInFlightPromise = null;
+
+    function canManageRecordSystem() {
+      try {
+        if (window.AlbayanPermissions && typeof window.AlbayanPermissions.canManageRecordSystem === 'function') {
+          return window.AlbayanPermissions.canManageRecordSystem();
+        }
+        const raw = localStorage.getItem('albayan_logged_user');
+        if (!raw) return false;
+        const u = JSON.parse(raw);
+        if (!u || u.role === 'student') return false;
+        if (Number(u.is_superadmin) === 1 || u.is_superadmin === true) return true;
+        const role = String(u.role || '').trim().toLowerCase();
+        return role === 'admin' || role === 'supervisor' || role === 'مشرف';
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function getCurrentActorInfo() {
+      try {
+        const raw = localStorage.getItem('albayan_logged_user');
+        const u = raw ? JSON.parse(raw) : null;
+        return {
+          username: (u && (u.username || u.display_name)) || '',
+          role: (u && u.role) || ''
+        };
+      } catch (e) {
+        return { username: '', role: '' };
+      }
+    }
 
     const PERIOD_META = {
       weekly: {
@@ -2924,19 +2957,17 @@
     }
 
     function getDefaultConfig() {
-      const legacyType = localStorage.getItem('record_period_type');
-      const legacyMonths = localStorage.getItem('custom_period_months');
-      const mode = normalizePeriodType(legacyType || 'monthly');
       return {
-        mode,
-        periodType: mode,
-        termMonths: clampTermMonths(legacyMonths || 3),
+        mode: 'monthly',
+        periodType: 'monthly',
+        termMonths: 3,
         startDate: firstOfMonthYMD(),
         endAction: 'archive_reset',
         yearNumber: 1,
         cycleIndex: 1,
         lastArchiveAt: null,
-        updatedAt: new Date().toISOString()
+        updatedAt: '',
+        updatedBy: ''
       };
     }
 
@@ -2958,16 +2989,30 @@
         yearNumber: yearNum,
         cycleIndex: yearNum,
         lastArchiveAt: src.lastArchiveAt || null,
-        updatedAt: src.updatedAt || new Date().toISOString()
+        updatedAt: typeof src.updatedAt === 'string' ? src.updatedAt : '',
+        updatedBy: src.updatedBy ? String(src.updatedBy) : ''
       };
+    }
+
+    function configsDiffer(a, b) {
+      if (!a || !b) return true;
+      return (
+        a.mode !== b.mode ||
+        a.periodType !== b.periodType ||
+        Number(a.termMonths || 3) !== Number(b.termMonths || 3) ||
+        String(a.startDate || '') !== String(b.startDate || '') ||
+        Number(a.yearNumber || 1) !== Number(b.yearNumber || 1) ||
+        String(a.lastArchiveAt || '') !== String(b.lastArchiveAt || '') ||
+        String(a.updatedAt || '') !== String(b.updatedAt || '')
+      );
     }
 
     function getConfig() {
       try {
-        const rawRec = localStorage.getItem(RECORD_CFG_KEY);
-        if (rawRec) return normalizeConfig(JSON.parse(rawRec));
         const raw = localStorage.getItem(CONFIG_KEY);
         if (raw) return normalizeConfig(JSON.parse(raw));
+        const rawRec = localStorage.getItem(RECORD_CFG_KEY);
+        if (rawRec) return normalizeConfig(JSON.parse(rawRec));
       } catch (e) {}
       const def = getDefaultConfig();
       try {
@@ -2976,7 +3021,9 @@
           mode: def.mode,
           termMonths: def.termMonths,
           startDate: def.startDate,
-          yearNumber: def.yearNumber
+          yearNumber: def.yearNumber,
+          updatedAt: def.updatedAt,
+          updatedBy: def.updatedBy
         }));
       } catch (e) {}
       return def;
@@ -3022,20 +3069,55 @@
       };
     }
 
+    async function pushConfigToCloud(cfg) {
+      const effMonths = cfg.periodType === 'term' ? cfg.termMonths : (cfg.periodType === 'yearly' ? 12 : 1);
+      const patchRes = await AlbayanFirebaseDAL.patch('settings', {
+        quran_cycle: cfg,
+        record_period_type: cfg.periodType,
+        custom_period_months: effMonths,
+        cycle_start_date: cfg.startDate
+      });
+      if (patchRes && patchRes.ok) {
+        try { localStorage.removeItem(PENDING_SYNC_KEY); } catch (e) {}
+        await AlbayanFirebaseDAL.touchSyncMeta('settings', 'quran_cycle').catch(() => {});
+        return true;
+      }
+      return false;
+    }
+
     async function saveConfig(partial = {}, options = {}) {
+      const isLocalOnly = !!options.localOnly;
+      if (!isLocalOnly && !canManageRecordSystem()) {
+        const err = new Error('تعديل نظام السجل متاح لحسابات المشرفين والإدارة فقط.');
+        err.code = 'UNAUTHORIZED_CYCLE_EDIT';
+        throw err;
+      }
+
       const current = getConfig();
+      const actor = getCurrentActorInfo();
+      const nextUpdatedAt = isLocalOnly
+        ? (partial && partial.updatedAt !== undefined ? String(partial.updatedAt || '') : current.updatedAt)
+        : new Date().toISOString();
+      const nextUpdatedBy = isLocalOnly
+        ? (partial && partial.updatedBy !== undefined ? String(partial.updatedBy || '') : current.updatedBy)
+        : (actor.username || current.updatedBy || '');
+
       const merged = normalizeConfig({
         ...current,
         ...partial,
         endAction: 'archive_reset',
-        updatedAt: new Date().toISOString()
+        updatedAt: nextUpdatedAt,
+        updatedBy: nextUpdatedBy
       });
 
+      const changed = configsDiffer(current, merged);
       const canonicalShort = {
         mode: merged.mode,
         termMonths: merged.termMonths,
         startDate: merged.startDate,
-        yearNumber: merged.yearNumber
+        yearNumber: merged.yearNumber,
+        updatedAt: merged.updatedAt,
+        updatedBy: merged.updatedBy
       };
 
       try {
@@ -3046,12 +3128,16 @@
         localStorage.setItem('custom_period_months', String(effMonths));
       } catch (e) {}
 
-      window.dispatchEvent(new CustomEvent('albayan:record-period-updated', { detail: canonicalShort }));
-      window.dispatchEvent(new CustomEvent('albayan:cycle-updated', { detail: merged }));
+      if (changed || !options.silentIfUnchanged) {
+        window.dispatchEvent(new CustomEvent('albayan:record-period-updated', { detail: canonicalShort }));
+        window.dispatchEvent(new CustomEvent('albayan:cycle-updated', { detail: merged }));
+      }
 
-      if (!options.localOnly) {
-        AlbayanFirebaseDAL.put('settings/quran_cycle', merged).catch(() => {});
-        AlbayanFirebaseDAL.put('settings/record_period_type', merged.periodType).catch(() => {});
+      if (!isLocalOnly) {
+        const synced = await pushConfigToCloud(merged).catch(() => false);
+        if (!synced) {
+          try { localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(merged)); } catch (e) {}
+        }
         try {
           fetch('/api/account/system-settings', {
             method: 'POST',
@@ -3064,6 +3150,7 @@
             })
           }).catch(() => {});
         } catch (e) {}
+        return { ...merged, _cloudSynced: synced };
       }
 
       return merged;
@@ -3375,6 +3462,9 @@
     }
 
     async function archiveCurrentCycle(options = {}) {
+      if (!canManageRecordSystem()) {
+        return { ok: false, unauthorized: true, message: 'إغلاق وأرشفة السنة متاح لحسابات المشرفين والإدارة فقط.' };
+      }
       if (archiveInFlight) return { ok: false, skipped: true };
       archiveInFlight = true;
       try {
@@ -3438,6 +3528,9 @@
     }
 
     async function checkAndAutoArchive() {
+      if (!canManageRecordSystem()) {
+        return { expired: false, skipped: true };
+      }
       const cfg = getConfig();
       const stats = computeCycleStats(cfg);
       if (!stats.isExpired) return { expired: false, stats };
@@ -3479,46 +3572,117 @@
       return { expired: true, archived: !!(res && res.ok), result: res };
     }
 
-    async function pullFromCloud() {
-      try {
-        const [cfgRes, arcRes] = await Promise.all([
-          AlbayanFirebaseDAL.get('settings/quran_cycle'),
-          AlbayanFirebaseDAL.get('cycle_archives')
-        ]);
-
-        if (cfgRes && cfgRes.ok && cfgRes.data && typeof cfgRes.data === 'object') {
-          const localCfg = getConfig();
-          const cloudCfg = normalizeConfig(cfgRes.data);
-          const localTs = Date.parse(localCfg.updatedAt || '') || 0;
-          const cloudTs = Date.parse(cloudCfg.updatedAt || '') || 0;
-          if (cloudTs > localTs) {
-            await saveConfig(cloudCfg, { localOnly: true });
-          }
-        }
-
-        if (arcRes && arcRes.ok && arcRes.data) {
-          const entries = AlbayanDataNormalizer.normalizeCollectionEntries(arcRes.data)
-            .map(([, val]) => val)
-            .filter(v => v && v.id);
-          const mergedMap = new Map();
-          getArchives().forEach(a => { if (a && a.id) mergedMap.set(a.id, a); });
-          entries.forEach(a => { if (a && a.id) mergedMap.set(a.id, a); });
-          const sorted = Array.from(mergedMap.values()).sort((a, b) =>
-            String(b.archivedAt || '').localeCompare(String(a.archivedAt || ''))
-          );
-          saveArchivesLocal(sorted);
-        }
-
-        await checkAndAutoArchive();
-        return getConfig();
-      } catch (e) {
-        return getConfig();
+    async function pullFromCloud(options = {}) {
+      if (pullInFlightPromise && !options.force) {
+        return pullInFlightPromise;
       }
+      pullInFlightPromise = (async () => {
+        try {
+          lastCloudPullMs = Date.now();
+          let hasPendingSupervisorWrite = false;
+          try {
+            const pendingRaw = localStorage.getItem(PENDING_SYNC_KEY);
+            if (pendingRaw) {
+              if (canManageRecordSystem()) {
+                const pendingCfg = normalizeConfig(JSON.parse(pendingRaw));
+                const pushed = await pushConfigToCloud(pendingCfg).catch(() => false);
+                hasPendingSupervisorWrite = !pushed;
+              } else {
+                // Non-supervisors must never hold or push a pending global cycle edit
+                localStorage.removeItem(PENDING_SYNC_KEY);
+              }
+            }
+          } catch (e) {}
+
+          const [settingsRes, arcRes] = await Promise.all([
+            AlbayanFirebaseDAL.get('settings'),
+            AlbayanFirebaseDAL.get('cycle_archives')
+          ]);
+
+          if (settingsRes && settingsRes.ok && settingsRes.data && typeof settingsRes.data === 'object' && !hasPendingSupervisorWrite) {
+            const settingsObj = settingsRes.data;
+            let cloudCfg = null;
+            if (settingsObj.quran_cycle && typeof settingsObj.quran_cycle === 'object') {
+              cloudCfg = normalizeConfig(settingsObj.quran_cycle);
+            } else if (settingsObj.record_period_type) {
+              cloudCfg = normalizeConfig({
+                mode: settingsObj.record_period_type,
+                periodType: settingsObj.record_period_type,
+                termMonths: settingsObj.custom_period_months,
+                startDate: settingsObj.cycle_start_date,
+                updatedAt: ''
+              });
+            }
+
+            if (cloudCfg) {
+              const localCfg = getConfig();
+              const hasFullCloudCycle = Boolean(settingsObj.quran_cycle && typeof settingsObj.quran_cycle === 'object');
+              const shouldAdopt = hasFullCloudCycle
+                ? configsDiffer(localCfg, cloudCfg)
+                : (!localCfg.updatedAt && localCfg.periodType !== cloudCfg.periodType);
+              if (shouldAdopt) {
+                await saveConfig(cloudCfg, { localOnly: true, silentIfUnchanged: true });
+              }
+            }
+          }
+
+          if (arcRes && arcRes.ok && arcRes.data) {
+            const entries = AlbayanDataNormalizer.normalizeCollectionEntries(arcRes.data)
+              .map(([, val]) => val)
+              .filter(v => v && v.id);
+            const mergedMap = new Map();
+            getArchives().forEach(a => { if (a && a.id) mergedMap.set(a.id, a); });
+            entries.forEach(a => { if (a && a.id) mergedMap.set(a.id, a); });
+            const sorted = Array.from(mergedMap.values()).sort((a, b) =>
+              String(b.archivedAt || '').localeCompare(String(a.archivedAt || ''))
+            );
+            saveArchivesLocal(sorted);
+          }
+
+          await checkAndAutoArchive();
+          return getConfig();
+        } catch (e) {
+          return getConfig();
+        } finally {
+          pullInFlightPromise = null;
+        }
+      })();
+      return pullInFlightPromise;
+    }
+
+    function hasPendingSync() {
+      try {
+        return Boolean(localStorage.getItem(PENDING_SYNC_KEY));
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function triggerThrottledPull() {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      if (Date.now() - lastCloudPullMs < 4000) return;
+      pullFromCloud().catch(() => {});
+    }
+
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) triggerThrottledPull();
+      });
+      window.addEventListener('focus', triggerThrottledPull);
+      window.addEventListener('pageshow', triggerThrottledPull);
+      setInterval(() => {
+        if (!document.hidden && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+          pullFromCloud().catch(() => {});
+        }
+      }, 25000);
     }
 
     return {
       PERIOD_META,
       HIJRI_MONTH_NAMES,
+      canManageRecordSystem,
+      hasPendingSync,
       getConfig,
       saveConfig,
       computeCycleStats,

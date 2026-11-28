@@ -38,7 +38,7 @@ html[data-theme="light"] {
   --st-toggle-off: #CBD5E1;
   --st-toggle-on: #2563EB;
   --st-backdrop: rgba(15, 23, 42, 0.45);
-  --st-font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  --st-font-family: 'Tajawal', 'Cairo', system-ui, -apple-system, sans-serif;
 }
 
 html[data-theme="dark"],
@@ -401,6 +401,42 @@ html[data-theme="dark"] .alert-box.err {
   background: var(--st-subcard);
   color: var(--st-muted);
   border: 1px solid var(--st-border);
+}
+
+.row-lock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--st-subcard);
+  color: var(--st-muted);
+  border: 1px solid var(--st-border);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.settings-row-item.is-locked-row {
+  cursor: default;
+  opacity: 0.92;
+}
+
+.cycle-global-scope-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  background: var(--st-icon-bg);
+  color: var(--st-icon-fg);
+  border: 1px solid var(--st-selected-border);
+  box-shadow: none !important;
 }
 
 .row-chevron {

@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initLastBackupInfo();
   initToggles();
   initRecordPeriodSettings();
+  applyRecordPeriodPermissions();
   safeCreateIcons();
 
   try {
@@ -39,11 +40,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.warn("Profile load fallback:", err);
   }
 
+  applyRecordPeriodPermissions();
+
   // Silent background Firebase sync (no UI settings shown)
   runBackgroundCloudSync();
 
   window.addEventListener("albayan:cycle-updated", () => {
-    refreshRecordPeriodBadgesAndDraft(false);
+    const sheet = document.getElementById("sheet-record-period");
+    const isSheetOpen = !!(sheet && sheet.classList.contains("active"));
+    refreshRecordPeriodBadgesAndDraft(!isSheetOpen);
+  });
+
+  window.addEventListener("albayan:record-period-updated", () => {
+    const sheet = document.getElementById("sheet-record-period");
+    const isSheetOpen = !!(sheet && sheet.classList.contains("active"));
+    refreshRecordPeriodBadgesAndDraft(!isSheetOpen);
+  });
+
+  window.addEventListener("albayan:permissions-updated", (e) => {
+    if (e && e.detail) {
+      currentUserData = { ...(currentUserData || {}), ...e.detail };
+    }
+    applyRecordPeriodPermissions();
   });
 
   window.addEventListener("albayan:cycle-archived", () => {
@@ -64,7 +82,9 @@ function runBackgroundCloudSync() {
   try {
     if (window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.pullFromCloud === "function") {
       window.AlbayanCycleEngine.pullFromCloud().then(() => {
-        refreshRecordPeriodBadgesAndDraft(false);
+        const sheet = document.getElementById("sheet-record-period");
+        const isSheetOpen = !!(sheet && sheet.classList.contains("active"));
+        refreshRecordPeriodBadgesAndDraft(!isSheetOpen);
         renderCycleArchivesPreview();
       }).catch(() => {});
     }
@@ -238,7 +258,7 @@ window.saveViewMode = function(mode) {
    5. Typography & Font System Handlers
    ========================================================================= */
 function initFontSettings() {
-  const currentFont = localStorage.getItem("appFontFamily") || "Cairo";
+  const currentFont = localStorage.getItem("appFontFamily") || "Tajawal";
   updateFontBadgeUI(currentFont);
   updateFontCardsUI(currentFont);
   updateCustomFontStatusUI();
@@ -368,7 +388,7 @@ window.removeCustomFont = function() {
   const customStyle = document.getElementById("albayan-custom-font-style");
   if (customStyle) customStyle.remove();
 
-  window.selectAppFont("Cairo");
+  window.selectAppFont("Tajawal");
   updateCustomFontStatusUI();
 };
 
@@ -458,12 +478,15 @@ async function loadUserProfile() {
 
   if (fetchedData && fetchedData.settings && window.AlbayanCycleEngine) {
     const remoteType = fetchedData.settings.record_period_type;
-    if (remoteType) {
+    const currentCfg = window.AlbayanCycleEngine.getConfig();
+    if (remoteType && (!currentCfg || !currentCfg.updatedAt)) {
       await window.AlbayanCycleEngine.saveConfig({
-        periodType: window.AlbayanCycleEngine.normalizePeriodType(remoteType)
-      }, { localOnly: true });
+        periodType: window.AlbayanCycleEngine.normalizePeriodType(remoteType),
+        mode: window.AlbayanCycleEngine.normalizePeriodType(remoteType)
+      }, { localOnly: true, silentIfUnchanged: true });
     }
   }
+  applyRecordPeriodPermissions();
   refreshRecordPeriodBadgesAndDraft(false);
 }
 
@@ -743,6 +766,53 @@ function getCycleEngineSafe() {
   return window.AlbayanCycleEngine || null;
 }
 
+function canCurrentUserManageRecordSystem() {
+  if (window.AlbayanPermissions && typeof window.AlbayanPermissions.canManageRecordSystem === "function") {
+    return window.AlbayanPermissions.canManageRecordSystem(currentUserData || undefined);
+  }
+  const eng = getCycleEngineSafe();
+  if (eng && typeof eng.canManageRecordSystem === "function") {
+    return eng.canManageRecordSystem();
+  }
+  let u = currentUserData;
+  if (!u) {
+    try {
+      const raw = localStorage.getItem("albayan_logged_user");
+      if (raw) u = JSON.parse(raw);
+    } catch (e) {}
+  }
+  if (!u || u.role === "student") return false;
+  if (Number(u.is_superadmin) === 1 || u.is_superadmin === true) return true;
+  const role = String(u.role || "").trim().toLowerCase();
+  return role === "admin" || role === "supervisor" || role === "مشرف";
+}
+
+function applyRecordPeriodPermissions() {
+  const canManage = canCurrentUserManageRecordSystem();
+  const row = document.getElementById("rowRecordPeriod");
+  const lockBadge = document.getElementById("recordPeriodLockBadge");
+  const chevron = document.getElementById("recordPeriodChevron");
+
+  if (row) {
+    row.classList.toggle("is-locked-row", !canManage);
+    row.setAttribute("aria-disabled", canManage ? "false" : "true");
+  }
+  if (lockBadge) {
+    lockBadge.style.display = canManage ? "none" : "inline-flex";
+  }
+  if (chevron) {
+    chevron.style.display = canManage ? "inline-flex" : "none";
+  }
+  if (!canManage) {
+    const sheet = document.getElementById("sheet-record-period");
+    if (sheet && sheet.classList.contains("active")) {
+      closeSheet("sheet-record-period");
+    }
+  }
+  safeCreateIcons();
+  refreshRecordPeriodBadgesAndDraft(false);
+}
+
 function initRecordPeriodSettings() {
   refreshRecordPeriodBadgesAndDraft(true);
   renderCycleArchivesPreview();
@@ -756,6 +826,7 @@ function refreshRecordPeriodBadgesAndDraft(resetDraft = false) {
     draftCycleConfig = { ...cfg };
   }
   const stats = eng.computeCycleStats(cfg);
+  const canManage = canCurrentUserManageRecordSystem();
 
   const badge = document.getElementById("currentRecordPeriodBadge");
   if (badge) {
@@ -765,13 +836,20 @@ function refreshRecordPeriodBadgesAndDraft(resetDraft = false) {
   }
   const subtitle = document.getElementById("recordPeriodSubtitle");
   if (subtitle) {
-    subtitle.textContent = `السنة الحالية #${cfg.yearNumber || cfg.cycleIndex || 1} • متبقي ${stats.remainingDays} يوماً`;
+    const scopeText = canManage
+      ? "إعداد عام لجميع الحسابات"
+      : "نظام موحّد للمدرسة (تعديل المشرف فقط)";
+    subtitle.textContent = `${scopeText} • السنة #${cfg.yearNumber || cfg.cycleIndex || 1} • متبقي ${stats.remainingDays} يوماً`;
   }
 
   renderCycleSheetUI(draftCycleConfig);
 }
 
 function openRecordPeriodSheet() {
+  if (!canCurrentUserManageRecordSystem()) {
+    showAlert("تعديل نظام السجل متاح لحسابات المشرفين والإدارة فقط.", false);
+    return;
+  }
   const eng = getCycleEngineSafe();
   if (eng) {
     draftCycleConfig = { ...eng.getConfig() };
@@ -850,6 +928,10 @@ function renderCycleSheetUI(cfg) {
 }
 
 function selectCyclePeriodType(periodType) {
+  if (!canCurrentUserManageRecordSystem()) {
+    showAlert("تعديل نظام السجل متاح لحسابات المشرفين والإدارة فقط.", false);
+    return;
+  }
   if (!draftCycleConfig) {
     const eng = getCycleEngineSafe();
     draftCycleConfig = eng ? { ...eng.getConfig() } : { mode: "monthly", periodType: "monthly", termMonths: 3, startDate: "", endAction: "archive_reset" };
@@ -860,6 +942,10 @@ function selectCyclePeriodType(periodType) {
 }
 
 function stepTermMonths(delta) {
+  if (!canCurrentUserManageRecordSystem()) {
+    showAlert("تعديل نظام السجل متاح لحسابات المشرفين والإدارة فقط.", false);
+    return;
+  }
   if (!draftCycleConfig) {
     const eng = getCycleEngineSafe();
     draftCycleConfig = eng ? { ...eng.getConfig() } : { mode: "term", periodType: "term", termMonths: 3 };
@@ -870,6 +956,10 @@ function stepTermMonths(delta) {
 }
 
 function setTermMonths(months) {
+  if (!canCurrentUserManageRecordSystem()) {
+    showAlert("تعديل نظام السجل متاح لحسابات المشرفين والإدارة فقط.", false);
+    return;
+  }
   if (!draftCycleConfig) {
     const eng = getCycleEngineSafe();
     draftCycleConfig = eng ? { ...eng.getConfig() } : { mode: "term", periodType: "term", termMonths: 3 };
@@ -879,6 +969,10 @@ function setTermMonths(months) {
 }
 
 function onCycleStartDateChange(dateStr) {
+  if (!canCurrentUserManageRecordSystem()) {
+    showAlert("تعديل نظام السجل متاح لحسابات المشرفين والإدارة فقط.", false);
+    return;
+  }
   if (!dateStr) return;
   if (!draftCycleConfig) {
     const eng = getCycleEngineSafe();
@@ -889,13 +983,17 @@ function onCycleStartDateChange(dateStr) {
 }
 
 async function saveRecordPeriodSettings() {
+  if (!canCurrentUserManageRecordSystem()) {
+    showAlert("تعديل نظام السجل متاح لحسابات المشرفين والإدارة فقط.", false);
+    return;
+  }
   const btn = document.getElementById("btnSaveRecordPeriod");
   const eng = getCycleEngineSafe();
   if (!eng) return;
 
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px;"></i><span>جاري الحفظ...</span>`;
+    btn.innerHTML = `<i data-lucide="loader" class="spin" style="width:16px; height:16px;"></i><span>جاري الحفظ والمزامنة...</span>`;
     safeCreateIcons();
   }
 
@@ -912,10 +1010,13 @@ async function saveRecordPeriodSettings() {
     if (typeof window.renderRosterPeriodSelector === "function") {
       window.renderRosterPeriodSelector(saved);
     }
-    showAlert("تم حفظ وتطبيق مدة السجل بنجاح", true);
+    const msg = saved && saved._cloudSynced === false
+      ? "تم الحفظ محلياً وسيتم تعميم نظام السجل على جميع الحسابات فور توفر الاتصال."
+      : "تم حفظ وتعميم نظام السجل على جميع الحسابات بنجاح";
+    showAlert(msg, true);
     setTimeout(() => closeSheet("sheet-record-period"), 550);
   } catch (err) {
-    showAlert("حدث خطأ أثناء حفظ إعدادات السجل.", false);
+    showAlert((err && err.message) || "حدث خطأ أثناء حفظ إعدادات السجل.", false);
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -926,6 +1027,10 @@ async function saveRecordPeriodSettings() {
 }
 
 async function handleArchiveCurrentCycleNow() {
+  if (!canCurrentUserManageRecordSystem()) {
+    showAlert("إغلاق وأرشفة السنة متاح لحسابات المشرفين والإدارة فقط.", false);
+    return;
+  }
   const eng = getCycleEngineSafe();
   const btn = document.getElementById("btnArchiveCycleNow");
   if (!eng) return;

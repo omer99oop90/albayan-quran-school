@@ -39,7 +39,7 @@
         visibility: hidden;
         transition: opacity 0.22s ease, visibility 0.22s ease;
         direction: rtl !important;
-        font-family: var(--app-font-family, 'Cairo', 'Segoe UI', Tahoma, sans-serif) !important;
+        font-family: var(--app-font-family, 'Tajawal', 'Cairo', 'Segoe UI', Tahoma, sans-serif) !important;
       }
 
       .albayan-dialog-overlay.active {

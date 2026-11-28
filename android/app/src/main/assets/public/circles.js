@@ -433,19 +433,22 @@ async function initPeriodSystem() {
   });
 
   try {
-    const res = await fetch("/api/account/profile");
-    if (res.ok) {
-      const data = await res.json();
-      if (data.settings) {
-        const mapped = window.AlbayanCycleEngine
-          ? window.AlbayanCycleEngine.normalizePeriodType(data.settings.record_period_type || "monthly")
-          : (data.settings.record_period_type || "monthly");
-        currentPeriodType = mapped;
-        customPeriodMonths = parseInt(data.settings.custom_period_months || (mapped === "term" ? 3 : 1));
-        localStorage.setItem("record_period_type", currentPeriodType);
-        localStorage.setItem("custom_period_months", customPeriodMonths.toString());
-        updatePeriodUI();
-        renderActiveCycleBadgeInCircles();
+    const currentCycleCfg = window.AlbayanCycleEngine ? window.AlbayanCycleEngine.getConfig() : null;
+    if (!currentCycleCfg || !currentCycleCfg.updatedAt) {
+      const res = await fetch("/api/account/profile");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.settings) {
+          const mapped = window.AlbayanCycleEngine
+            ? window.AlbayanCycleEngine.normalizePeriodType(data.settings.record_period_type || "monthly")
+            : (data.settings.record_period_type || "monthly");
+          currentPeriodType = mapped;
+          customPeriodMonths = parseInt(data.settings.custom_period_months || (mapped === "term" ? 3 : 1));
+          localStorage.setItem("record_period_type", currentPeriodType);
+          localStorage.setItem("custom_period_months", customPeriodMonths.toString());
+          updatePeriodUI();
+          renderActiveCycleBadgeInCircles();
+        }
       }
     }
   } catch (err) {

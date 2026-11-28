@@ -47,11 +47,15 @@
           <i data-lucide="calendar-clock"></i>
         </div>
         <div class="row-content">
-          <span class="row-title">مدة السجل</span>
+          <span class="row-title">نظام ومدة السجل</span>
           <span class="row-subtitle" id="recordPeriodSubtitle">السنة #1 • متبقي 30 يوماً</span>
         </div>
         <span class="row-badge-pill" id="currentRecordPeriodBadge">شهري</span>
-        <span class="row-chevron"><i data-lucide="chevron-left"></i></span>
+        <span class="row-lock-pill" id="recordPeriodLockBadge" style="display:none;" title="تعديل نظام السجل للمشرفين فقط">
+          <i data-lucide="lock" style="width:12px; height:12px;"></i>
+          <span>للمشرف فقط</span>
+        </span>
+        <span class="row-chevron" id="recordPeriodChevron"><i data-lucide="chevron-left"></i></span>
       </button>
 
       <button type="button" class="settings-row-item clickable" id="rowViewMode" onclick="openSheet('sheet-view-mode')">
@@ -92,7 +96,7 @@
           <span class="row-title">نوع الخط</span>
           <span class="row-subtitle">تخصيص الخط العربي عبر جميع الشاشات</span>
         </div>
-        <span class="row-badge-pill" id="currentFontFamilyBadge">خط كايرو</span>
+        <span class="row-badge-pill" id="currentFontFamilyBadge">خط تجوال</span>
         <span class="row-chevron"><i data-lucide="chevron-left"></i></span>
       </button>
 
@@ -194,8 +198,8 @@
       <div class="sheet-title-group">
         <div class="sheet-icon-bubble"><i data-lucide="calendar-clock"></i></div>
         <div>
-          <h3>مدة السجل</h3>
-          <p>ضبط نظام الفترات وبداية السنة الدراسية</p>
+          <h3>نظام ومدة السجل</h3>
+          <p>إعداد عام للمدرسة يسري تلقائياً على جميع الحسابات</p>
         </div>
       </div>
       <button type="button" class="btn-sheet-close" onclick="closeSheet('sheet-record-period')" title="إغلاق" aria-label="إغلاق">
@@ -204,6 +208,11 @@
     </div>
 
     <div class="sheet-body">
+      <div class="cycle-global-scope-note">
+        <i data-lucide="shield-check" style="width:16px; height:16px; flex-shrink:0;"></i>
+        <span>صلاحية المشرفين: أي تعديل هنا يُطبّق على جميع حسابات المدرسة وليس تفضيلاً شخصياً.</span>
+      </div>
+
       <!-- Live Year Progress Card -->
       <div class="cycle-progress-card">
         <div class="cycle-progress-top">
@@ -365,19 +374,19 @@
 
     <div class="sheet-body">
       <div class="font-options-grid">
-        <label class="font-select-card" data-font="Cairo" onclick="selectAppFont('Cairo')">
-          <input type="radio" name="app_font_radio" value="Cairo">
-          <div class="font-card-meta">
-            <strong style="font-family:'Cairo', sans-serif;">خط كايرو (الافتراضي)</strong>
-            <small>أنيق وعصري ومتوازن للجداول والشاشات</small>
-          </div>
-        </label>
-
         <label class="font-select-card" data-font="Tajawal" onclick="selectAppFont('Tajawal')">
           <input type="radio" name="app_font_radio" value="Tajawal">
           <div class="font-card-meta">
-            <strong style="font-family:'Tajawal', sans-serif;">خط تجوال</strong>
+            <strong style="font-family:'Tajawal', sans-serif;">خط تجوال (الافتراضي)</strong>
             <small>انسيابي وناعم ومريح للقراءة الطويلة</small>
+          </div>
+        </label>
+
+        <label class="font-select-card" data-font="Cairo" onclick="selectAppFont('Cairo')">
+          <input type="radio" name="app_font_radio" value="Cairo">
+          <div class="font-card-meta">
+            <strong style="font-family:'Cairo', sans-serif;">خط كايرو</strong>
+            <small>أنيق وعصري ومتوازن للجداول والشاشات</small>
           </div>
         </label>
 
