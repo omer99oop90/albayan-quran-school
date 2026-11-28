@@ -1601,7 +1601,7 @@ function buildOfflineAnalyticsData() {
 function showAnalyticsSkeletons(isLoading) {
   if (!isLoading) return;
   const skHtml = `<div class="an-skeleton-block"><div class="an-skeleton-line"></div><div class="an-skeleton-line short"></div></div>`;
-  ["periodTrendChartWrap", "circleComparisonChartWrap", "memoBreakdownBars", "revBreakdownBars"].forEach(id => {
+  ["periodTrendChartWrap", "circleComparisonChartWrap", "gradeComparisonChartWrap"].forEach(id => {
     const el = document.getElementById(id);
     if (el && !analyticsCache) el.innerHTML = skHtml;
   });
@@ -1710,7 +1710,7 @@ async function loadAnalyticsData() {
       try { if (typeof renderCirclesSummary === "function") renderCirclesSummary(data.circles_analytics.summary, data.circles_analytics.trend_deltas); } catch (e) { console.error("Error in renderCirclesSummary:", e); }
       try { if (typeof renderCirclesInsights === "function") renderCirclesInsights(data.circles_analytics.insights, data.circles_analytics.top_students); } catch (e) { console.error("Error in renderCirclesInsights:", e); }
       try { if (typeof renderAnalyticsCharts === "function") renderAnalyticsCharts(data.circles_analytics, data.circle_rankings || []); } catch (e) { console.error("Error in renderAnalyticsCharts:", e); }
-      try { if (typeof renderGradeBreakdowns === "function") renderGradeBreakdowns(data.circles_analytics.memo_breakdown, data.circles_analytics.rev_breakdown); } catch (e) { console.error("Error in renderGradeBreakdowns:", e); }
+      try { if (typeof renderGradeBreakdowns === "function") renderGradeBreakdowns(data.circles_analytics.memo_breakdown, data.circles_analytics.rev_breakdown, data.circles_analytics.summary); } catch (e) { console.error("Error in renderGradeBreakdowns:", e); }
       try { if (typeof renderHonorAndFollowupBoards === "function") renderHonorAndFollowupBoards(data.circles_analytics.honor_board, data.circles_analytics.followup_list); } catch (e) { console.error("Error in renderHonorAndFollowupBoards:", e); }
     }
     try { if (data.circle_rankings && typeof renderCircleRankings === "function") renderCircleRankings(data.circle_rankings); } catch (e) { console.error("Error in renderCircleRankings:", e); }
@@ -2084,45 +2084,143 @@ function renderCircleComparisonSvgChart(circleRankings) {
   wrap.innerHTML = `<svg class="an-svg-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="مقارنة الحلقات في الإتقان والحضور">${gridLines}${barsSvg}</svg>`;
 }
 
-function renderGradeBreakdowns(memoBreakdown, revBreakdown) {
-  const renderBars = (breakdownObj, containerId) => {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    if (!breakdownObj) {
-      container.innerHTML = `<div style="text-align:center; padding:16px; color:var(--muted)">لا توجد بيانات كافية بعد.</div>`;
-      return;
-    }
-    
-    const gradesOrder = [
-      { name: "ممتاز", color: "#16a34a", cls: "fill-green" },
-      { name: "جيد جداً", color: "#2563eb", cls: "fill-blue" },
-      { name: "جيد", color: "#0d9488", cls: "fill-teal" },
-      { name: "مقبول", color: "#d97706", cls: "fill-yellow" },
-      { name: "يحتاج متابعة", color: "#dc2626", cls: "fill-red" },
-      { name: "غير محدد", color: "#64748b", cls: "fill-gray" }
-    ];
-    
-    container.innerHTML = gradesOrder.map(g => {
-      const item = breakdownObj[g.name] || { count: 0, percent: 0 };
-      return `
-        <div class="accuracy-item">
-          <div class="acc-item-head">
-            <span style="display:flex; align-items:center; gap:8px;">
-              <span style="width:12px; height:12px; border-radius:50%; background:${g.color}; display:inline-block;"></span>
-              تقدير: ${g.name}
-            </span>
-            <span style="font-weight:800; color:${g.color};">${item.percent}% (${item.count} طالب)</span>
-          </div>
-          <div class="acc-bar-wrap">
-            <div class="acc-bar-fill ${g.cls}" style="width: ${item.percent}%; background:${g.color};"></div>
-          </div>
-        </div>
-      `;
-    }).join("");
-  };
+function formatArabicStudentsTotal(n) {
+  const count = Math.max(0, Math.round(Number(n) || 0));
+  if (count === 1) return "1 طالب";
+  if (count === 2) return "طالبان (2)";
+  if (count >= 3 && count <= 10) return `${count} طلاب`;
+  if (count >= 11) return `${count} طالباً`;
+  return "0 طالب";
+}
 
-  renderBars(memoBreakdown, "memoBreakdownBars");
-  renderBars(revBreakdown, "revBreakdownBars");
+function buildTopRoundedBarPath(x, y, w, h, r) {
+  if (h <= 0 || w <= 0) return "";
+  const radius = Math.min(r, w / 2, h);
+  const right = x + w;
+  const bottom = y + h;
+  return `M${x},${bottom} L${x},${y + radius} Q${x},${y} ${x + radius},${y} L${right - radius},${y} Q${right},${y} ${right},${y + radius} L${right},${bottom} Z`;
+}
+
+function renderGradeBreakdowns(memoBreakdown, revBreakdown, summary = null) {
+  const wrap = document.getElementById("gradeComparisonChartWrap");
+  const totalTextEl = document.getElementById("gradeCompTotalText");
+  const topRevTextEl = document.getElementById("gradeCompTopRevText");
+
+  const gradesOrder = [
+    { key: "ممتاز", label: "ممتاز" },
+    { key: "جيد جداً", label: "جيد جداً" },
+    { key: "جيد", label: "جيد" },
+    { key: "مقبول", label: "مقبول" },
+    { key: "يحتاج متابعة", label: "متابعة" },
+    { key: "غير محدد", label: "غير محدد" }
+  ];
+
+  // Compute total students count accurately from summary or breakdown sum
+  let totalStudentsCount = summary && summary.total_students != null ? Math.round(Number(summary.total_students) || 0) : 0;
+  if (!totalStudentsCount && memoBreakdown) {
+    totalStudentsCount = gradesOrder.reduce((acc, g) => acc + ((memoBreakdown[g.key] && memoBreakdown[g.key].count) || 0), 0);
+  }
+  if (totalTextEl) {
+    totalTextEl.textContent = `إجمالي الطلاب: ${formatArabicStudentsTotal(totalStudentsCount)}`;
+  }
+
+  // Find highest revision grade (prefer non-"غير محدد" grades when recorded)
+  let topRev = { label: "غير محدد", count: 0, percent: 0 };
+  if (revBreakdown) {
+    const rankedCandidates = gradesOrder
+      .filter(g => g.key !== "غير محدد")
+      .map(g => ({
+        label: g.label,
+        count: (revBreakdown[g.key] && Number(revBreakdown[g.key].count)) || 0,
+        percent: (revBreakdown[g.key] && Number(revBreakdown[g.key].percent)) || 0
+      }));
+    const bestRecorded = rankedCandidates.sort((a, b) => b.count - a.count || b.percent - a.percent)[0];
+    if (bestRecorded && bestRecorded.count > 0) {
+      topRev = bestRecorded;
+    } else if (revBreakdown["غير محدد"] && revBreakdown["غير محدد"].count > 0) {
+      topRev = { label: "غير محدد", count: revBreakdown["غير محدد"].count, percent: revBreakdown["غير محدد"].percent || 0 };
+    }
+  }
+  if (topRevTextEl) {
+    topRevTextEl.textContent = `أعلى تقدير في المراجعة: ${topRev.label} (${topRev.percent}%)`;
+  }
+
+  if (!wrap) return;
+  if (!memoBreakdown && !revBreakdown) {
+    wrap.innerHTML = `<div class="an-empty-state"><i data-lucide="bar-chart-2" style="width:24px;height:24px;color:var(--muted);"></i><strong>لا توجد بيانات كافية لعرض المقارنة</strong></div>`;
+    return;
+  }
+
+  const rows = gradesOrder.map(g => {
+    const m = (memoBreakdown && memoBreakdown[g.key]) || { count: 0, percent: 0 };
+    const r = (revBreakdown && revBreakdown[g.key]) || { count: 0, percent: 0 };
+    return {
+      key: g.key,
+      label: g.label,
+      memoCount: Number(m.count) || 0,
+      memoPct: Math.max(0, Math.min(100, Math.round(Number(m.percent) || 0))),
+      revCount: Number(r.count) || 0,
+      revPct: Math.max(0, Math.min(100, Math.round(Number(r.percent) || 0)))
+    };
+  });
+
+  const maxPct = Math.max(40, ...rows.map(r => Math.max(r.memoPct, r.revPct)));
+  const scaleCeil = Math.min(100, Math.ceil(maxPct / 10) * 10);
+
+  const w = 540;
+  const h = 166;
+  const padL = 16;
+  const padR = 16;
+  const padT = 22;
+  const padB = 28;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const baseY = padT + plotH;
+  const slotW = plotW / rows.length;
+  const barW = 14;
+  const barGap = 4;
+
+  // Faint horizontal dashed gridlines + baseline
+  let gridSvg = "";
+  [0.33, 0.66, 1].forEach(ratio => {
+    const gy = baseY - plotH * ratio;
+    gridSvg += `<line class="gc-svg-grid" x1="${padL}" y1="${gy.toFixed(1)}" x2="${w - padR}" y2="${gy.toFixed(1)}" />`;
+  });
+  gridSvg += `<line class="gc-svg-baseline" x1="${padL}" y1="${baseY}" x2="${w - padR}" y2="${baseY}" />`;
+
+  // RTL order: index 0 (ممتاز) on the RIGHT, index 5 (غير محدد) on the LEFT
+  const groupsSvg = rows.map((row, idx) => {
+    const rtlIdx = (rows.length - 1) - idx;
+    const cx = padL + slotW * rtlIdx + slotW / 2;
+    // In RTL within a cluster: Blue Memo bar on the RIGHT, Green Rev bar on the LEFT
+    const memoX = cx + barGap / 2;
+    const revX = cx - barGap / 2 - barW;
+
+    const memoH = row.memoPct > 0 ? Math.max(5, (row.memoPct / scaleCeil) * plotH) : 0;
+    const revH = row.revPct > 0 ? Math.max(5, (row.revPct / scaleCeil) * plotH) : 0;
+    const memoY = baseY - memoH;
+    const revY = baseY - revH;
+
+    const memoBar = memoH > 0
+      ? `<path d="${buildTopRoundedBarPath(memoX, memoY, barW, memoH, 4)}" fill="#2563EB"><title>${escapeHtml(row.label)} — الحفظ: ${row.memoPct}% (${row.memoCount} طالب)</title></path>`
+      : "";
+    const revBar = revH > 0
+      ? `<path d="${buildTopRoundedBarPath(revX, revY, barW, revH, 4)}" fill="#10B981"><title>${escapeHtml(row.label)} — المراجعة: ${row.revPct}% (${row.revCount} طالب)</title></path>`
+      : "";
+
+    const memoValY = memoH > 0 ? Math.max(12, memoY - 5) : baseY - 5;
+    const revValY = revH > 0 ? Math.max(12, revY - 5) : baseY - 5;
+
+    return `<g class="gc-bar-group">
+      ${memoBar}
+      <text class="gc-svg-val ${row.memoPct === 0 ? 'zero' : 'memo'}" x="${memoX + barW / 2}" y="${memoValY}" text-anchor="middle">${row.memoPct}%</text>
+      ${revBar}
+      <text class="gc-svg-val ${row.revPct === 0 ? 'zero' : 'rev'}" x="${revX + barW / 2}" y="${revValY}" text-anchor="middle">${row.revPct}%</text>
+      <text class="gc-svg-cat" x="${cx}" y="${h - 8}" text-anchor="middle">${escapeHtml(row.label)}</text>
+    </g>`;
+  }).join("");
+
+  wrap.innerHTML = `<svg class="an-grouped-bar-svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="مخطط الأعمدة المجمعة لمقارنة الحفظ والمراجعة">${gridSvg}${groupsSvg}</svg>`;
 }
 
 function renderKPISummary(summary, selectedExam) {

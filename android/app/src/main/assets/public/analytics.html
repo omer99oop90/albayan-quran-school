@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dark_theme.css?v=3.0">
   <link rel="stylesheet" href="circles.css">
-  <link rel="stylesheet" href="analytics.css?v=6.0">
+  <link rel="stylesheet" href="analytics.css?v=7.0">
   <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
   <!-- Lucide Icons (Local with CDN fallback) -->
   <script src="lucide.min.js"></script>
@@ -331,22 +331,31 @@
           </div>
         </section>
 
-        <!-- Grade Distribution Progress Charts -->
-        <section class="insights-grid insights-grid-2" style="margin-bottom:22px;">
-          <div class="analytics-card" style="margin:0;">
-            <div class="card-head" style="margin-bottom:12px;">
-              <h2><i data-lucide="book-open" style="width:20px; height:20px; color:var(--primary); vertical-align:-3px;"></i> تحليل مستويات حفظ القرآن الكريم</h2>
+        <!-- Unified Memorization vs Revision Grouped Vertical Bar Chart Card -->
+        <section class="grade-comparison-section" style="margin-bottom:20px;">
+          <div id="gradeComparisonCard" class="grade-comparison-card">
+            <div class="grade-comparison-head">
+              <h2 class="grade-comparison-title">
+                <i data-lucide="book-open" style="width:18px; height:18px; color:#2563EB;"></i>
+                <span>مقارنة الحفظ والمراجعة</span>
+              </h2>
+              <div class="grade-comparison-legend" aria-label="دليل الألوان">
+                <span class="gc-legend-item"><i class="gc-dot gc-dot-memo"></i> الحفظ</span>
+                <span class="gc-legend-item"><i class="gc-dot gc-dot-rev"></i> المراجعة</span>
+              </div>
             </div>
-            <div id="memoBreakdownBars" class="accuracy-list">
-              <div style="text-align:center; padding:16px; color:var(--muted);">جارٍ تحميل تحليل الحفظ...</div>
+            <div id="gradeComparisonChartWrap" class="grade-comparison-chart-wrap">
+              <div class="an-skeleton-block"><div class="an-skeleton-line"></div><div class="an-skeleton-line short"></div></div>
             </div>
-          </div>
-          <div class="analytics-card" style="margin:0;">
-            <div class="card-head" style="margin-bottom:12px;">
-              <h2><i data-lucide="refresh-ccw" style="width:20px; height:20px; color:#0d9488; vertical-align:-3px;"></i> تحليل مستويات المراجعة والتثبيت</h2>
-            </div>
-            <div id="revBreakdownBars" class="accuracy-list">
-              <div style="text-align:center; padding:16px; color:var(--muted);">جارٍ تحميل تحليل المراجعة...</div>
+            <div class="grade-comparison-footer">
+              <span id="gradeCompTotalPill" class="gc-pill gc-pill-total">
+                <i data-lucide="users" style="width:14px; height:14px;"></i>
+                <span id="gradeCompTotalText">إجمالي الطلاب: 0 طالب</span>
+              </span>
+              <span id="gradeCompTopRevPill" class="gc-pill gc-pill-top">
+                <i data-lucide="star" style="width:14px; height:14px;"></i>
+                <span id="gradeCompTopRevText">أعلى تقدير في المراجعة: غير محدد (0%)</span>
+              </span>
             </div>
           </div>
         </section>
@@ -799,7 +808,7 @@
   <script src="hijri_date.js?v=3.0"></script>
   <script src="mobile_bottom_nav.js?v=2.0"></script>
   <script src="firebase-client.js?v=5.0"></script>
-  <script src="analytics.js?v=6.0"></script>
+  <script src="analytics.js?v=7.0"></script>
   <script>if(window.safeCreateIcons) safeCreateIcons(); else if(window.lucide) lucide.createIcons();</script>
 </body>
 </html>
