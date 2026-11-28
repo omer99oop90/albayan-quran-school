@@ -7,10 +7,10 @@
   <title>الإحصائيات المتقدمة - مدرسة البيان لتعليم القرآن</title>
   <script src="theme-init.js"></script>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="dark_theme.css?v=1.0">
+  <link rel="stylesheet" href="dark_theme.css?v=3.0">
   <link rel="stylesheet" href="circles.css">
-  <link rel="stylesheet" href="analytics.css?v=2.0">
-  <link rel="stylesheet" href="mobile_bottom_nav.css?v=1.0">
+  <link rel="stylesheet" href="analytics.css?v=4.0">
+  <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
   <!-- Lucide Icons (Local with CDN fallback) -->
   <script src="lucide.min.js"></script>
   <script>if(typeof lucide==='undefined'){document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');}</script>
@@ -38,6 +38,7 @@
         <a href="certificates.html" class="menu-item" id="certificatesMenuLink"><i data-lucide="award" style="width:18px; height:18px;"></i> استوديو الشهادات</a>
         <a href="users.html" class="menu-item" id="usersMenuLink"><i data-lucide="user-cog" style="width:18px; height:18px;"></i> إدارة المستخدمين</a>
         <a href="settings.html" class="menu-item"><i data-lucide="settings" style="width:18px; height:18px;"></i> إعدادات الحساب</a>
+        <a href="albayan_ai.html" class="menu-item"><i data-lucide="sparkles" style="width:18px; height:18px;"></i> مساعد البيان الذكي</a>
       </nav>
 
       <div class="sidebar-footer">
@@ -50,6 +51,22 @@
     </aside>
 
     <main class="main-content">
+      <!-- Formal Print Report Header (Visible in @media print only) -->
+      <section id="printReportHeader" class="print-report-header" aria-hidden="true">
+        <div class="print-report-brand">
+          <img src="logo.png" alt="شعار مدرسة البيان" class="print-report-logo">
+          <div>
+            <h2>مدرسة البيان لتعليم القرآن الكريم</h2>
+            <p id="printReportSubtitle">تقرير التحليلات والإحصائيات الشامل</p>
+          </div>
+        </div>
+        <div class="print-report-meta">
+          <div id="printReportDate">--</div>
+          <div id="printReportFilters">--</div>
+          <div id="printReportAuthor">--</div>
+        </div>
+      </section>
+
       <!-- Header -->
       <header class="content-header">
         <div>
@@ -57,6 +74,7 @@
           <p>عرض وتحليل بيانات أداء الحلقات القرآنية ونتائج درجات الاختبارات بشكل منفصل.</p>
         </div>
         <div class="header-actions no-print" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <button type="button" class="btn-secondary-outline" onclick="exportActiveViewCsv()"><i data-lucide="download" style="width:16px; height:16px;"></i> تصدير Excel / CSV</button>
           <button type="button" class="btn-secondary" onclick="window.print()"><i data-lucide="printer" style="width:16px; height:16px;"></i> طباعة التقرير / PDF</button>
           <button type="button" class="btn-primary" onclick="loadAnalyticsData()"><i data-lucide="refresh-cw" style="width:16px; height:16px;"></i> تحديث البيانات</button>
         </div>
@@ -91,11 +109,11 @@
           <div class="student-filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 280px));">
             <div class="filter-item">
               <label><i data-lucide="calendar" style="width:14px; height:14px;"></i> السنة الدراسية</label>
-              <input type="number" id="filterCirclesYear" onchange="syncAndLoadAnalytics('circles')" value="" min="1400" max="2100" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: var(--card-bg, #fff);">
+              <input type="number" id="filterCirclesYear" onchange="syncAndLoadAnalytics('circles')" value="" min="1400" max="2100">
             </div>
             <div class="filter-item">
               <label><i data-lucide="clock" style="width:14px; height:14px;"></i> شهر / فترة التقييم</label>
-              <select id="filterCirclesMonth" onchange="syncAndLoadAnalytics('circles')" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: var(--card-bg, #fff); cursor: pointer;">
+              <select id="filterCirclesMonth" onchange="syncAndLoadAnalytics('circles')">
                 <option value="all">جميع الفترات (السجل التراكمي)</option>
               </select>
             </div>
@@ -105,63 +123,102 @@
         <!-- Circles KPI Summary Cards -->
         <section class="kpi-grid" style="margin-bottom:22px;">
           <div class="kpi-card">
-            <span class="kpi-icon" style="color:#2563eb; background:#eff6ff; padding:12px; border-radius:16px;"><i data-lucide="building-2" style="width:28px; height:28px;"></i></span>
+            <span class="kpi-icon kpi-icon-blue"><i data-lucide="building-2" style="width:28px; height:28px;"></i></span>
             <div class="kpi-info">
               <small>إجمالي الحلقات القرآنية</small>
               <strong id="kpiTotalCircles">0</strong>
               <span id="kpiAvgStudentsPerCircle" class="sub-stat">0 متوسط الطلاب/حلقة</span>
+              <span id="kpiDeltaCircles" class="kpi-delta-pill neutral">متصل بالسجل النشط</span>
             </div>
           </div>
           <div class="kpi-card">
-            <span class="kpi-icon" style="color:#0d9488; background:#f0fdf4; padding:12px; border-radius:16px;"><i data-lucide="users" style="width:28px; height:28px;"></i></span>
+            <span class="kpi-icon kpi-icon-teal"><i data-lucide="users" style="width:28px; height:28px;"></i></span>
             <div class="kpi-info">
               <small>إجمالي طلاب القرآن الكريم</small>
               <strong id="kpiTotalQuranStudents">0</strong>
-              <span class="sub-stat">مسجلين في الحلقات</span>
+              <span id="kpiTotalMemoPagesSub" class="sub-stat">0 وجه حفظ منجز</span>
+              <span id="kpiDeltaMemoPages" class="kpi-delta-pill neutral">--</span>
             </div>
           </div>
           <div class="kpi-card pass-card">
-            <span class="kpi-icon" style="color:#16a34a; background:#dcfce7; padding:12px; border-radius:16px;"><i data-lucide="award" style="width:28px; height:28px;"></i></span>
+            <span class="kpi-icon kpi-icon-green"><i data-lucide="award" style="width:28px; height:28px;"></i></span>
             <div class="kpi-info">
               <small>الحفظة والمتميزون (ممتاز)</small>
               <strong id="kpiExcellentMemoCount">0</strong>
               <span id="kpiExcellentMemoRate" class="sub-stat">0% من إجمالي الطلاب</span>
+              <span id="kpiDeltaExcellence" class="kpi-delta-pill neutral">--</span>
             </div>
           </div>
-          <div class="kpi-card" style="border-color:#fef08a; background:#fefce8;">
-            <span class="kpi-icon" style="color:#ca8a04; background:#fef9c3; padding:12px; border-radius:16px;"><i data-lucide="check-circle-2" style="width:28px; height:28px;"></i></span>
+          <div class="kpi-card warn-card">
+            <span class="kpi-icon kpi-icon-warn"><i data-lucide="check-circle-2" style="width:28px; height:28px;"></i></span>
             <div class="kpi-info">
               <small>مؤشر الالتزام بالحضور</small>
               <strong id="kpiAttendanceRate">100%</strong>
               <span id="kpiTotalAbsentDays" class="sub-stat">0 إجمالي أيام الغياب</span>
+              <span id="kpiDeltaAttendance" class="kpi-delta-pill neutral">--</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Zero-Dependency Interactive SVG Charts -->
+        <section id="analyticsChartsSection" class="insights-grid insights-grid-2" style="margin-bottom:22px;">
+          <div class="analytics-card chart-card" style="margin:0;">
+            <div class="card-head chart-card-head">
+              <div>
+                <h2><i data-lucide="line-chart" style="width:20px; height:20px; color:var(--primary); vertical-align:-3px;"></i> اتجاه الأداء عبر الفترات</h2>
+                <p>تتبع تطور أوجه الحفظ والمراجعة ومعدل الحضور من فترة لأخرى.</p>
+              </div>
+              <div class="chart-legend" aria-hidden="true">
+                <span class="legend-chip legend-blue"><i></i> الحفظ</span>
+                <span class="legend-chip legend-teal"><i></i> المراجعة</span>
+                <span class="legend-chip legend-amber"><i></i> الحضور %</span>
+              </div>
+            </div>
+            <div id="periodTrendChartWrap" class="svg-chart-wrap">
+              <div class="an-skeleton-block"><div class="an-skeleton-line"></div><div class="an-skeleton-line short"></div></div>
+            </div>
+          </div>
+          <div class="analytics-card chart-card" style="margin:0;">
+            <div class="card-head chart-card-head">
+              <div>
+                <h2><i data-lucide="bar-chart-2" style="width:20px; height:20px; color:#0d9488; vertical-align:-3px;"></i> مقارنة الحلقات (الإتقان مقابل الحضور)</h2>
+                <p>قراءة مرئية لنسبة الإتقان والانضباط لأبرز الحلقات النشطة.</p>
+              </div>
+              <div class="chart-legend" aria-hidden="true">
+                <span class="legend-chip legend-blue"><i></i> الإتقان %</span>
+                <span class="legend-chip legend-green"><i></i> الحضور %</span>
+              </div>
+            </div>
+            <div id="circleComparisonChartWrap" class="svg-chart-wrap">
+              <div class="an-skeleton-block"><div class="an-skeleton-line"></div><div class="an-skeleton-line short"></div></div>
             </div>
           </div>
         </section>
 
         <!-- Circles Smart Insights -->
         <section class="insights-grid insights-grid-3" style="margin-bottom:22px;">
-          <div class="insight-card" style="border-color:#93c5fd; background:linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);">
+          <div class="insight-card insight-blue">
             <div class="insight-head">
-              <span class="insight-badge" style="background:#dbeafe; color:#1e40af; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="trending-up" style="width:14px; height:14px;"></i> الحلقة الأعلى كثافة ونشاطاً</span>
-              <span id="topCircleBadge" class="rate-tag" style="color:#1e40af;">--</span>
+              <span class="insight-badge insight-badge-blue"><i data-lucide="trending-up" style="width:14px; height:14px;"></i> الحلقة الأعلى كثافة ونشاطاً</span>
+              <span id="topCircleBadge" class="rate-tag rate-tag-blue">--</span>
             </div>
             <h3 id="topCircleName" class="insight-title">لا توجد بيانات كافية</h3>
             <div id="topCircleSub" class="insight-sub">الأستاذ: -- | عدد الطلاب: 0</div>
           </div>
 
-          <div class="insight-card" style="border-color:#86efac; background:linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);">
+          <div class="insight-card insight-green">
             <div class="insight-head">
               <span class="insight-badge success-badge" style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="shield-check" style="width:14px; height:14px;"></i> الحلقة الأعلى انضباطاً (أقل غياب)</span>
-              <span id="disciplinedCircleBadge" class="rate-tag" style="color:#15803d;">--</span>
+              <span id="disciplinedCircleBadge" class="rate-tag rate-tag-green">--</span>
             </div>
             <h3 id="disciplinedCircleName" class="insight-title">لا توجد بيانات كافية</h3>
             <div id="disciplinedCircleSub" class="insight-sub">الأستاذ: -- | متوسط الغياب: 0</div>
           </div>
 
-          <div class="insight-card" style="border-color:#fde047; background:linear-gradient(180deg, #ffffff 0%, #fefce8 100%);">
+          <div class="insight-card insight-gold">
             <div class="insight-head">
-              <span class="insight-badge" style="background:#fef08a; color:#854d0e; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="star" style="width:14px; height:14px;"></i> الأعلى إتقاناً في الحفظ والمراجعة</span>
-              <span id="topMemoCircleBadge" class="rate-tag" style="color:#a16207;">--</span>
+              <span class="insight-badge insight-badge-gold"><i data-lucide="star" style="width:14px; height:14px;"></i> الأعلى إتقاناً في الحفظ والمراجعة</span>
+              <span id="topMemoCircleBadge" class="rate-tag rate-tag-gold">--</span>
             </div>
             <h3 id="topMemoCircleName" class="insight-title">لا توجد بيانات كافية</h3>
             <div id="topMemoCircleSub" class="insight-sub">الأستاذ: -- | مؤشر الإتقان: 0%</div>
@@ -178,7 +235,7 @@
               <div>
                 <h3 class="honor-main-title">
                   لوحة الشرف وأبرز إنجازات الطلاب
-                  <span class="honor-badge-tag-mini">🏆 قائمة التميز</span>
+                  <span class="honor-badge-tag-mini"><i data-lucide="award" style="width:13px; height:13px;"></i> قائمة التميز</span>
                 </h3>
                 <p class="honor-sub-title">
                   الأكثر حفظاً بالحساب الفعلي للأوجه، الأكثر مراجعة، الأكثر إتقاناً، والأقل غياباً
@@ -258,9 +315,24 @@
 
         <!-- Circle Rankings Table -->
         <section class="analytics-card" style="margin-bottom:22px;">
-          <div class="card-head">
-            <h2><i data-lucide="trophy" style="width:22px; height:22px; vertical-align:-3px; color:#eab308;"></i> التقييم الشامل وترتيب الحلقات القرآنية</h2>
-            <p>مقارنة أداء الحلقات القرآنية، أسماء المعلمين، نسبة إتقان الحفظ، سجلات الغياب، والحالة التقييمية الديناميكية.</p>
+          <div class="card-head head-row-between">
+            <div>
+              <h2><i data-lucide="trophy" style="width:22px; height:22px; vertical-align:-3px; color:#eab308;"></i> التقييم الشامل وترتيب الحلقات القرآنية</h2>
+              <p>مقارنة أداء الحلقات القرآنية، أسماء المعلمين، نسبة إتقان الحفظ، سجلات الغياب، والحالة التقييمية الديناميكية.</p>
+            </div>
+            <div class="table-actions-inline no-print">
+              <select id="circlesSortSelect" aria-label="ترتيب جدول الحلقات" onchange="renderCircleRankings(analyticsCache && analyticsCache.circle_rankings)">
+                <option value="rank">الترتيب الافتراضي</option>
+                <option value="memo_pages">الأكثر حفظاً (الأوجه)</option>
+                <option value="rev_pages">الأكثر مراجعة</option>
+                <option value="memo_index">الأعلى إتقاناً (%)</option>
+                <option value="absent_asc">الأقل غياباً</option>
+                <option value="absent_desc">الأكثر غياباً</option>
+                <option value="students">عدد الطلاب</option>
+                <option value="name">أبجدياً</option>
+              </select>
+              <button type="button" class="btn-secondary-outline" onclick="exportAnalyticsCsv('circles')"><i data-lucide="download" style="width:14px; height:14px;"></i> CSV</button>
+            </div>
           </div>
           <div class="table-scroll-container">
             <table class="analytics-table">
@@ -274,7 +346,7 @@
                   <th>مؤشر إتقان الحفظ</th>
                   <th>سجل الغياب والانضباط</th>
                   <th>التقييم والحالة العامة</th>
-                  <th>إجراءات سريعة</th>
+                  <th class="no-print">إجراءات سريعة</th>
                 </tr>
               </thead>
               <tbody id="circlesRankTableBody">
@@ -288,17 +360,18 @@
 
         <!-- Honor Board & Follow-up Section -->
         <section class="insights-grid insights-grid-2" style="margin-bottom:22px;">
-          <div class="analytics-card" style="margin:0; border-color:#fef08a; background:linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);">
-            <div class="card-head" style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="analytics-card honor-board-section-card">
+            <div class="card-head" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
               <div>
-                <h2 style="color:#b45309;"><i data-lucide="crown" style="width:22px; height:22px; vertical-align:-3px; color:#f59e0b;"></i> لوحة شرف القرآن الكريم (أوائل الحفظة)</h2>
+                <h2 class="honor-board-title"><i data-lucide="crown" style="width:22px; height:22px; vertical-align:-3px; color:#f59e0b;"></i> لوحة شرف القرآن الكريم (أوائل الحفظة)</h2>
                 <p>الطلاب المتميزون الحاصلون على تقدير ممتاز في الحفظ مع التزام عالي بالحضور.</p>
               </div>
-              <span class="status-badge" style="background:#fef3c7; color:#b45309; font-weight:800;">🏆 المتميزون</span>
+              <span class="status-badge honor-board-pill"><i data-lucide="award" style="width:14px; height:14px;"></i> المتميزون</span>
             </div>
             <div id="honorBoardList" class="student-cards-grid" style="display:grid; gap:12px; max-height:420px; overflow-y:auto; padding-right:4px;">
               <div style="text-align:center; padding:24px; color:var(--muted);">جارٍ تحميل لوحة الشرف...</div>
             </div>
+            <div id="honorBoardToggleWrap" class="board-expand-wrap no-print" style="display:none;"></div>
           </div>
 
           <div class="analytics-card follow-up-card">
@@ -312,11 +385,12 @@
                   <p class="follow-up-sub-title">الطلاب الذين لديهم غياب متكرر أو ضعف في تقديرات الحفظ والمراجعة وتحتاج حالاتهم للتدخل.</p>
                 </div>
               </div>
-              <span class="status-badge follow-up-badge">🚨 للمتابعة</span>
+              <span class="status-badge follow-up-badge"><i data-lucide="bell-ring" style="width:14px; height:14px;"></i> للمتابعة</span>
             </div>
             <div id="followupBoardList" class="student-cards-grid follow-up-list-container">
               <div style="text-align:center; padding:24px; color:var(--muted);">جارٍ تحميل قائمة المتابعة...</div>
             </div>
+            <div id="followupBoardToggleWrap" class="board-expand-wrap no-print" style="display:none;"></div>
           </div>
         </section>
       </div>
@@ -364,11 +438,11 @@
             </div>
             <div class="filter-item">
               <label><i data-lucide="calendar" style="width:14px; height:14px;"></i> السنة</label>
-              <input type="number" id="filterStudentsYear" onchange="syncAndLoadAnalytics('students')" value="" min="1400" max="2100" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: var(--card-bg, #fff);">
+              <input type="number" id="filterStudentsYear" onchange="syncAndLoadAnalytics('students')" value="" min="1400" max="2100">
             </div>
             <div class="filter-item">
               <label><i data-lucide="clock" style="width:14px; height:14px;"></i> الفترة</label>
-              <select id="filterStudentsMonth" onchange="syncAndLoadAnalytics('students')" style="padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; color: var(--primary); font-size: 14px; outline: none; background: var(--card-bg, #fff); cursor: pointer;">
+              <select id="filterStudentsMonth" onchange="syncAndLoadAnalytics('students')">
                 <option value="all">جميع الفترات (السجل التراكمي)</option>
               </select>
             </div>
@@ -439,12 +513,25 @@
 
         <!-- Detailed Interactive Students Table -->
         <section class="analytics-card" style="margin-top:20px;">
-          <div class="card-head">
-            <div class="head-with-badge">
-              <h2><i data-lucide="table" style="width:22px; height:22px; vertical-align:-3px;"></i> سجلات الحفظ والأداء الشاملة لطلاب الحلقات</h2>
-              <span id="filteredStudentsBadge" class="count-badge">0 طالب</span>
+          <div class="card-head head-row-between">
+            <div>
+              <div class="head-with-badge">
+                <h2><i data-lucide="table" style="width:22px; height:22px; vertical-align:-3px;"></i> سجلات الحفظ والأداء الشاملة لطلاب الحلقات</h2>
+                <span id="filteredStudentsBadge" class="count-badge">0 طالب</span>
+              </div>
+              <p>متابعة تفصيلية لمقدار الحفظ والمراجعة، درجات التقييم، وسجلات الحضور والغياب لكل طالب بالنقر على السجل التفصيلي.</p>
             </div>
-            <p>متابعة تفصيلية لمقدار الحفظ والمراجعة، درجات التقييم، وسجلات الحضور والغياب لكل طالب بالنقر على السجل التفصيلي.</p>
+            <div class="table-actions-inline no-print">
+              <select id="studentsAnalyticsSortSelect" aria-label="ترتيب جدول الطلاب" onchange="resetStudentsPageAndRender()">
+                <option value="default">الترتيب الافتراضي</option>
+                <option value="memo_pages_desc">الأكثر حفظاً (الأوجه)</option>
+                <option value="total_mark_desc">الأعلى محصلة</option>
+                <option value="absent_desc">الأكثر غياباً</option>
+                <option value="absent_asc">الأقل غياباً</option>
+                <option value="name_asc">الاسم (أبجدياً)</option>
+              </select>
+              <button type="button" class="btn-secondary-outline" onclick="exportAnalyticsCsv('students')"><i data-lucide="download" style="width:14px; height:14px;"></i> CSV</button>
+            </div>
           </div>
 
           <div class="table-scroll-container">
@@ -468,6 +555,7 @@
               </tbody>
             </table>
           </div>
+          <div id="circleStudentsPagination" class="an-pagination no-print" style="display:none;"></div>
         </section>
       </div>
 
@@ -480,14 +568,14 @@
               <p class="filter-hint">اختر الاختبار المراد استعراض تقاريره التفصيلية ونسب نجاح الطلاب ودقة الإجابات</p>
             </div>
             <div id="examMetaBadgeContainer" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <span id="selectedExamStatusBadge" class="status-badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; font-size:12.5px;">📋 عام</span>
+              <span id="selectedExamStatusBadge" class="status-badge exam-meta-pill"><i data-lucide="clipboard-list" style="width:14px; height:14px;"></i> عام</span>
             </div>
           </div>
           <div class="student-filter-grid" style="grid-template-columns: 1fr auto; align-items:center;">
             <div class="filter-item" style="margin:0;">
               <label><i data-lucide="layers" style="width:14px; height:14px;"></i> تحديد الاختبار من النظام</label>
-              <select id="filterAnalyticsExamSelect" onchange="onAnalyticsExamChange(this.value)" style="padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; font-weight: 700; color: var(--primary); font-size: 14.5px; outline: none; background: #fff; cursor: pointer; width:100%;">
-                <option value="all">📊 جميع الاختبارات (تقرير تراكمي شامل)</option>
+              <select id="filterAnalyticsExamSelect" onchange="onAnalyticsExamChange(this.value)">
+                <option value="all">جميع الاختبارات (تقرير تراكمي شامل)</option>
               </select>
             </div>
             <div class="filter-item" style="margin:0; align-self:flex-end;">
@@ -593,6 +681,7 @@
               <option value="passed">الناجحين فقط</option>
               <option value="failed">الراسبين فقط</option>
             </select>
+            <button type="button" class="btn-secondary-outline" onclick="exportAnalyticsCsv('exams')"><i data-lucide="download" style="width:14px; height:14px;"></i> تصدير CSV</button>
           </div>
 
           <div class="table-scroll-container">
@@ -621,7 +710,7 @@
   </div>
 
   <!-- Student Answers Detail Modal -->
-  <div id="studentModal" class="modal-overlay" style="display:none;" onclick="closeStudentModal(event)">
+  <div id="studentModal" class="modal-overlay" role="dialog" aria-modal="true" style="display:none;" onclick="closeStudentModal(event)">
     <div class="modal-card" onclick="event.stopPropagation()">
       <div class="modal-header">
         <div>
@@ -635,7 +724,7 @@
   </div>
 
   <!-- Circle Students Roster Modal -->
-  <div id="circleRosterModal" class="modal-overlay" style="display:none;" onclick="closeCircleRosterModal(event)">
+  <div id="circleRosterModal" class="modal-overlay" role="dialog" aria-modal="true" style="display:none;" onclick="closeCircleRosterModal(event)">
     <div class="modal-card" style="max-width:750px; width:95%;" onclick="event.stopPropagation()">
       <div class="modal-header">
         <div>
@@ -649,7 +738,7 @@
   </div>
 
   <!-- Student Comprehensive Record Modal -->
-  <div id="studentRecordModal" class="modal-overlay" style="display:none;" onclick="closeStudentRecordModal(event)">
+  <div id="studentRecordModal" class="modal-overlay" role="dialog" aria-modal="true" style="display:none;" onclick="closeStudentRecordModal(event)">
     <div class="modal-card" style="max-width:680px; width:95%;" onclick="event.stopPropagation()">
       <div class="modal-header">
         <div>
@@ -663,33 +752,16 @@
   </div>
 
   <!-- Back to Top Button -->
-  <button id="backTopBtn" aria-label="العودة إلى الأعلى" title="العودة إلى الأعلى" style="
-    position: fixed;
-    bottom: max(24px, env(safe-area-inset-bottom, 24px));
-    left: 20px;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: var(--primary);
-    color: #fff;
-    border: none;
-    box-shadow: none !important;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s ease, transform 0.2s ease;
-    z-index: 9999;
-    min-height: 48px;
-  "><svg class="lucide lucide-arrow-up" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+  <button id="backTopBtn" class="back-top-btn no-print" aria-label="العودة إلى الأعلى" title="العودة إلى الأعلى">
+    <svg class="lucide lucide-arrow-up" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+  </button>
 
-  <script src="mobile-db.js?v=2.0"></script>
-  <script src="hijri_date.js?v=1.0"></script>
-  <script src="mobile_bottom_nav.js?v=1.0"></script>
-  <script src="firebase-client.js?v=3.0"></script>
-  <script src="analytics.js?v=2.2"></script>
+  <script src="albayan_dialog.js?v=2.0"></script>
+  <script src="mobile-db.js?v=3.0"></script>
+  <script src="hijri_date.js?v=3.0"></script>
+  <script src="mobile_bottom_nav.js?v=2.0"></script>
+  <script src="firebase-client.js?v=5.0"></script>
+  <script src="analytics.js?v=4.0"></script>
   <script>if(window.safeCreateIcons) safeCreateIcons(); else if(window.lucide) lucide.createIcons();</script>
 </body>
 </html>
