@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dark_theme.css?v=3.0">
   <link rel="stylesheet" href="circles.css">
-  <link rel="stylesheet" href="analytics.css?v=4.0">
+  <link rel="stylesheet" href="analytics.css?v=5.0">
   <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
   <!-- Lucide Icons (Local with CDN fallback) -->
   <script src="lucide.min.js"></script>
@@ -67,44 +67,64 @@
         </div>
       </section>
 
-      <!-- Header -->
-      <header class="content-header">
-        <div>
+      <!-- Header (Minimalist Mobile-First RTL) -->
+      <header class="content-header analytics-minimal-header">
+        <div class="header-title-block">
           <h1>مركز التحليلات والإحصائيات المتقدمة</h1>
-          <p>عرض وتحليل بيانات أداء الحلقات القرآنية ونتائج درجات الاختبارات بشكل منفصل.</p>
+          <p>عرض وتحليل بيانات أداء الحلقات القرآنية ونتائج الاختبارات بشكل منفصل.</p>
         </div>
-        <div class="header-actions no-print" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-          <button type="button" class="btn-secondary-outline" onclick="exportActiveViewCsv()"><i data-lucide="download" style="width:16px; height:16px;"></i> تصدير Excel / CSV</button>
-          <button type="button" class="btn-secondary" onclick="window.print()"><i data-lucide="printer" style="width:16px; height:16px;"></i> طباعة التقرير / PDF</button>
-          <button type="button" class="btn-primary" onclick="loadAnalyticsData()"><i data-lucide="refresh-cw" style="width:16px; height:16px;"></i> تحديث البيانات</button>
+        <div class="header-overflow-wrap no-print">
+          <button type="button" id="analyticsMoreMenuBtn" class="header-more-btn" aria-haspopup="true" aria-expanded="false" aria-label="المزيد من الخيارات" onclick="toggleHeaderMoreMenu(event)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="5" r="2"/>
+              <circle cx="12" cy="12" r="2"/>
+              <circle cx="12" cy="19" r="2"/>
+            </svg>
+          </button>
+          <div id="analyticsMoreDropdown" class="header-more-dropdown" role="menu" aria-hidden="true">
+            <button type="button" class="header-more-item" role="menuitem" onclick="closeHeaderMoreMenu(); loadAnalyticsData();">
+              <i data-lucide="refresh-cw" style="width:16px; height:16px;"></i>
+              <span>تحديث البيانات</span>
+            </button>
+            <button type="button" class="header-more-item" role="menuitem" onclick="closeHeaderMoreMenu(); exportActiveViewCsv();">
+              <i data-lucide="download" style="width:16px; height:16px;"></i>
+              <span>تصدير Excel / CSV</span>
+            </button>
+            <button type="button" class="header-more-item" role="menuitem" onclick="closeHeaderMoreMenu(); window.print();">
+              <i data-lucide="printer" style="width:16px; height:16px;"></i>
+              <span>طباعة التقرير / PDF</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      <!-- Main Analytics Navigation Tabs -->
-      <div class="analytics-view-tabs no-print" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:24px; border-bottom:2px solid var(--line); padding-bottom:12px;">
-        <button type="button" id="tabBtnCircles" class="analytics-tab-btn active" onclick="switchAnalyticsView('circles')">
-          <svg style="width:18px; height:18px; vertical-align:middle; fill:currentColor; margin-left:6px;" viewBox="0 0 100 100"><circle cx="50" cy="22" r="14"/><path d="M30 40 c-7 0 -12 6 -12 14 v16 c0 4 3 7 7 7 h4 v-20 c0 -4 3 -7 7 -7 h28 c4 0 7 3 7 7 v20 h4 c4 0 7 -3 7 -7 v-16 c0 -8 -5 -14 -12 -14 Z"/><path d="M18 82 l32 -26 l32 26 M18 56 l32 26 l32 -26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-          إحصائيات الحلقات القرآنية
-        </button>
-        <button type="button" id="tabBtnStudents" class="analytics-tab-btn" onclick="switchAnalyticsView('students')">
-          <i data-lucide="users" style="width:18px; height:18px; margin-left:6px;"></i>
-          إحصائيات طلاب الحلقات
-        </button>
-        <button type="button" id="tabBtnExams" class="analytics-tab-btn" onclick="switchAnalyticsView('exams')">
-          <i data-lucide="file-text" style="width:18px; height:18px; margin-left:6px;"></i>
-          إحصائيات ونتائج الاختبارات
-        </button>
+      <!-- Segmented Control Navigation (Pill Style) -->
+      <div class="analytics-segmented-wrap no-print">
+        <div class="analytics-view-tabs analytics-segmented-control" role="tablist" aria-label="أقسام التحليلات">
+          <button type="button" id="tabBtnCircles" class="analytics-tab-btn active" role="tab" aria-selected="true" onclick="switchAnalyticsView('circles')">
+            <i data-lucide="building-2" style="width:17px; height:17px;"></i>
+            <span>الحلقات القرآنية</span>
+          </button>
+          <button type="button" id="tabBtnStudents" class="analytics-tab-btn" role="tab" aria-selected="false" onclick="switchAnalyticsView('students')">
+            <i data-lucide="users" style="width:17px; height:17px;"></i>
+            <span>الطلاب</span>
+          </button>
+          <button type="button" id="tabBtnExams" class="analytics-tab-btn" role="tab" aria-selected="false" onclick="switchAnalyticsView('exams')">
+            <i data-lucide="file-check-2" style="width:17px; height:17px;"></i>
+            <span>الاختبارات</span>
+          </button>
+        </div>
       </div>
+
       <!-- SECTION 1: CIRCLES ANALYTICS VIEW -->
       <div id="viewCirclesAnalytics" class="analytics-view-section">
         <!-- Circles Date Filter Card -->
-        <section class="student-filters-card no-print" style="margin-bottom:22px;">
+        <section class="student-filters-card no-print analytics-filter-spaced">
           <div class="filters-header">
             <div>
               <h3><i data-lucide="calendar-range" style="width:20px; height:20px; color:var(--primary);"></i> فلتر التاريخ وإحصائيات الفترة الزمنية</h3>
               <p class="filter-hint">اختر السنة والشهر لعرض وتحليل مؤشرات الأداء والإتقان والحضور للحلقات والطلاب خلال تلك الفترة المحددة</p>
             </div>
-            <button type="button" class="btn-secondary-outline" onclick="resetCirclesDateFilter()"><i data-lucide="rotate-ccw" style="width:15px; height:15px;"></i> الشهر الحالي</button>
           </div>
           <div class="student-filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 280px));">
             <div class="filter-item">
@@ -761,7 +781,7 @@
   <script src="hijri_date.js?v=3.0"></script>
   <script src="mobile_bottom_nav.js?v=2.0"></script>
   <script src="firebase-client.js?v=5.0"></script>
-  <script src="analytics.js?v=4.0"></script>
+  <script src="analytics.js?v=5.0"></script>
   <script>if(window.safeCreateIcons) safeCreateIcons(); else if(window.lucide) lucide.createIcons();</script>
 </body>
 </html>

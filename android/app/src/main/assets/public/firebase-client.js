@@ -1634,26 +1634,45 @@
         AlbayanFirebaseDAL.remove(`circles/circles_${cleanId}`)
       ]);
 
-      // 3. Cascade delete students belonging to this circle in background
-      (async () => {
-        try {
-          const stuRes = await AlbayanFirebaseDAL.get('students');
-          if (stuRes.ok && stuRes.data) {
-            const entries = AlbayanDataNormalizer.normalizeCollectionEntries(stuRes.data);
-            for (const [k, s] of entries) {
-              if (String(AlbayanDataNormalizer.normalizeCircleId(s.circle_id)) === cidStr) {
-                const sid = AlbayanDataNormalizer.normalizeStudentId(s.id !== undefined ? s.id : k);
+      // 3. Cascade delete students AND their student_records belonging to this circle cleanly
+      try {
+        const [stuRes, recRes] = await Promise.all([
+          AlbayanFirebaseDAL.get('students'),
+          AlbayanFirebaseDAL.get('student_records')
+        ]);
+        const orphanStudentIds = new Set();
+        const delTasks = [];
+        if (stuRes.ok && stuRes.data) {
+          const entries = AlbayanDataNormalizer.normalizeCollectionEntries(stuRes.data);
+          for (const [k, s] of entries) {
+            if (String(AlbayanDataNormalizer.normalizeCircleId(s.circle_id)) === cidStr) {
+              const sid = AlbayanDataNormalizer.normalizeStudentId(s.id !== undefined ? s.id : k);
+              if (sid !== null) {
+                orphanStudentIds.add(String(sid));
                 AlbayanStateStore.addDeletedId('deleted_students', sid);
                 AlbayanStateStore.unregisterKnownStudent(sid);
-                await AlbayanFirebaseDAL.remove(`students/${k}`, { retries: 0 });
-                if (sid !== null && String(sid) !== k) {
-                  await AlbayanFirebaseDAL.remove(`students/${sid}`, { retries: 0 });
-                }
+              }
+              orphanStudentIds.add(String(k));
+              delTasks.push(AlbayanFirebaseDAL.remove(`students/${k}`, { retries: 0 }).catch(() => {}));
+              if (sid !== null && String(sid) !== k) {
+                delTasks.push(AlbayanFirebaseDAL.remove(`students/${sid}`, { retries: 0 }).catch(() => {}));
               }
             }
           }
-        } catch (e) {}
-      })();
+        }
+        if (recRes && recRes.ok && recRes.data && orphanStudentIds.size > 0) {
+          const recEntries = AlbayanDataNormalizer.normalizeCollectionEntries(recRes.data);
+          for (const [rk, rv] of recEntries) {
+            const rSid = AlbayanDataNormalizer.normalizeStudentId(rv && rv.student_id);
+            if (rSid !== null && orphanStudentIds.has(String(rSid))) {
+              delTasks.push(AlbayanFirebaseDAL.remove(`student_records/${rk}`, { retries: 0 }).catch(() => {}));
+            }
+          }
+        }
+        if (delTasks.length > 0) {
+          await Promise.allSettled(delTasks);
+        }
+      } catch (e) {}
 
       if (delCanonical.ok || delLegacy.ok) {
         if (qid && window.AlbayanLocalDB) {

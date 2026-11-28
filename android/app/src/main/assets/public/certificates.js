@@ -2836,6 +2836,7 @@
       const sid = normStudentIdStr(s.id !== undefined ? s.id : s.student_id);
       if (!sid || seenIds.has(sid)) continue;
       const cid = normCircleIdStr(s.circle_id);
+      if (allowedCircleIdsSet.size > 0 && (!cid || !allowedCircleIdsSet.has(cid))) continue;
       if (!canAllCircles && (!cid || !allowedCircleIdsSet.has(cid))) continue;
       if (wantCircleId && cid !== wantCircleId) continue;
       seenIds.add(sid);

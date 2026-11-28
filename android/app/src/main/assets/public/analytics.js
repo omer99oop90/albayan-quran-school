@@ -284,7 +284,36 @@ function syncAnalyticsUrlParams() {
   } catch (e) {}
 }
 
+function closeHeaderMoreMenu() {
+  const dd = document.getElementById("analyticsMoreDropdown");
+  const btn = document.getElementById("analyticsMoreMenuBtn");
+  if (dd) {
+    dd.classList.remove("open");
+    dd.setAttribute("aria-hidden", "true");
+  }
+  if (btn) btn.setAttribute("aria-expanded", "false");
+}
+
+function toggleHeaderMoreMenu(event) {
+  if (event && typeof event.stopPropagation === "function") event.stopPropagation();
+  const dd = document.getElementById("analyticsMoreDropdown");
+  const btn = document.getElementById("analyticsMoreMenuBtn");
+  if (!dd) return;
+  const isOpen = dd.classList.contains("open");
+  if (isOpen) {
+    closeHeaderMoreMenu();
+  } else {
+    dd.classList.add("open");
+    dd.setAttribute("aria-hidden", "false");
+    if (btn) btn.setAttribute("aria-expanded", "true");
+  }
+}
+
+window.toggleHeaderMoreMenu = toggleHeaderMoreMenu;
+window.closeHeaderMoreMenu = closeHeaderMoreMenu;
+
 function closeTopAnalyticsModal() {
+  closeHeaderMoreMenu();
   const modalIds = ["studentRecordModal", "circleRosterModal", "studentModal"];
   for (const id of modalIds) {
     const m = document.getElementById(id);
@@ -347,6 +376,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener("albayan:permissions-updated", (e) => {
     if (e && e.detail) _analyticsAuthUser = e.detail;
     loadAnalyticsData();
+  });
+
+  document.addEventListener("click", (e) => {
+    const wrap = e && e.target && typeof e.target.closest === "function" ? e.target.closest(".header-overflow-wrap") : null;
+    if (!wrap) closeHeaderMoreMenu();
   });
 
   document.addEventListener("keydown", (e) => {
@@ -451,19 +485,37 @@ function switchAnalyticsView(viewType) {
   if (circlesSec) circlesSec.style.display = "none";
   if (studentsSec) studentsSec.style.display = "none";
   if (examsSec) examsSec.style.display = "none";
-  if (btnCircles) btnCircles.classList.remove("active");
-  if (btnStudents) btnStudents.classList.remove("active");
-  if (btnExams) btnExams.classList.remove("active");
+  if (btnCircles) {
+    btnCircles.classList.remove("active");
+    btnCircles.setAttribute("aria-selected", "false");
+  }
+  if (btnStudents) {
+    btnStudents.classList.remove("active");
+    btnStudents.setAttribute("aria-selected", "false");
+  }
+  if (btnExams) {
+    btnExams.classList.remove("active");
+    btnExams.setAttribute("aria-selected", "false");
+  }
 
   if (viewType === "exams") {
     if (examsSec) examsSec.style.display = "block";
-    if (btnExams) btnExams.classList.add("active");
+    if (btnExams) {
+      btnExams.classList.add("active");
+      btnExams.setAttribute("aria-selected", "true");
+    }
   } else if (viewType === "students") {
     if (studentsSec) studentsSec.style.display = "block";
-    if (btnStudents) btnStudents.classList.add("active");
+    if (btnStudents) {
+      btnStudents.classList.add("active");
+      btnStudents.setAttribute("aria-selected", "true");
+    }
   } else {
     if (circlesSec) circlesSec.style.display = "block";
-    if (btnCircles) btnCircles.classList.add("active");
+    if (btnCircles) {
+      btnCircles.classList.add("active");
+      btnCircles.setAttribute("aria-selected", "true");
+    }
     if (analyticsCache && analyticsCache.circles_analytics) {
       renderAnalyticsCharts(analyticsCache.circles_analytics, analyticsCache.circle_rankings || []);
     }
@@ -671,23 +723,28 @@ async function buildServerlessAnalytics(year, month, requestedExamId, externalSi
     .map((s, idx) => {
       const sid = normalizeEntityId(s.id !== undefined ? s.id : (s.student_id !== undefined ? s.student_id : idx + 1), "students_");
       const cid = normalizeEntityId(s.circle_id, "circles_");
-      const matchedCircle = (cid && circleById.get(cid)) || (s.circle_name && circleByName.get(normalizeArabicSearch(s.circle_name))) || null;
+      const rawCName = s.circle_name || s.circle || "";
+      const matchedCircle = (cid && circleById.get(cid)) || (rawCName && circleByName.get(normalizeArabicSearch(rawCName))) || null;
       return {
         ...s,
         id: sid || String(idx + 1),
         circle_id: matchedCircle ? matchedCircle.id : cid,
-        circle_name: s.circle_name || (matchedCircle && matchedCircle.name) || "حلقة عامة",
+        circle_name: matchedCircle ? matchedCircle.name : (rawCName || "حلقة عامة"),
         teacher_name: s.teacher_name || (matchedCircle && matchedCircle.teacher_name) || "كادر تعليمي",
-        name: s.name || `طالب ${idx + 1}`
+        name: s.name || `طالب ${idx + 1}`,
+        _matchedActiveCircle: Boolean(matchedCircle)
       };
     })
     .filter(s => {
       if (deletedStudents.includes(String(s.id))) return false;
       if (!canAllCircles) {
-        return allowedCircleIds.has(String(s.circle_id)) || allowedCircleNames.has(normalizeArabicSearch(s.circle_name));
+        return s._matchedActiveCircle && (allowedCircleIds.has(String(s.circle_id)) || allowedCircleNames.has(normalizeArabicSearch(s.circle_name)));
       }
+      // Always exclude orphan students not linked to any active circle
+      if (circles.length > 0 && !s._matchedActiveCircle) return false;
       return true;
-    });
+    })
+    .map(({ _matchedActiveCircle, ...rest }) => rest);
 
   exams = (exams || [])
     .filter(e => e && !e.deleted && e.is_deleted !== 1 && e.is_deleted !== true)
@@ -1699,23 +1756,10 @@ function adaptAnalyticsFilters(settings) {
   if (lastAdaptedSignature === sig) return;
   lastAdaptedSignature = sig;
 
-  // Inject subtle Year Cycle Banner inside #viewCirclesAnalytics (Blue brand palette)
-  const circlesSec = document.getElementById("viewCirclesAnalytics");
-  if (circlesSec && stats) {
-    let banner = document.getElementById("analyticsCycleStatusBanner");
-    if (!banner) {
-      banner = document.createElement("div");
-      banner.id = "analyticsCycleStatusBanner";
-      banner.className = "analytics-cycle-banner";
-      circlesSec.insertBefore(banner, circlesSec.firstChild);
-    }
-    const modeTitle = (stats.config.periodType === "term" || stats.config.mode === "term")
-      ? `فصلي (${stats.config.termMonths || 3} أشهر)`
-      : stats.meta.label;
-    banner.innerHTML = `
-      <span>النظام المعتمد: <strong>${escapeHtml(modeTitle)}</strong> (السنة الحالية #${stats.config.yearNumber || stats.config.cycleIndex || 1})</span>
-      <span>متبقي ${stats.remainingDays} يوماً • سنوات مؤرشفة: ${archives.length}</span>
-    `;
+  // Remove any legacy cycle notice banner to keep Minimalist UI clean spacing
+  const legacyBanner = document.getElementById("analyticsCycleStatusBanner");
+  if (legacyBanner && legacyBanner.parentNode) {
+    legacyBanner.parentNode.removeChild(legacyBanner);
   }
 
   const periodData = (cycEng && typeof cycEng.buildPeriodOptionsList === "function")

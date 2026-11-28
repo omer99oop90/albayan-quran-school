@@ -853,19 +853,26 @@ async function loadLookups() {
     } catch(e) {}
   }
 
-  // Enrich students with circle_name & teacher_name from circles
+  // Enrich students with circle_name & teacher_name from active circles and exclude orphans
   const cMap = new Map();
   (circles || []).forEach(c => {
     if (c && c.id !== undefined) cMap.set(String(c.id).replace(/^circles_/, ""), c);
   });
-  students = (students || []).filter(s => s && (s.name || s.student_name)).map(s => {
+  students = (students || []).filter(s => {
+    if (!s || !(s.name || s.student_name)) return false;
+    if (cMap.size > 0) {
+      const cid = s.circle_id !== undefined && s.circle_id !== null ? String(s.circle_id).replace(/^circles_/, "") : "";
+      if (!cid || !cMap.has(cid)) return false;
+    }
+    return true;
+  }).map(s => {
     const cid = s.circle_id !== undefined && s.circle_id !== null ? String(s.circle_id).replace(/^circles_/, "") : "";
     const cObj = cid ? cMap.get(cid) : null;
     return {
       ...s,
       id: s.id !== undefined ? s.id : s.student_id,
       name: s.name || s.student_name,
-      circle_name: s.circle_name || (cObj ? cObj.name : "بدون حلقة"),
+      circle_name: (cObj ? cObj.name : s.circle_name) || "بدون حلقة",
       teacher_name: s.teacher_name || (cObj ? cObj.teacher_name : "غير متوفر")
     };
   });

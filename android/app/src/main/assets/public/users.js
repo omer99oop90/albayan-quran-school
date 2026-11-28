@@ -1210,6 +1210,8 @@ function enrichStudentsList(rawStudents, circlesList, usersList) {
     if (cid !== null && deletedCircles.has(String(cid))) return;
 
     const circleObj = cid !== null ? circleMap.get(String(cid)) : null;
+    // Exclude orphan students whose circle was deleted or missing when active circles exist
+    if (circleMap.size > 0 && !circleObj) return;
     const circleName = (circleObj && circleObj.name) || s.circle_name || "بدون حلقة";
     let teacherName = (circleObj && circleObj.teacher_name) || "";
     if (!teacherName && circleObj && circleObj.teacher_id !== undefined) {
