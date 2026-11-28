@@ -1204,11 +1204,25 @@ async function buildServerlessAnalytics(year, month, requestedExamId, externalSi
   // CIRCLES ANALYTICS & STUDENT STATS
   const totalCircles = circles.length;
   const totalStudents = students.length;
-  const avgStudentsPerCircle = totalCircles > 0 ? (totalStudents / totalCircles).toFixed(1) : 0;
+  const avgStudentsPerCircle = totalCircles > 0 ? Math.round(totalStudents / totalCircles) : 0;
 
   let totalAbsentDays = 0;
   let totalAttendanceMarks = 0;
   let excellentMemoCount = 0;
+  let completionScoreSum = 0;
+
+  const gradeToAchievementPct = (g, maxM = 40) => {
+    if (g !== undefined && g !== null && String(g).trim() !== "" && !Number.isNaN(Number(g))) {
+      return Math.max(0, Math.min(100, (Number(g) / maxM) * 100));
+    }
+    const cat = categorizeGrade(g, maxM);
+    if (cat === "ممتاز") return 95;
+    if (cat === "جيد جداً") return 85;
+    if (cat === "جيد") return 72;
+    if (cat === "مقبول") return 55;
+    if (cat === "يحتاج متابعة") return 35;
+    return null;
+  };
 
   const memoCounts = { "ممتاز": 0, "جيد جداً": 0, "جيد": 0, "مقبول": 0, "يحتاج متابعة": 0, "غير محدد": 0 };
   const revCounts = { "ممتاز": 0, "جيد جداً": 0, "جيد": 0, "مقبول": 0, "يحتاج متابعة": 0, "غير محدد": 0 };
@@ -1236,6 +1250,19 @@ async function buildServerlessAnalytics(year, month, requestedExamId, externalSi
     revCounts[rgCat] = (revCounts[rgCat] || 0) + 1;
 
     if (mgCat === "ممتاز") excellentMemoCount++;
+
+    if (s.has_record) {
+      const attPct = Math.max(0, Math.min(100, ((Number.isFinite(attMark) ? attMark : 30) / 30) * 100));
+      const mPct = gradeToAchievementPct(s.memo_grade, 40);
+      const rPct = gradeToAchievementPct(s.rev_grade, 30);
+      const parts = [attPct];
+      if (mPct !== null) parts.push(mPct, mPct);
+      if (rPct !== null) parts.push(rPct);
+      if (mPct === null && rPct === null && ((Number(s.memo_pages) || 0) > 0 || (Number(s.rev_pages) || 0) > 0)) {
+        parts.push(75);
+      }
+      completionScoreSum += parts.reduce((a, b) => a + b, 0) / parts.length;
+    }
 
     const normCid = normalizeEntityId(s.circle_id, "circles_");
     const cTarget = circleStudentsById[normCid] || circleStudentsByName[normalizeArabicSearch(s.circle_name)];
@@ -1480,6 +1507,9 @@ async function buildServerlessAnalytics(year, month, requestedExamId, externalSi
   }
 
   const totalMemoPagesAll = Math.round(students.reduce((acc, st) => acc + (Number(st.memo_pages) || 0), 0) * 10) / 10;
+  const overallCompletionRate = totalStudents > 0
+    ? Math.max(0, Math.min(100, Math.round(completionScoreSum / totalStudents)))
+    : 0;
 
   return {
     exams_list: examsList,
@@ -1508,7 +1538,8 @@ async function buildServerlessAnalytics(year, month, requestedExamId, externalSi
         excellent_memo_count: excellentMemoCount,
         attendance_rate: attendanceRate,
         total_absent_days: totalAbsentDays,
-        total_memo_pages: totalMemoPagesAll
+        total_memo_pages: totalMemoPagesAll,
+        overall_completion_rate: overallCompletionRate
       },
       insights: {
         top_circle: topCircle,
@@ -1815,70 +1846,47 @@ function adaptAnalyticsFilters(settings) {
   });
 }
 
-function setDeltaPill(elId, delta, suffix, invertPositive = false, prevLabel = "") {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  el.classList.remove("up", "down", "neutral");
-  if (delta === null || delta === undefined || Number.isNaN(Number(delta))) {
-    el.classList.add("neutral");
-    el.textContent = prevLabel || "بيانات أساسية";
-    return;
-  }
-  const num = Math.round(Number(delta) * 10) / 10;
-  if (num === 0) {
-    el.classList.add("neutral");
-    el.textContent = `ثابت مقارنة بـ ${prevLabel || "السابق"}`;
-    return;
-  }
-  const isGood = invertPositive ? num < 0 : num > 0;
-  el.classList.add(isGood ? "up" : "down");
-  const sign = num > 0 ? "+" : "";
-  el.textContent = `${sign}${num}${suffix} عن ${prevLabel || "الفترة السابقة"}`;
-}
-
-function renderCirclesSummary(summary, trendDeltas) {
+function renderCirclesSummary(summary) {
   if (!summary) return;
+  const totalCirclesInt = Math.round(Number(summary.total_circles) || 0);
+  const totalStudentsInt = Math.round(Number(summary.total_students) || 0);
+  const avgPerCircleInt = summary.avg_students_per_circle !== undefined && summary.avg_students_per_circle !== null
+    ? Math.round(Number(summary.avg_students_per_circle) || 0)
+    : (totalCirclesInt > 0 ? Math.round(totalStudentsInt / totalCirclesInt) : 0);
+  const totalMemoPagesVal = Math.round((Number(summary.total_memo_pages) || 0) * 10) / 10;
+  const excCountInt = Math.round(Number(summary.excellent_memo_count) || 0);
+  const attRateVal = summary.attendance_rate != null ? summary.attendance_rate : 100;
+  const overallPct = summary.overall_completion_rate != null
+    ? Math.max(0, Math.min(100, Math.round(Number(summary.overall_completion_rate) || 0)))
+    : Math.max(0, Math.min(100, Math.round(Number(attRateVal) || 0)));
+
   const elTotalCircles = document.getElementById("kpiTotalCircles");
-  if (elTotalCircles) elTotalCircles.textContent = summary.total_circles || 0;
-  
+  if (elTotalCircles) elTotalCircles.textContent = totalCirclesInt;
+
   const elAvgStudents = document.getElementById("kpiAvgStudentsPerCircle");
-  if (elAvgStudents) elAvgStudents.textContent = `${summary.avg_students_per_circle || 0} متوسط الطلاب/حلقة`;
-  
+  if (elAvgStudents) elAvgStudents.textContent = `متوسط الطلاب لكل حلقة: ${avgPerCircleInt}`;
+
   const elTotalQuran = document.getElementById("kpiTotalQuranStudents");
-  if (elTotalQuran) elTotalQuran.textContent = summary.total_students || 0;
+  if (elTotalQuran) elTotalQuran.textContent = totalStudentsInt;
 
   const elMemoSub = document.getElementById("kpiTotalMemoPagesSub");
-  if (elMemoSub) elMemoSub.textContent = `${summary.total_memo_pages || 0} وجه حفظ منجز`;
-  
+  if (elMemoSub) elMemoSub.textContent = `${totalMemoPagesVal} وجه حفظ`;
+
   const elExcCount = document.getElementById("kpiExcellentMemoCount");
-  if (elExcCount) elExcCount.textContent = summary.excellent_memo_count || 0;
-  
-  const excRate = summary.total_students > 0 ? ((summary.excellent_memo_count / summary.total_students) * 100).toFixed(1) : 0;
-  const elExcRate = document.getElementById("kpiExcellentMemoRate");
-  if (elExcRate) elExcRate.textContent = `${excRate}% من إجمالي الطلاب`;
-  
+  if (elExcCount) elExcCount.textContent = `${excCountInt} (ممتاز)`;
+
   const elAttRate = document.getElementById("kpiAttendanceRate");
-  if (elAttRate) elAttRate.textContent = `${summary.attendance_rate != null ? summary.attendance_rate : 100}%`;
-  
-  const elTotalAbsent = document.getElementById("kpiTotalAbsentDays");
-  if (elTotalAbsent) elTotalAbsent.textContent = `${summary.total_absent_days || 0} إجمالي أيام الغياب`;
+  if (elAttRate) elAttRate.textContent = `${attRateVal}%`;
 
-  const elDeltaCircles = document.getElementById("kpiDeltaCircles");
-  if (elDeltaCircles) {
-    elDeltaCircles.classList.remove("up", "down");
-    elDeltaCircles.classList.add("neutral");
-    elDeltaCircles.textContent = `${summary.total_circles || 0} حلقة نشطة بالمنظومة`;
-  }
+  const elCompRate = document.getElementById("kpiOverallCompletionRate");
+  if (elCompRate) elCompRate.textContent = `${overallPct}%`;
 
-  if (trendDeltas && trendDeltas.hasComparison) {
-    const prev = trendDeltas.previous_label || "الفترة السابقة";
-    setDeltaPill("kpiDeltaMemoPages", trendDeltas.memo_pages_delta_pct, "% أوجه الحفظ", false, prev);
-    setDeltaPill("kpiDeltaExcellence", trendDeltas.excellent_rate_delta, "% التميز", false, prev);
-    setDeltaPill("kpiDeltaAttendance", trendDeltas.attendance_rate_delta, "% الحضور", false, prev);
-  } else {
-    setDeltaPill("kpiDeltaMemoPages", null, "", false, "لا توجد فترة سابقة للمقارنة");
-    setDeltaPill("kpiDeltaExcellence", null, "", false, "أول فترة مسجلة");
-    setDeltaPill("kpiDeltaAttendance", null, "", false, "أول فترة مسجلة");
+  const elCompBar = document.getElementById("kpiOverallCompletionBar");
+  if (elCompBar) {
+    elCompBar.style.width = `${overallPct}%`;
+    if (elCompBar.parentNode && typeof elCompBar.parentNode.setAttribute === "function") {
+      elCompBar.parentNode.setAttribute("aria-valuenow", String(overallPct));
+    }
   }
 }
 

@@ -3126,6 +3126,240 @@ html[data-theme="dark"] .analytics-segmented-control .analytics-tab-btn.active {
   color: #ffffff !important;
 }
 
+/* ==========================================================================
+   UNIFIED KPI DASHBOARD CARD (Minimalist RTL 2x2 Grid + Progress Footer)
+   ========================================================================== */
+.unified-kpi-wrapper {
+  display: block;
+}
+
+.unified-kpi-section-title {
+  margin: 0 0 12px !important;
+  font-size: 16.5px !important;
+  font-weight: 900 !important;
+  color: var(--an-text) !important;
+  text-align: right;
+  line-height: 1.4;
+}
+
+.unified-kpi-card {
+  background: var(--an-card);
+  border: 1px solid var(--an-border);
+  border-radius: 20px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04) !important;
+  overflow: hidden;
+}
+
+.unified-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.unified-kpi-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Crisp Hairline Cross Dividers (RTL) */
+.unified-cell-tr {
+  border-left: 1px solid var(--an-border);
+  border-bottom: 1px solid var(--an-border);
+}
+.unified-cell-tl {
+  border-bottom: 1px solid var(--an-border);
+}
+.unified-cell-br {
+  border-left: 1px solid var(--an-border);
+}
+
+.unified-kpi-icon {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.unified-icon-blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+.unified-icon-teal {
+  background: #f0fdfa;
+  color: #0d9488;
+}
+.unified-icon-green {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+.unified-icon-amber {
+  background: #fefce8;
+  color: #ca8a04;
+}
+
+.unified-kpi-content {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: right;
+  gap: 3px;
+}
+
+.unified-kpi-label {
+  display: block;
+  width: 100%;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--an-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+}
+
+.unified-kpi-value {
+  display: block;
+  font-size: 21px;
+  font-weight: 900;
+  color: var(--an-text);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.unified-kpi-sub {
+  display: block;
+  width: 100%;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--an-muted);
+  line-height: 1.35;
+}
+
+.unified-kpi-sub-nowrap {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Overall Completion Footer inside Unified Card */
+.unified-completion-footer {
+  border-top: 1px solid var(--an-border);
+  padding: 15px 18px 18px;
+}
+
+.unified-completion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.unified-completion-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--an-text);
+}
+
+.unified-completion-pct {
+  font-size: 15.5px;
+  font-weight: 900;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.unified-completion-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--an-track-bg);
+  overflow: hidden;
+  direction: rtl;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.unified-completion-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 0.45s ease;
+}
+
+@media (max-width: 768px) {
+  .unified-kpi-section-title {
+    font-size: 15.5px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .unified-kpi-cell {
+    padding: 14px 11px;
+    gap: 9px;
+  }
+
+  .unified-kpi-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+  .unified-kpi-icon svg {
+    width: 17px !important;
+    height: 17px !important;
+  }
+
+  .unified-kpi-label {
+    font-size: 11.5px;
+  }
+
+  .unified-kpi-value {
+    font-size: 18px;
+  }
+
+  .unified-kpi-sub-nowrap {
+    font-size: clamp(9.2px, 2.55vw, 11px);
+  }
+
+  .unified-completion-footer {
+    padding: 13px 14px 15px;
+  }
+
+  .unified-completion-title {
+    font-size: 12.5px;
+  }
+
+  .unified-completion-pct {
+    font-size: 14.5px;
+  }
+}
+
+html[data-theme="dark"] .unified-kpi-card {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22) !important;
+}
+
+html[data-theme="dark"] .unified-cell-tr,
+html[data-theme="dark"] .unified-cell-tl,
+html[data-theme="dark"] .unified-cell-br,
+html[data-theme="dark"] .unified-completion-footer {
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .unified-icon-blue { background: rgba(37, 99, 235, 0.2); color: #93c5fd; }
+html[data-theme="dark"] .unified-icon-teal { background: rgba(13, 148, 136, 0.2); color: #5eead4; }
+html[data-theme="dark"] .unified-icon-green { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+html[data-theme="dark"] .unified-icon-amber { background: rgba(234, 179, 8, 0.2); color: #fde047; }
+
 
 
 

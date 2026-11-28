@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dark_theme.css?v=3.0">
   <link rel="stylesheet" href="circles.css">
-  <link rel="stylesheet" href="analytics.css?v=5.0">
+  <link rel="stylesheet" href="analytics.css?v=6.0">
   <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
   <!-- Lucide Icons (Local with CDN fallback) -->
   <script src="lucide.min.js"></script>
@@ -140,42 +140,67 @@
           </div>
         </section>
 
-        <!-- Circles KPI Summary Cards -->
-        <section class="kpi-grid" style="margin-bottom:22px;">
-          <div class="kpi-card">
-            <span class="kpi-icon kpi-icon-blue"><i data-lucide="building-2" style="width:28px; height:28px;"></i></span>
-            <div class="kpi-info">
-              <small>إجمالي الحلقات القرآنية</small>
-              <strong id="kpiTotalCircles">0</strong>
-              <span id="kpiAvgStudentsPerCircle" class="sub-stat">0 متوسط الطلاب/حلقة</span>
-              <span id="kpiDeltaCircles" class="kpi-delta-pill neutral">متصل بالسجل النشط</span>
+        <!-- Unified KPI Dashboard Section -->
+        <section class="unified-kpi-wrapper" style="margin-bottom:22px;">
+          <h2 class="unified-kpi-section-title">لوحة مؤشرات الأداء</h2>
+          <div class="unified-kpi-card">
+            <div class="unified-kpi-grid">
+              <!-- Top-Right Cell (RTL): Circles -->
+              <div class="unified-kpi-cell unified-cell-tr">
+                <span class="unified-kpi-icon unified-icon-blue">
+                  <i data-lucide="building-2" style="width:20px; height:20px;"></i>
+                </span>
+                <div class="unified-kpi-content">
+                  <small class="unified-kpi-label">الحلقات القرآنية</small>
+                  <strong id="kpiTotalCircles" class="unified-kpi-value">0</strong>
+                  <span id="kpiAvgStudentsPerCircle" class="unified-kpi-sub unified-kpi-sub-nowrap">متوسط الطلاب لكل حلقة: 0</span>
+                </div>
+              </div>
+
+              <!-- Top-Left Cell (RTL): Students -->
+              <div class="unified-kpi-cell unified-cell-tl">
+                <span class="unified-kpi-icon unified-icon-teal">
+                  <i data-lucide="users" style="width:20px; height:20px;"></i>
+                </span>
+                <div class="unified-kpi-content">
+                  <small class="unified-kpi-label">عدد الطلاب</small>
+                  <strong id="kpiTotalQuranStudents" class="unified-kpi-value">0</strong>
+                  <span id="kpiTotalMemoPagesSub" class="unified-kpi-sub unified-kpi-sub-nowrap">0 وجه حفظ</span>
+                </div>
+              </div>
+
+              <!-- Bottom-Right Cell (RTL): Memorizers -->
+              <div class="unified-kpi-cell unified-cell-br">
+                <span class="unified-kpi-icon unified-icon-green">
+                  <i data-lucide="award" style="width:20px; height:20px;"></i>
+                </span>
+                <div class="unified-kpi-content">
+                  <small class="unified-kpi-label">الحافظة</small>
+                  <strong id="kpiExcellentMemoCount" class="unified-kpi-value">0 (ممتاز)</strong>
+                </div>
+              </div>
+
+              <!-- Bottom-Left Cell (RTL): Attendance -->
+              <div class="unified-kpi-cell unified-cell-bl">
+                <span class="unified-kpi-icon unified-icon-amber">
+                  <i data-lucide="check-circle-2" style="width:20px; height:20px;"></i>
+                </span>
+                <div class="unified-kpi-content">
+                  <small class="unified-kpi-label">الالتزام بالحضور</small>
+                  <strong id="kpiAttendanceRate" class="unified-kpi-value">100%</strong>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="kpi-card">
-            <span class="kpi-icon kpi-icon-teal"><i data-lucide="users" style="width:28px; height:28px;"></i></span>
-            <div class="kpi-info">
-              <small>إجمالي طلاب القرآن الكريم</small>
-              <strong id="kpiTotalQuranStudents">0</strong>
-              <span id="kpiTotalMemoPagesSub" class="sub-stat">0 وجه حفظ منجز</span>
-              <span id="kpiDeltaMemoPages" class="kpi-delta-pill neutral">--</span>
-            </div>
-          </div>
-          <div class="kpi-card pass-card">
-            <span class="kpi-icon kpi-icon-green"><i data-lucide="award" style="width:28px; height:28px;"></i></span>
-            <div class="kpi-info">
-              <small>الحفظة والمتميزون (ممتاز)</small>
-              <strong id="kpiExcellentMemoCount">0</strong>
-              <span id="kpiExcellentMemoRate" class="sub-stat">0% من إجمالي الطلاب</span>
-              <span id="kpiDeltaExcellence" class="kpi-delta-pill neutral">--</span>
-            </div>
-          </div>
-          <div class="kpi-card warn-card">
-            <span class="kpi-icon kpi-icon-warn"><i data-lucide="check-circle-2" style="width:28px; height:28px;"></i></span>
-            <div class="kpi-info">
-              <small>مؤشر الالتزام بالحضور</small>
-              <strong id="kpiAttendanceRate">100%</strong>
-              <span id="kpiTotalAbsentDays" class="sub-stat">0 إجمالي أيام الغياب</span>
-              <span id="kpiDeltaAttendance" class="kpi-delta-pill neutral">--</span>
+
+            <!-- Overall Completion Rate Bar (RTL) -->
+            <div class="unified-completion-footer">
+              <div class="unified-completion-head">
+                <span class="unified-completion-title">معدل الإنجاز العام للحلقات</span>
+                <strong id="kpiOverallCompletionRate" class="unified-completion-pct">0%</strong>
+              </div>
+              <div class="unified-completion-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="معدل الإنجاز العام للحلقات">
+                <div id="kpiOverallCompletionBar" class="unified-completion-fill" style="width: 0%;"></div>
+              </div>
             </div>
           </div>
         </section>
@@ -186,7 +211,6 @@
             <div class="card-head chart-card-head">
               <div>
                 <h2><i data-lucide="line-chart" style="width:20px; height:20px; color:var(--primary); vertical-align:-3px;"></i> اتجاه الأداء عبر الفترات</h2>
-                <p>تتبع تطور أوجه الحفظ والمراجعة ومعدل الحضور من فترة لأخرى.</p>
               </div>
               <div class="chart-legend" aria-hidden="true">
                 <span class="legend-chip legend-blue"><i></i> الحفظ</span>
@@ -201,8 +225,7 @@
           <div class="analytics-card chart-card" style="margin:0;">
             <div class="card-head chart-card-head">
               <div>
-                <h2><i data-lucide="bar-chart-2" style="width:20px; height:20px; color:#0d9488; vertical-align:-3px;"></i> مقارنة الحلقات (الإتقان مقابل الحضور)</h2>
-                <p>قراءة مرئية لنسبة الإتقان والانضباط لأبرز الحلقات النشطة.</p>
+                <h2><i data-lucide="bar-chart-2" style="width:20px; height:20px; color:#0d9488; vertical-align:-3px;"></i> مقارنة الحلقات</h2>
               </div>
               <div class="chart-legend" aria-hidden="true">
                 <span class="legend-chip legend-blue"><i></i> الإتقان %</span>
@@ -228,7 +251,7 @@
 
           <div class="insight-card insight-green">
             <div class="insight-head">
-              <span class="insight-badge success-badge" style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="shield-check" style="width:14px; height:14px;"></i> الحلقة الأعلى انضباطاً (أقل غياب)</span>
+              <span class="insight-badge success-badge" style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="shield-check" style="width:14px; height:14px;"></i> الحلقة الأعلى انضباطاً</span>
               <span id="disciplinedCircleBadge" class="rate-tag rate-tag-green">--</span>
             </div>
             <h3 id="disciplinedCircleName" class="insight-title">لا توجد بيانات كافية</h3>
@@ -257,9 +280,6 @@
                   لوحة الشرف وأبرز إنجازات الطلاب
                   <span class="honor-badge-tag-mini"><i data-lucide="award" style="width:13px; height:13px;"></i> قائمة التميز</span>
                 </h3>
-                <p class="honor-sub-title">
-                  الأكثر حفظاً بالحساب الفعلي للأوجه، الأكثر مراجعة، الأكثر إتقاناً، والأقل غياباً
-                </p>
               </div>
             </div>
           </div>
@@ -316,7 +336,6 @@
           <div class="analytics-card" style="margin:0;">
             <div class="card-head" style="margin-bottom:12px;">
               <h2><i data-lucide="book-open" style="width:20px; height:20px; color:var(--primary); vertical-align:-3px;"></i> تحليل مستويات حفظ القرآن الكريم</h2>
-              <p>توزيع تقديرات جودة وإتقان الحفظ لدى جميع طلاب الحلقات القرآنية.</p>
             </div>
             <div id="memoBreakdownBars" class="accuracy-list">
               <div style="text-align:center; padding:16px; color:var(--muted);">جارٍ تحميل تحليل الحفظ...</div>
@@ -325,7 +344,6 @@
           <div class="analytics-card" style="margin:0;">
             <div class="card-head" style="margin-bottom:12px;">
               <h2><i data-lucide="refresh-ccw" style="width:20px; height:20px; color:#0d9488; vertical-align:-3px;"></i> تحليل مستويات المراجعة والتثبيت</h2>
-              <p>توزيع تقديرات جودة المراجعة والاستذكار لدى جميع طلاب الحلقات القرآنية.</p>
             </div>
             <div id="revBreakdownBars" class="accuracy-list">
               <div style="text-align:center; padding:16px; color:var(--muted);">جارٍ تحميل تحليل المراجعة...</div>
@@ -781,7 +799,7 @@
   <script src="hijri_date.js?v=3.0"></script>
   <script src="mobile_bottom_nav.js?v=2.0"></script>
   <script src="firebase-client.js?v=5.0"></script>
-  <script src="analytics.js?v=5.0"></script>
+  <script src="analytics.js?v=6.0"></script>
   <script>if(window.safeCreateIcons) safeCreateIcons(); else if(window.lucide) lucide.createIcons();</script>
 </body>
 </html>

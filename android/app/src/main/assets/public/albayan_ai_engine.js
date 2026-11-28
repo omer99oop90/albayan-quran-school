@@ -311,22 +311,26 @@
     return PERIOD_TYPE_LABELS_AR[raw] || periodType || '';
   }
 
-  function categorizeGradeAr(grade) {
-    if (grade === undefined || grade === null || grade === '' || grade === '0' || grade === 0 || grade === 'غير محدد') {
-      return 'غير محدد';
-    }
+  function categorizeGradeAr(grade, maxMark = 40) {
+    if (grade === undefined || grade === null) return 'غير محدد';
     const g = String(grade).trim();
-    const num = parseFloat(g);
-    if (!isNaN(num)) {
-      if (num >= 36) return 'ممتاز';
-      if (num >= 30) return 'جيد جداً';
-      if (num >= 24) return 'جيد';
+    if (g === '' || g === 'غير محدد' || g === '—') return 'غير محدد';
+    const num = Number(g);
+    if (!Number.isNaN(num)) {
+      const effMax = Number(maxMark) > 0 ? Number(maxMark) : 40;
+      const pct = (num / effMax) * 100;
+      if (pct >= 90) return 'ممتاز';
+      if (pct >= 80) return 'جيد جداً';
+      if (pct >= 65) return 'جيد';
+      if (pct >= 50) return 'مقبول';
       return 'يحتاج متابعة';
     }
-    if (['ممتاز', 'ممتازة', 'ممتاز مرتفع'].includes(g)) return 'ممتاز';
-    if (['جيد جدا', 'جيد جداً'].includes(g)) return 'جيد جداً';
-    if (['جيد'].includes(g)) return 'جيد';
-    if (['ضعيف', 'مقبول', 'يحتاج متابعة'].includes(g)) return 'يحتاج متابعة';
+    const n = normAr(g);
+    if (['ممتاز', 'ممتازه', 'ممتاز مرتفع'].includes(n)) return 'ممتاز';
+    if (n === 'جيد جدا') return 'جيد جداً';
+    if (n === 'جيد') return 'جيد';
+    if (n === 'مقبول') return 'مقبول';
+    if (['ضعيف', 'يحتاج متابعه', 'يحتاج الي متابعه', 'متابعه', 'يحتاج مراجعه'].includes(n)) return 'يحتاج متابعة';
     return 'غير محدد';
   }
 
@@ -3047,65 +3051,345 @@
       }
     });
 
-    // 18. get_statistics
+    // 18. get_statistics (Full parity with analytics.html / analytics.js)
     register({
       name: 'get_statistics',
       category: 'الإحصائيات',
-      label: 'استخراج الإحصائيات الفعلية',
-      description: 'يحسب إحصائيات الطلاب والحلقات والمعلمين والحفظ والغياب والاختبارات من مصادر قاعدة البيانات الفعلية.',
-      parameters: { type: 'object', properties: {} },
-      async execute() {
+      label: 'استخراج الإحصائيات الكاملة ولوحة مؤشرات الأداء',
+      description: 'يستخرج كافة بيانات صفحة الإحصائيات: لوحة مؤشرات الأداء، معدل الإنجاز العام للحلقات، ترتيب الحلقات، لوحة الشرف، قائمة المتابعة، توزيع تقديرات الحفظ والمراجعة، وتحليل الاختبارات وأسئلتها (مع دعم الفلترة بالسنة أو الفترة أو الاختبار).',
+      parameters: {
+        type: 'object',
+        properties: {
+          year: { type: 'string', description: 'السنة الدراسية الهجرية اختيارياً مثل 1448 أو 1447' },
+          month: { type: 'string', description: 'الشهر أو الفترة التقييمية اختيارياً مثل رمضان أو الفصل الأول أو all للكل' },
+          exam_id: { type: 'string', description: 'معرّف اختبار محدد اختيارياً' }
+        }
+      },
+      async execute(args = {}, context = {}) {
+        const currentUser = (context && context.user) || AlbayanAISecurity.getCurrentUser();
+        if (currentUser && !AlbayanAISecurity.isAdmin(currentUser) && !AlbayanAISecurity.hasPermission('analytics', currentUser)) {
+          return { ok: false, error: 'صلاحيات حسابك لا تسمح بالوصول إلى بيانات صفحة الإحصائيات.' };
+        }
+
         const snap = await AlbayanAIDataContext.loadFullSnapshot(false);
-        const totalStudentsActive = snap.students.length;
-        const circleStoredSum = snap.circles.reduce((acc, c) => acc + c.stored_student_count, 0);
-        const circleLiveSum = snap.circles.reduce((acc, c) => acc + c.live_student_count, 0);
+        const normalizer = window.AlbayanDataNormalizer || null;
+        const canAllCircles = !currentUser || AlbayanAISecurity.isAdmin(currentUser) || AlbayanAISecurity.hasPermission('all_circles', currentUser);
 
-        const activeSids = new Set(snap.students.map(s => String(s.id)));
-        const validCircleIds = new Set(snap.circles.map(c => String(c.id)));
-        const orphanStudents = snap.students.filter(s => !s.circle_id || !validCircleIds.has(String(normCircleId(s.circle_id))));
+        // Scope circles identically to analytics.js
+        let scopedCircles = snap.circles || [];
+        if (!canAllCircles && window.AlbayanPermissions && typeof window.AlbayanPermissions.filterCirclesForUser === 'function') {
+          scopedCircles = window.AlbayanPermissions.filterCirclesForUser(scopedCircles, currentUser);
+        } else if (!canAllCircles && Array.isArray(context.teacherCircleIds)) {
+          const allowedSet = new Set(context.teacherCircleIds.map(String));
+          scopedCircles = scopedCircles.filter(c => allowedSet.has(String(normCircleId(c.id))));
+        }
 
-        let totalMemoPages = 0;
-        let totalSardPages = 0;
-        let totalAbsentDays = 0;
-        let excellentCount = 0;
-        snap.records.forEach(r => {
-          if (!activeSids.has(String(normStudentId(r.student_id)))) return;
-          totalMemoPages += Number(r.memo_pages || 0);
-          totalSardPages += Number(r.sard_pages || 0);
-          totalAbsentDays += Number(r.absent_days || 0);
-          if (categorizeGradeAr(r.memo_grade) === 'ممتاز') excellentCount++;
+        const circleMap = new Map();
+        scopedCircles.forEach(c => {
+          const cid = normCircleId(c.id);
+          if (cid !== null) circleMap.set(String(cid), c);
         });
 
-        const attendanceRate = totalStudentsActive > 0
-          ? Math.max(0, Math.min(100, Math.round(100 - (totalAbsentDays / (totalStudentsActive * 30)) * 100)))
-          : 100;
+        const validCircleIds = new Set(scopedCircles.map(c => String(normCircleId(c.id))));
+        const allValidCircleIds = new Set((snap.circles || []).map(c => String(normCircleId(c.id))));
+        const orphanStudents = (snap.students || []).filter(s => !s.circle_id || !allValidCircleIds.has(String(normCircleId(s.circle_id))));
 
-        const passedExams = snap.examResults.filter(er => er.passed === 1 || er.passed === true || Number(er.percentage || 0) >= 50).length;
+        // Only active students belonging to active scoped circles (never count orphans)
+        const baseStudents = (snap.students || [])
+          .filter(s => s && !s.deleted && s.is_deleted !== 1 && s.is_deleted !== true)
+          .filter(s => s.circle_id && validCircleIds.has(String(normCircleId(s.circle_id))));
+
+        const isYearlyLabel = (m) => {
+          const nm = normAr(m);
+          return nm === 'سجل نهايه السنه' || nm === 'السجل السنوي' || nm === 'yearly';
+        };
+        const cleanYear = args.year ? String(args.year).replace(/\D/g, '') : '';
+        const cleanMonth = args.month ? String(args.month).trim() : 'all';
+        const isSpecificMonth = Boolean(cleanMonth && cleanMonth !== 'all' && cleanMonth !== 'active_cycle');
+        const wantYearly = isYearlyLabel(cleanMonth);
+
+        let rawRecs = (snap.records || []).filter(r => r && !r.deleted && r.is_deleted !== 1 && r.is_deleted !== true);
+        if (cleanYear) {
+          rawRecs = rawRecs.filter(r => !r.year || String(r.year).replace(/\D/g, '') === cleanYear);
+        }
+        if (cleanMonth === 'active_cycle' && window.AlbayanCycleEngine && typeof window.AlbayanCycleEngine.filterRecordsByActiveCycle === 'function') {
+          rawRecs = window.AlbayanCycleEngine.filterRecordsByActiveCycle(rawRecs, window.AlbayanCycleEngine.getConfig());
+        } else if (isSpecificMonth) {
+          rawRecs = rawRecs.filter(r => {
+            if (wantYearly) return isYearlyLabel(r.month);
+            if (isYearlyLabel(r.month)) return false;
+            if (normalizer && typeof normalizer.isSameMonth === 'function' && r.month) {
+              return normalizer.isSameMonth(r.month, cleanMonth);
+            }
+            return normAr(r.month || '') === normAr(cleanMonth);
+          });
+        } else {
+          rawRecs = rawRecs.filter(r => !isYearlyLabel(r.month));
+        }
+
+        // Deduplicate per (student_id, period_key)
+        const dedupRecs = new Map();
+        rawRecs.forEach(r => {
+          const sid = normStudentId(r.student_id);
+          if (sid === null) return;
+          const pKey = (normalizer && typeof normalizer.normalizeMonthComparisonKey === 'function')
+            ? `${normAr(r.period_type || 'monthly')}_${String(r.year || cleanYear || '1448')}_${normalizer.normalizeMonthComparisonKey(r.month || r.record_date || 'default')}`
+            : `${normAr(r.period_type || 'monthly')}_${String(r.year || cleanYear || '1448')}_${normAr(r.month || r.record_date || 'default')}`;
+          const key = `${sid}::${pKey}`;
+          const prev = dedupRecs.get(key);
+          const sCurr = (normalizer && normalizer.scoreRecordCompleteness) ? normalizer.scoreRecordCompleteness(r) : 0;
+          const sPrev = (prev && normalizer && normalizer.scoreRecordCompleteness) ? normalizer.scoreRecordCompleteness(prev) : -1;
+          if (!prev || sCurr >= sPrev) dedupRecs.set(key, r);
+        });
+
+        const recsByStu = new Map();
+        dedupRecs.forEach(r => {
+          const sidStr = String(normStudentId(r.student_id));
+          if (!recsByStu.has(sidStr)) recsByStu.set(sidStr, []);
+          recsByStu.get(sidStr).push(r);
+        });
+
+        const resolvePages = (rec, isRev) => {
+          const explicit = isRev
+            ? Number(rec.sard_pages != null ? rec.sard_pages : rec.rev_pages)
+            : Number(rec.memo_pages);
+          if (Number.isFinite(explicit) && explicit > 0) return explicit;
+          const fs = isRev ? rec.rev_from_surah : rec.from_surah;
+          const fa = isRev ? rec.rev_from_ayah : rec.from_ayah;
+          const ts = isRev ? rec.rev_to_surah : rec.to_surah;
+          const ta = isRev ? rec.rev_to_ayah : rec.to_ayah;
+          if (fs && ts && normalizer && typeof normalizer.calcQuranPages === 'function') {
+            return Number(normalizer.calcQuranPages(fs, fa || 1, ts, ta || 1)) || 0;
+          }
+          return Number.isFinite(explicit) && explicit > 0 ? explicit : 0;
+        };
+
+        const attFromAbsent = (abs) => Math.max(0, Math.round((30 - Math.max(0, Number(abs) || 0) * 0.5) * 10) / 10);
+        const gradeToPct = (g, maxM = 40) => {
+          if (g !== undefined && g !== null && String(g).trim() !== '' && !Number.isNaN(Number(g))) {
+            return Math.max(0, Math.min(100, (Number(g) / maxM) * 100));
+          }
+          const c = categorizeGradeAr(g);
+          if (c === 'ممتاز') return 95;
+          if (c === 'جيد جداً') return 85;
+          if (c === 'جيد') return 72;
+          if (c === 'مقبول') return 55;
+          if (c === 'يحتاج متابعة') return 35;
+          return null;
+        };
+
+        const enrichedStudents = baseStudents.map(s => {
+          const sidStr = String(normStudentId(s.id));
+          const cidStr = String(normCircleId(s.circle_id));
+          const cObj = circleMap.get(cidStr);
+          const stuRecs = recsByStu.get(sidStr) || [];
+          let memoPages = 0, sardPages = 0, absentDays = 0, attSum = 0;
+          let memoNumSum = 0, memoNumCnt = 0, revNumSum = 0, revNumCnt = 0;
+          let lastMemoQual = '', lastRevQual = '';
+          let fromSurah = '', toSurah = '';
+
+          stuRecs.forEach(r => {
+            memoPages += resolvePages(r, false);
+            sardPages += resolvePages(r, true);
+            const abs = Number(r.absent_days) || 0;
+            absentDays += abs;
+            attSum += attFromAbsent(abs);
+            if (r.from_surah && !fromSurah) fromSurah = r.from_surah;
+            if (r.to_surah) toSurah = r.to_surah;
+            const mg = r.memo_grade;
+            if (mg !== undefined && mg !== null && String(mg).trim() !== '' && String(mg).trim() !== 'غير محدد') {
+              const mn = Number(mg);
+              if (!Number.isNaN(mn)) { memoNumSum += mn; memoNumCnt++; }
+              else lastMemoQual = String(mg).trim();
+            }
+            const rg = r.rev_grade;
+            if (rg !== undefined && rg !== null && String(rg).trim() !== '' && String(rg).trim() !== 'غير محدد') {
+              const rn = Number(rg);
+              if (!Number.isNaN(rn)) { revNumSum += rn; revNumCnt++; }
+              else lastRevQual = String(rg).trim();
+            }
+          });
+
+          const hasRec = stuRecs.length > 0;
+          const attMark = hasRec ? Math.round((attSum / stuRecs.length) * 10) / 10 : 30;
+          const finalMemoGrade = memoNumCnt > 0 ? Math.round((memoNumSum / memoNumCnt) * 10) / 10 : lastMemoQual;
+          const finalRevGrade = revNumCnt > 0 ? Math.round((revNumSum / revNumCnt) * 10) / 10 : lastRevQual;
+          return {
+            id: s.id,
+            name: s.name,
+            circle_id: cidStr,
+            circle_name: (cObj && cObj.name) || 'حلقة قرآنية',
+            teacher_name: (cObj && cObj.resolved_teacher_name) || 'كادر تعليمي',
+            from_surah: fromSurah,
+            to_surah: toSurah,
+            memo_pages: Math.round(memoPages * 10) / 10,
+            sard_pages: Math.round(sardPages * 10) / 10,
+            absent_days: absentDays,
+            attendance_mark: attMark,
+            memo_grade: finalMemoGrade,
+            rev_grade: finalRevGrade,
+            has_record: hasRec
+          };
+        });
+
+        const totalCircles = scopedCircles.length;
+        const totalStudents = enrichedStudents.length;
+        const avgStudentsPerCircle = totalCircles > 0 ? Math.round(totalStudents / totalCircles) : 0;
+
+        let totalMemoPages = 0, totalSardPages = 0, totalAbsentDays = 0, totalAttMarks = 0, excellentCount = 0, completionSum = 0;
+        const memoBreakdown = { 'ممتاز': 0, 'جيد جداً': 0, 'جيد': 0, 'مقبول': 0, 'يحتاج متابعة': 0, 'غير محدد': 0 };
+        const revBreakdown = { 'ممتاز': 0, 'جيد جداً': 0, 'جيد': 0, 'مقبول': 0, 'يحتاج متابعة': 0, 'غير محدد': 0 };
+
+        enrichedStudents.forEach(s => {
+          totalMemoPages += s.memo_pages;
+          totalSardPages += s.sard_pages;
+          totalAbsentDays += s.absent_days;
+          totalAttMarks += s.attendance_mark;
+          const mgCat = categorizeGradeAr(s.memo_grade);
+          const rgCat = categorizeGradeAr(s.rev_grade);
+          memoBreakdown[mgCat] = (memoBreakdown[mgCat] || 0) + 1;
+          revBreakdown[rgCat] = (revBreakdown[rgCat] || 0) + 1;
+          if (mgCat === 'ممتاز') excellentCount++;
+          if (s.has_record) {
+            const attPct = Math.max(0, Math.min(100, (s.attendance_mark / 30) * 100));
+            const mPct = gradeToPct(s.memo_grade, 40);
+            const rPct = gradeToPct(s.rev_grade, 30);
+            const parts = [attPct];
+            if (mPct !== null) parts.push(mPct, mPct);
+            if (rPct !== null) parts.push(rPct);
+            if (mPct === null && rPct === null && (s.memo_pages > 0 || s.sard_pages > 0)) parts.push(75);
+            completionSum += parts.reduce((a, b) => a + b, 0) / parts.length;
+          }
+        });
+
+        const attendanceRate = totalStudents > 0
+          ? Math.max(0, Math.min(100, Math.round((totalAttMarks / (totalStudents * 30)) * 1000) / 10))
+          : 100;
+        const overallCompletionRate = totalStudents > 0
+          ? Math.max(0, Math.min(100, Math.round(completionSum / totalStudents)))
+          : 0;
+
+        const circleRankings = scopedCircles.map(c => {
+          const cidStr = String(normCircleId(c.id));
+          const cStudents = enrichedStudents.filter(s => s.circle_id === cidStr);
+          const cnt = cStudents.length;
+          const cAbs = cStudents.reduce((a, b) => a + b.absent_days, 0);
+          const cAvgAbs = cnt > 0 ? Math.round((cAbs / cnt) * 10) / 10 : 0;
+          const cAttSum = cStudents.reduce((a, b) => a + b.attendance_mark, 0);
+          const cAttRate = cnt > 0 ? Math.max(0, Math.min(100, Math.round((cAttSum / (cnt * 30)) * 1000) / 10)) : 0;
+          const cMemoP = Math.round(cStudents.reduce((a, b) => a + b.memo_pages, 0) * 10) / 10;
+          const cRevP = Math.round(cStudents.reduce((a, b) => a + b.sard_pages, 0) * 10) / 10;
+          const cExc = cStudents.filter(st => categorizeGradeAr(st.memo_grade) === 'ممتاز').length;
+          const cMemoIdx = cnt > 0 ? Math.round((cExc / cnt) * 100) : 0;
+          let statusBadge = 'أداء منتظم';
+          if (cnt === 0) statusBadge = 'بدون طلاب';
+          else if (cMemoIdx >= 80 && cAvgAbs <= 1) statusBadge = 'الصدارة الذهبية';
+          else if (cMemoIdx >= 50) statusBadge = 'أداء ممتاز';
+          else if (cAvgAbs > 3) statusBadge = 'بحاجة لمتابعة';
+          return {
+            id: c.id,
+            name: c.name,
+            teacher_name: c.resolved_teacher_name || 'كادر تعليمي',
+            student_count: cnt,
+            total_memo_pages: cMemoP,
+            total_rev_pages: cRevP,
+            memo_index: cMemoIdx,
+            attendance_rate: cAttRate,
+            total_absent: cAbs,
+            avg_absent: cAvgAbs,
+            status_badge: statusBadge
+          };
+        }).sort((a, b) => b.student_count - a.student_count || b.memo_index - a.memo_index);
+
+        const honorBoard = enrichedStudents
+          .filter(s => categorizeGradeAr(s.memo_grade) === 'ممتاز' && s.absent_days <= 1)
+          .map(s => ({ name: s.name, circle_name: s.circle_name, memo_grade: s.memo_grade, absent_days: s.absent_days }));
+        const followupList = enrichedStudents
+          .filter(s => {
+            const mg = categorizeGradeAr(s.memo_grade);
+            const rg = categorizeGradeAr(s.rev_grade);
+            return s.absent_days >= 3 || mg === 'يحتاج متابعة' || mg === 'مقبول' || rg === 'يحتاج متابعة' || rg === 'مقبول';
+          })
+          .map(s => ({ name: s.name, circle_name: s.circle_name, memo_grade: s.memo_grade || 'غير محدد', rev_grade: s.rev_grade || 'غير محدد', absent_days: s.absent_days }));
+
+        // Exams analytics (scoped if teacher lacks all_circles)
+        const allowedStuIdSet = new Set(enrichedStudents.map(s => String(s.id)));
+        const allowedStuNames = new Set(enrichedStudents.map(s => normAr(s.name)).filter(Boolean));
+        let scopedExamResults = (snap.examResults || []).filter(er => {
+          if (canAllCircles) return true;
+          const sid = normStudentId(er.student_id);
+          if (sid !== null && allowedStuIdSet.has(String(sid))) return true;
+          const n = normAr(er.student_name || er.name);
+          return Boolean(n && allowedStuNames.has(n));
+        });
+        if (args.exam_id && args.exam_id !== 'all') {
+          scopedExamResults = scopedExamResults.filter(er => String(er.exam_id || '') === String(args.exam_id));
+        }
+
+        const passedExams = scopedExamResults.filter(er => er.passed === 1 || er.passed === true || Number(er.percentage || 0) >= 50).length;
+        const totalExamRes = scopedExamResults.length;
+        const examPassRate = totalExamRes > 0 ? Math.round((passedExams / totalExamRes) * 1000) / 10 : 0;
+        const examAvgPct = totalExamRes > 0
+          ? Math.round(scopedExamResults.reduce((acc, er) => acc + (Number(er.percentage) || 0), 0) / totalExamRes)
+          : 0;
+
+        const qMap = new Map();
+        scopedExamResults.forEach(r => {
+          (Array.isArray(r.answers) ? r.answers : []).forEach(a => {
+            if (!a) return;
+            const qt = String(a.question_text || a.title || '').trim();
+            if (!qt) return;
+            const key = `${r.exam_id || 'gen'}::${qt}`;
+            if (!qMap.has(key)) qMap.set(key, { question_text: qt, total_attempts: 0, correct_count: 0 });
+            const item = qMap.get(key);
+            item.total_attempts++;
+            if (a.is_correct === 1 || a.is_correct === true) item.correct_count++;
+          });
+        });
+        const qList = Array.from(qMap.values()).map(q => ({
+          ...q,
+          accuracy: q.total_attempts > 0 ? Math.round((q.correct_count / q.total_attempts) * 100) : 0
+        })).sort((a, b) => a.accuracy - b.accuracy);
 
         return {
           ok: true,
+          analytics_page_url: 'analytics.html',
           sources_used: ['/students', '/circles', '/student_records', '/users', '/exams', '/results'],
-          formulas: {
-            total_students_active: 'عدد السجلات الفريدة الفعّالة في /students بعد استبعاد المحذوفين',
-            sum_of_circle_live_students: 'مجموع الطلاب المرتبطين فعلياً بحلقة نشطة في /circles',
-            attendance_rate: '100 - (مجموع أيام الغياب ÷ (عدد الطلاب × 30)) × 100'
-          },
           metrics: {
-            total_circles: snap.circles.length,
-            total_students_active: totalStudentsActive,
-            sum_of_circle_live_students: circleLiveSum,
-            sum_of_circle_stored_counts: circleStoredSum,
+            total_circles: totalCircles,
+            avg_students_per_circle: avgStudentsPerCircle,
+            total_students: totalStudents,
+            total_students_active: totalStudents,
+            sum_of_circle_live_students: totalStudents,
+            sum_of_circle_stored_counts: scopedCircles.reduce((acc, c) => acc + c.stored_student_count, 0),
             orphan_students_count: orphanStudents.length,
-            total_records: snap.records.length,
+            total_records: dedupRecs.size,
             total_memo_pages: Math.round(totalMemoPages * 10) / 10,
             total_sard_pages: Math.round(totalSardPages * 10) / 10,
             total_absent_days: totalAbsentDays,
             attendance_rate: attendanceRate,
-            excellent_records_count: excellentCount,
-            total_teachers: snap.users.filter(u => u.role === 'teacher' || u.role === 'معلم').length,
-            total_exams: snap.exams.length,
-            total_exam_results: snap.examResults.length,
-            passed_exam_results: passedExams
+            excellent_memo_count: excellentCount,
+            overall_completion_rate: overallCompletionRate,
+            total_teachers: (snap.users || []).filter(u => u.role === 'teacher' || u.role === 'معلم').length,
+            total_exams: (snap.exams || []).length,
+            total_exam_results: totalExamRes,
+            passed_exam_results: passedExams,
+            exam_pass_rate: examPassRate,
+            exam_avg_percent: examAvgPct
+          },
+          circle_rankings: circleRankings,
+          honor_board: honorBoard,
+          followup_list: followupList,
+          memo_breakdown: memoBreakdown,
+          rev_breakdown: revBreakdown,
+          exams_analytics: {
+            total_examined: totalExamRes,
+            passed_count: passedExams,
+            failed_count: Math.max(0, totalExamRes - passedExams),
+            pass_rate: examPassRate,
+            avg_percent: examAvgPct,
+            hardest_question: qList[0] || null,
+            easiest_question: qList[qList.length - 1] || null
           }
         };
       }
@@ -4104,7 +4388,7 @@
         '',
         'قواعد التوجيه الذكي للطلبات (إلزامية):',
         '1. المحادثة العادية (التحيات مثل "مرحباً"، الشكر، الأسئلة العامة حول قدراتك): أجب بلطف واختصار مباشرةً دون استدعاء أي أداة قاعدة بيانات.',
-        '2. استرجاع البيانات المحدد: عند السؤال عن عدد الحلقات أو الطلاب أو المعلمين أو سجل طالب، استدعِ فقط الأداة المحددة المطلوبة (مثل get_all_halaqat أو get_statistics أو get_student_history) ولا تقم بفحص شامل للمدرسة دون طلب.',
+        '2. استرجاع البيانات والإحصائيات: عند السؤال عن الحلقات أو الطلاب أو المعلمين أو سجل طالب أو أي مؤشر في صفحة الإحصائيات (لوحة مؤشرات الأداء، معدل الإنجاز العام، الحفظة ممتاز، الالتزام بالحضور، ترتيب الحلقات، لوحة الشرف، قائمة المتابعة، أو نتائج الاختبارات وأسئلتها)، استدعِ الأداة المناسبة مباشرة (مثل get_statistics أو get_all_halaqat أو get_student_history).',
         '3. إضافة طالب وتسجيل أي خانة في السجل: يمكنك إضافة طالب مع تعبئة سجله دفعة واحدة عبر create_student (بتمرير fields)، أو تعديل/إنشاء أي خانة في السجل عبر update_student_record / create_student_record.',
         `   - نظام المدة النشط حالياً: ${cycleDesc}.`,
         ...(periodOptionsDesc ? [periodOptionsDesc] : []),
@@ -5045,27 +5329,36 @@
         return { text: `تم جلب **${(aud.logs || []).length}** عملية من سجل التدقيق.`, executedTools, tables, operationCards, confirmations };
       }
 
-      // M. Statistics / Reports / Halaqat Performance
-      if (hasAnyKw(q, ['إحصائيات', 'كم عدد الطلاب', 'تقرير', 'أداء', 'تحليل'])) {
-        const [stats, circlesRes] = await Promise.all([
-          invokeTool('get_statistics', {}),
-          invokeTool('get_all_halaqat', { limit: 30 })
-        ]);
+      // M. Statistics / Performance Dashboard / Honor & Followup / Exams Analytics
+      if (hasAnyKw(q, ['إحصائيات', 'احصائيات', 'صفحة الإحصائيات', 'مؤشرات الأداء', 'معدل الإنجاز', 'لوحة الشرف', 'قائمة المتابعة', 'كم عدد الطلاب', 'تقرير', 'أداء', 'تحليل', 'أصعب سؤال', 'نسبة النجاح'])) {
+        const stats = await invokeTool('get_statistics', {});
+        if (!stats.ok) return { text: stats.error || 'تعذر جلب الإحصائيات.', executedTools, tables, operationCards, confirmations };
         const m = stats.metrics || {};
         const lines = [
-          '### الإحصائيات والتقرير الإداري المحدّث',
-          `- **إجمالي الحلقات القرآنية:** ${m.total_circles}`,
-          `- **إجمالي الطلاب النشطين:** ${formatStudentCountAr(m.total_students_active)} (منهم ${m.sum_of_circle_live_students} داخل الحلقات النشطة و ${m.orphan_students_count} غير مرتبطين بحلقة)`,
-          `- **عدد المعلمين:** ${m.total_teachers} | **الاختبارات:** ${m.total_exams} (${m.total_exam_results} نتيجة)`,
-          `- **نسبة الحضور العامة:** ${m.attendance_rate}% (أيام الغياب: ${m.total_absent_days})`,
-          `- **إجمالي أوجه الحفظ:** ${m.total_memo_pages} | **أوجه السرد:** ${m.total_sard_pages}`
+          '### لوحة مؤشرات الأداء والإحصائيات الشاملة',
+          `- **الحلقات القرآنية:** ${m.total_circles} (متوسط الطلاب لكل حلقة: ${m.avg_students_per_circle})`,
+          `- **عدد الطلاب:** ${m.total_students} (${m.total_memo_pages} وجه حفظ)`,
+          `- **الحافظة:** ${m.excellent_memo_count} (ممتاز)`,
+          `- **الالتزام بالحضور:** ${m.attendance_rate}%`,
+          `- **معدل الإنجاز العام للحلقات:** ${m.overall_completion_rate}%`,
+          `- **الاختبارات:** ${m.total_exams} اختبار | ${m.total_exam_results} نتيجة (نسبة النجاح: ${m.exam_pass_rate}%)`
         ];
-        if (circlesRes.ok) {
+        if (stats.circle_rankings && stats.circle_rankings.length > 0) {
           tables.push({
-            title: 'توزيع الحلقات القرآنية',
-            headers: ['الحلقة', 'المعلم', 'عدد الطلاب', 'الوصف'],
-            rows: circlesRes.circles.map(c => [c.name, c.teacher_name, c.student_count_label, c.description || '—'])
+            title: 'ترتيب وأداء الحلقات القرآنية',
+            headers: ['الحلقة', 'المعلم', 'عدد الطلاب', 'أوجه الحفظ', 'الإتقان %', 'الحضور %', 'الحالة'],
+            rows: stats.circle_rankings.map(c => [c.name, c.teacher_name, c.student_count, c.total_memo_pages, `${c.memo_index}%`, `${c.attendance_rate}%`, c.status_badge])
           });
+        }
+        if (hasAnyKw(q, ['الشرف', 'متابعة', 'تنبيه']) && stats.followup_list && stats.followup_list.length > 0) {
+          tables.push({
+            title: 'قائمة المتابعة والتنبيهات',
+            headers: ['الطالب', 'الحلقة', 'الحفظ', 'المراجعة', 'الغياب'],
+            rows: stats.followup_list.slice(0, 15).map(s => [s.name, s.circle_name, s.memo_grade, s.rev_grade, s.absent_days])
+          });
+        }
+        if (hasAnyKw(q, ['صفحة الإحصائيات', 'افتح', 'انتقل'])) {
+          lines.push('', '[فتح صفحة الإحصائيات المتقدمة](analytics.html)');
         }
         return { text: lines.join('\n'), executedTools, tables, operationCards, confirmations };
       }
