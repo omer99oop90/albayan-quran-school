@@ -314,6 +314,11 @@ window.closeHeaderMoreMenu = closeHeaderMoreMenu;
 
 function closeTopAnalyticsModal() {
   closeHeaderMoreMenu();
+  const fsModal = document.getElementById("analyticsFullscreenModal");
+  if (fsModal && fsModal.style.display && fsModal.style.display !== "none") {
+    closeAnalyticsCardFullscreen();
+    return true;
+  }
   const modalIds = ["studentRecordModal", "circleRosterModal", "studentModal"];
   for (const id of modalIds) {
     const m = document.getElementById(id);
@@ -325,9 +330,121 @@ function closeTopAnalyticsModal() {
   return false;
 }
 
+const AN_FULLSCREEN_CARD_SELECTOR = ".unified-kpi-card, .circles-hero-card, .grade-comparison-card, .chart-card, .analytics-card, .honor-board-card, .grades-dist-card, .exam-smart-insights-card, .exams-kpi-subgrid";
+
+function openAnalyticsCardFullscreen(cardEl) {
+  if (!cardEl) return false;
+  const modal = document.getElementById("analyticsFullscreenModal");
+  const body = document.getElementById("anFullscreenBody");
+  const titleEl = document.getElementById("anFullscreenTitle");
+  if (!modal || !body) return false;
+
+  const heading = cardEl.querySelector("h2, h3")
+    || (cardEl.parentNode && cardEl.parentNode.querySelector ? cardEl.parentNode.querySelector(".unified-kpi-section-title") : null);
+  if (titleEl) {
+    const txt = heading && heading.textContent ? heading.textContent.trim() : "تفاصيل الإحصائية";
+    titleEl.textContent = txt || "تفاصيل الإحصائية";
+  }
+
+  const clone = cardEl.cloneNode(true);
+  if (clone.removeAttribute) clone.removeAttribute("id");
+  if (clone.classList) clone.classList.add("an-fs-cloned-card");
+  if (typeof clone.querySelectorAll === "function") {
+    clone.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
+  }
+  const origSelect = typeof cardEl.querySelector === "function" ? cardEl.querySelector("#circleComparisonMetricSelect") : null;
+  const clonedSelect = typeof clone.querySelector === "function" ? clone.querySelector(".comparison-metric-select") : null;
+  if (origSelect && clonedSelect) {
+    clonedSelect.value = origSelect.value;
+    clonedSelect.disabled = true;
+  }
+
+  body.innerHTML = "";
+  body.appendChild(clone);
+
+  if (typeof window.albayanPushModalState === "function") window.albayanPushModalState();
+  modal.style.display = "flex";
+  if (document.body && document.body.style) document.body.style.overflow = "hidden";
+  refreshAnalyticsIcons();
+  return true;
+}
+
+function closeAnalyticsCardFullscreen(event) {
+  if (event && event.target && event.target !== event.currentTarget && typeof event.target.closest === "function" && !event.target.closest(".close-modal-btn")) {
+    return;
+  }
+  const modal = document.getElementById("analyticsFullscreenModal");
+  const body = document.getElementById("anFullscreenBody");
+  if (modal) modal.style.display = "none";
+  if (body) body.innerHTML = "";
+  if (document.body && document.body.style) document.body.style.overflow = "";
+}
+
+function initAnalyticsDoubleTapFullscreen() {
+  const interactiveIgnore = "button, select, input, textarea, option, a, .hero-seg-tab, .close-modal-btn, .an-page-btn, .header-more-item";
+  const findTargetCard = (target) => {
+    if (!target || typeof target.closest !== "function") return null;
+    if (target.closest(interactiveIgnore)) return null;
+    if (target.closest("#analyticsFullscreenModal")) return null;
+    return target.closest(AN_FULLSCREEN_CARD_SELECTOR);
+  };
+
+  document.addEventListener("dblclick", (e) => {
+    const card = findTargetCard(e.target);
+    if (card) openAnalyticsCardFullscreen(card);
+  });
+
+  // Reliable double-tap support on mobile touch WebViews
+  let lastTapTime = 0;
+  let lastTapCard = null;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  document.addEventListener("touchstart", (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (!e.changedTouches || e.changedTouches.length !== 1) return;
+    const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+    if (dx > 24 || dy > 24) return;
+    const card = findTargetCard(e.target);
+    if (!card) {
+      lastTapCard = null;
+      lastTapTime = 0;
+      return;
+    }
+    const now = Date.now();
+    if (lastTapCard === card && (now - lastTapTime) <= 340) {
+      lastTapCard = null;
+      lastTapTime = 0;
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      openAnalyticsCardFullscreen(card);
+    } else {
+      lastTapCard = card;
+      lastTapTime = now;
+    }
+  });
+
+  const fsBody = document.getElementById("anFullscreenBody");
+  if (fsBody) {
+    fsBody.addEventListener("dblclick", (e) => {
+      if (e.target && typeof e.target.closest === "function" && e.target.closest("button, select, input")) return;
+      closeAnalyticsCardFullscreen();
+    });
+  }
+}
+
+window.openAnalyticsCardFullscreen = openAnalyticsCardFullscreen;
+window.closeAnalyticsCardFullscreen = closeAnalyticsCardFullscreen;
+window.initAnalyticsDoubleTapFullscreen = initAnalyticsDoubleTapFullscreen;
+
 document.addEventListener("DOMContentLoaded", async () => {
   initMobileSidebar();
   initBackToTop();
+  initAnalyticsDoubleTapFullscreen();
   await checkAuth();
 
   // Check if opened with exam_id parameter or view request
@@ -1890,41 +2007,88 @@ function renderCirclesSummary(summary) {
   }
 }
 
+let activeHeroCircleTab = "density";
+let latestCircleInsightsCache = null;
+
+function selectCircleHeroTab(tabKey) {
+  activeHeroCircleTab = ["density", "discipline", "mastery"].includes(tabKey) ? tabKey : "density";
+  const tabMap = {
+    density: document.getElementById("heroTabDensity"),
+    discipline: document.getElementById("heroTabDiscipline"),
+    mastery: document.getElementById("heroTabMastery")
+  };
+  Object.entries(tabMap).forEach(([key, btn]) => {
+    if (!btn) return;
+    const isAct = key === activeHeroCircleTab;
+    btn.classList.toggle("active", isAct);
+    btn.setAttribute("aria-selected", isAct ? "true" : "false");
+  });
+  renderActiveCircleHeroCard();
+}
+
+window.selectCircleHeroTab = selectCircleHeroTab;
+
+function renderActiveCircleHeroCard() {
+  const nameEl = document.getElementById("heroCircleName");
+  const subEl = document.getElementById("heroCircleSub");
+  const valEl = document.getElementById("heroCircleMetricVal");
+  const lblEl = document.getElementById("heroCircleMetricLabel");
+  const barEl = document.getElementById("heroCircleProgressBar");
+
+  const insights = latestCircleInsightsCache || {};
+  let circle = insights.top_circle || null;
+  let metricPct = 0;
+  let metricLabel = "إتقان";
+  let subText = "الأستاذ: -- • 0 طالب";
+
+  if (activeHeroCircleTab === "discipline") {
+    circle = insights.most_disciplined || null;
+    if (circle) {
+      metricPct = Math.max(0, Math.min(100, Math.round(Number(circle.attendance_rate != null ? circle.attendance_rate : 100))));
+      metricLabel = "التزام";
+      const sCountText = formatArabicStudentsTotal(circle.student_count || 0);
+      subText = `الأستاذ: ${circle.teacher_name || "غير محدد"} • ${sCountText}`;
+    } else {
+      metricLabel = "التزام";
+    }
+  } else if (activeHeroCircleTab === "mastery") {
+    circle = insights.top_memo || null;
+    if (circle) {
+      metricPct = Math.max(0, Math.min(100, Math.round(Number(circle.memo_index) || 0)));
+      metricLabel = "إتقان";
+      const sCountText = formatArabicStudentsTotal(circle.student_count || 0);
+      subText = `الأستاذ: ${circle.teacher_name || "غير محدد"} • ${sCountText}`;
+    }
+  } else {
+    circle = insights.top_circle || null;
+    if (circle) {
+      metricPct = Math.max(0, Math.min(100, Math.round(Number(circle.memo_index) || 0)));
+      metricLabel = "إتقان";
+      const sCountText = formatArabicStudentsTotal(circle.student_count || 0);
+      subText = `الأستاذ: ${circle.teacher_name || "غير محدد"} • ${sCountText}`;
+    }
+  }
+
+  if (nameEl) nameEl.textContent = circle && circle.name ? circle.name : "لا توجد بيانات كافية";
+  if (subEl) subEl.textContent = subText;
+  if (valEl) valEl.textContent = `${metricPct}%`;
+  if (lblEl) lblEl.textContent = metricLabel;
+  if (barEl) {
+    barEl.style.width = `${metricPct}%`;
+    if (barEl.parentNode && typeof barEl.parentNode.setAttribute === "function") {
+      barEl.parentNode.setAttribute("aria-valuenow", String(metricPct));
+    }
+  }
+}
+
 function renderCirclesInsights(insights, topStudents) {
+  latestCircleInsightsCache = insights || null;
+  renderActiveCircleHeroCard();
+
   const setText = (id, text) => {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
   };
-
-  if (insights && insights.top_circle) {
-    setText("topCircleName", insights.top_circle.name);
-    setText("topCircleSub", `الأستاذ: ${insights.top_circle.teacher_name || 'غير محدد'} | عدد الطلاب: ${insights.top_circle.student_count || 0}`);
-    setText("topCircleBadge", `${insights.top_circle.memo_index || 0}% إتقان`);
-  } else {
-    setText("topCircleName", "لا توجد بيانات كافية");
-    setText("topCircleSub", "الأستاذ: -- | عدد الطلاب: 0");
-    setText("topCircleBadge", "0% إتقان");
-  }
-
-  if (insights && insights.most_disciplined) {
-    setText("disciplinedCircleName", insights.most_disciplined.name);
-    setText("disciplinedCircleSub", `الأستاذ: ${insights.most_disciplined.teacher_name || 'غير محدد'} | غياب: ${insights.most_disciplined.total_absent || 0} يوم`);
-    setText("disciplinedCircleBadge", `${insights.most_disciplined.avg_absent || 0} متوسط/طالب`);
-  } else {
-    setText("disciplinedCircleName", "لا توجد بيانات كافية");
-    setText("disciplinedCircleSub", "الأستاذ: -- | غياب: 0 يوم");
-    setText("disciplinedCircleBadge", "0 متوسط/طالب");
-  }
-
-  if (insights && insights.top_memo) {
-    setText("topMemoCircleName", insights.top_memo.name);
-    setText("topMemoCircleSub", `الأستاذ: ${insights.top_memo.teacher_name || 'غير محدد'} | المتميزون: ${insights.top_memo.excellent_count || 0} طالب`);
-    setText("topMemoCircleBadge", `${insights.top_memo.memo_index || 0}% إتقان`);
-  } else {
-    setText("topMemoCircleName", "لا توجد بيانات كافية");
-    setText("topMemoCircleSub", "الأستاذ: -- | المتميزون: 0 طالب");
-    setText("topMemoCircleBadge", "0% إتقان");
-  }
 
   // Render Top 4 Student Achievers Cards
   if (topStudents && topStudents.top_memo) {
@@ -2036,52 +2200,153 @@ function renderPeriodTrendSvgChart(trends) {
   wrap.innerHTML = `<svg class="an-svg-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="منحنى اتجاه الأداء عبر الفترات">${gridLines}${barsSvg}${lineSvg}${dotsSvg}</svg>`;
 }
 
+function onCircleComparisonMetricChange() {
+  if (analyticsCache && analyticsCache.circle_rankings) {
+    renderCircleComparisonSvgChart(analyticsCache.circle_rankings);
+  }
+}
+window.onCircleComparisonMetricChange = onCircleComparisonMetricChange;
+
 function renderCircleComparisonSvgChart(circleRankings) {
   const wrap = document.getElementById("circleComparisonChartWrap");
+  const legendEl = document.getElementById("circleComparisonLegend");
+  const metricSelect = document.getElementById("circleComparisonMetricSelect");
   if (!wrap) return;
+
+  const mode = (metricSelect && metricSelect.value) ? metricSelect.value : "mastery_attendance";
   const active = (circleRankings || []).filter(c => (c.student_count || 0) > 0).slice(0, 6);
   if (active.length === 0) {
     wrap.innerHTML = `<div class="an-empty-state"><i data-lucide="bar-chart-2" style="width:28px;height:28px;color:var(--muted);"></i><strong>لا توجد حلقات بها طلاب لعرض المقارنة</strong></div>`;
     return;
   }
 
+  const modeMeta = {
+    mastery_attendance: {
+      paired: true,
+      legendHtml: `<span class="legend-chip legend-blue"><i></i> الإتقان %</span><span class="legend-chip legend-green"><i></i> الحضور %</span>`,
+      aria: "مقارنة الحلقات في الإتقان والحضور",
+      unit: "%",
+      maxPercent: true
+    },
+    memo_vs_rev: {
+      paired: true,
+      legendHtml: `<span class="legend-chip legend-blue"><i></i> أوجه الحفظ</span><span class="legend-chip legend-teal"><i></i> أوجه المراجعة</span>`,
+      aria: "مقارنة الحلقات في أوجه الحفظ والمراجعة",
+      unit: "",
+      maxPercent: false
+    },
+    memo_pages: {
+      paired: false,
+      color: "#2563eb",
+      legendHtml: `<span class="legend-chip legend-blue"><i></i> أوجه الحفظ</span>`,
+      aria: "مقارنة الحلقات في أوجه الحفظ",
+      unit: "",
+      maxPercent: false
+    },
+    rev_pages: {
+      paired: false,
+      color: "#0d9488",
+      legendHtml: `<span class="legend-chip legend-teal"><i></i> أوجه المراجعة</span>`,
+      aria: "مقارنة الحلقات في أوجه المراجعة",
+      unit: "",
+      maxPercent: false
+    },
+    student_count: {
+      paired: false,
+      color: "#4f46e5",
+      legendHtml: `<span class="legend-chip legend-indigo"><i></i> عدد الطلاب</span>`,
+      aria: "مقارنة الحلقات في عدد الطلاب",
+      unit: "",
+      maxPercent: false
+    },
+    absent_days: {
+      paired: false,
+      color: "#d97706",
+      legendHtml: `<span class="legend-chip legend-amber"><i></i> أيام الغياب</span>`,
+      aria: "مقارنة الحلقات في أيام الغياب",
+      unit: "",
+      maxPercent: false
+    }
+  }[mode] || {
+    paired: true,
+    legendHtml: `<span class="legend-chip legend-blue"><i></i> الإتقان %</span><span class="legend-chip legend-green"><i></i> الحضور %</span>`,
+    aria: "مقارنة الحلقات",
+    unit: "%",
+    maxPercent: true
+  };
+
+  if (legendEl) legendEl.innerHTML = modeMeta.legendHtml;
+
+  const getVals = (c) => {
+    if (mode === "memo_vs_rev") {
+      return { a: Math.round((Number(c.total_memo_pages) || 0) * 10) / 10, b: Math.round((Number(c.total_rev_pages) || 0) * 10) / 10, aLbl: "الحفظ", bLbl: "المراجعة" };
+    }
+    if (mode === "memo_pages") return { a: Math.round((Number(c.total_memo_pages) || 0) * 10) / 10, aLbl: "أوجه الحفظ" };
+    if (mode === "rev_pages") return { a: Math.round((Number(c.total_rev_pages) || 0) * 10) / 10, aLbl: "أوجه المراجعة" };
+    if (mode === "student_count") return { a: Math.round(Number(c.student_count) || 0), aLbl: "عدد الطلاب" };
+    if (mode === "absent_days") return { a: Math.round(Number(c.total_absent) || 0), aLbl: "أيام الغياب" };
+    return {
+      a: Math.max(0, Math.min(100, Number(c.memo_index) || 0)),
+      b: Math.max(0, Math.min(100, Number(c.attendance_rate != null ? c.attendance_rate : 100))),
+      aLbl: "الإتقان",
+      bLbl: "الحضور"
+    };
+  };
+
   const w = 520;
   const h = 210;
-  const padL = 32;
+  const padL = 34;
   const padR = 16;
   const padT = 24;
   const padB = 46;
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
   const slotW = plotW / active.length;
-  const barW = Math.min(20, Math.max(9, slotW * 0.28));
+  const barW = modeMeta.paired ? Math.min(20, Math.max(9, slotW * 0.28)) : Math.min(28, Math.max(14, slotW * 0.42));
+
+  const scaleMax = modeMeta.maxPercent
+    ? 100
+    : Math.max(5, ...active.map(c => {
+        const v = getVals(c);
+        return modeMeta.paired ? Math.max(v.a, v.b) : v.a;
+      }));
 
   let gridLines = "";
-  [0, 50, 100].forEach(pct => {
-    const y = padT + plotH * (1 - pct / 100);
+  [0, 0.5, 1].forEach(ratio => {
+    const y = padT + plotH * (1 - ratio);
+    const labelVal = Math.round(scaleMax * ratio);
     gridLines += `<line class="an-svg-grid" x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}" />`;
-    gridLines += `<text class="an-svg-label" x="${padL - 5}" y="${y + 4}" text-anchor="end">${pct}%</text>`;
+    gridLines += `<text class="an-svg-label" x="${padL - 5}" y="${y + 4}" text-anchor="end">${labelVal}${modeMeta.unit}</text>`;
   });
 
   const barsSvg = active.map((c, idx) => {
     const cx = padL + slotW * idx + slotW / 2;
-    const mastery = Math.max(0, Math.min(100, Number(c.memo_index) || 0));
-    const att = Math.max(0, Math.min(100, Number(c.attendance_rate != null ? c.attendance_rate : 100)));
-    const mH = Math.max(2, (mastery / 100) * plotH);
-    const aH = Math.max(2, (att / 100) * plotH);
-    const mY = padT + plotH - mH;
-    const aY = padT + plotH - aH;
+    const v = getVals(c);
     const shortName = String(c.name || "").replace(/^حلقة\s+/, "").slice(0, 10);
+    if (modeMeta.paired) {
+      const aH = v.a > 0 ? Math.max(4, (v.a / scaleMax) * plotH) : 0;
+      const bH = v.b > 0 ? Math.max(4, (v.b / scaleMax) * plotH) : 0;
+      const aY = padT + plotH - aH;
+      const bY = padT + plotH - bH;
+      const colorB = mode === "memo_vs_rev" ? "#0d9488" : "#16a34a";
+      return `<g>
+        ${aH > 0 ? `<rect x="${cx - barW - 2}" y="${aY}" width="${barW}" height="${aH}" rx="4" fill="#2563eb"><title>${escapeHtml(c.name)} — ${v.aLbl}: ${v.a}${modeMeta.unit}</title></rect>` : ""}
+        <text class="an-svg-value" x="${cx - barW / 2 - 2}" y="${Math.max(12, aY - 5)}" text-anchor="middle">${v.a}${modeMeta.unit}</text>
+        ${bH > 0 ? `<rect x="${cx + 2}" y="${bY}" width="${barW}" height="${bH}" rx="4" fill="${colorB}"><title>${escapeHtml(c.name)} — ${v.bLbl}: ${v.b}${modeMeta.unit}</title></rect>` : ""}
+        <text class="an-svg-value" x="${cx + barW / 2 + 2}" y="${Math.max(12, bY - 5)}" text-anchor="middle">${v.b}${modeMeta.unit}</text>
+        <text class="an-svg-label" x="${cx}" y="${h - 18}" text-anchor="middle">${escapeHtml(shortName)}</text>
+      </g>`;
+    }
+    const barH = v.a > 0 ? Math.max(4, (v.a / scaleMax) * plotH) : 0;
+    const barY = padT + plotH - barH;
     return `<g>
-      <rect x="${cx - barW - 2}" y="${mY}" width="${barW}" height="${mH}" rx="4" fill="#2563eb"><title>${escapeHtml(c.name)} — الإتقان: ${mastery}%</title></rect>
-      <text class="an-svg-value" x="${cx - barW / 2 - 2}" y="${Math.max(12, mY - 5)}" text-anchor="middle">${mastery}%</text>
-      <rect x="${cx + 2}" y="${aY}" width="${barW}" height="${aH}" rx="4" fill="#16a34a"><title>${escapeHtml(c.name)} — الحضور: ${att}%</title></rect>
-      <text class="an-svg-value" x="${cx + barW / 2 + 2}" y="${Math.max(12, aY - 5)}" text-anchor="middle">${att}%</text>
+      ${barH > 0 ? `<rect x="${cx - barW / 2}" y="${barY}" width="${barW}" height="${barH}" rx="5" fill="${modeMeta.color}"><title>${escapeHtml(c.name)} — ${v.aLbl}: ${v.a}${modeMeta.unit}</title></rect>` : ""}
+      <text class="an-svg-value" x="${cx}" y="${Math.max(12, barY - 5)}" text-anchor="middle">${v.a}${modeMeta.unit}</text>
       <text class="an-svg-label" x="${cx}" y="${h - 18}" text-anchor="middle">${escapeHtml(shortName)}</text>
     </g>`;
   }).join("");
 
-  wrap.innerHTML = `<svg class="an-svg-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="مقارنة الحلقات في الإتقان والحضور">${gridLines}${barsSvg}</svg>`;
+  wrap.innerHTML = `<svg class="an-svg-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${modeMeta.aria}">${gridLines}${barsSvg}</svg>`;
 }
 
 function formatArabicStudentsTotal(n) {

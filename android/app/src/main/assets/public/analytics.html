@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dark_theme.css?v=3.0">
   <link rel="stylesheet" href="circles.css">
-  <link rel="stylesheet" href="analytics.css?v=7.0">
+  <link rel="stylesheet" href="analytics.css?v=9.0">
   <link rel="stylesheet" href="mobile_bottom_nav.css?v=2.0">
   <!-- Lucide Icons (Local with CDN fallback) -->
   <script src="lucide.min.js"></script>
@@ -227,9 +227,19 @@
               <div>
                 <h2><i data-lucide="bar-chart-2" style="width:20px; height:20px; color:#0d9488; vertical-align:-3px;"></i> مقارنة الحلقات</h2>
               </div>
-              <div class="chart-legend" aria-hidden="true">
-                <span class="legend-chip legend-blue"><i></i> الإتقان %</span>
-                <span class="legend-chip legend-green"><i></i> الحضور %</span>
+              <div class="chart-head-controls">
+                <select id="circleComparisonMetricSelect" class="comparison-metric-select no-print" aria-label="نوع مقارنة الحلقات" onchange="onCircleComparisonMetricChange()">
+                  <option value="mastery_attendance">الإتقان مقابل الحضور (%)</option>
+                  <option value="memo_vs_rev">الحفظ مقابل المراجعة (أوجه)</option>
+                  <option value="memo_pages">أوجه الحفظ المنجزة</option>
+                  <option value="rev_pages">أوجه المراجعة والسرد</option>
+                  <option value="student_count">عدد الطلاب في الحلقات</option>
+                  <option value="absent_days">أيام الغياب</option>
+                </select>
+                <div id="circleComparisonLegend" class="chart-legend" aria-hidden="true">
+                  <span class="legend-chip legend-blue"><i></i> الإتقان %</span>
+                  <span class="legend-chip legend-green"><i></i> الحضور %</span>
+                </div>
               </div>
             </div>
             <div id="circleComparisonChartWrap" class="svg-chart-wrap">
@@ -238,33 +248,38 @@
           </div>
         </section>
 
-        <!-- Circles Smart Insights -->
-        <section class="insights-grid insights-grid-3" style="margin-bottom:22px;">
-          <div class="insight-card insight-blue">
-            <div class="insight-head">
-              <span class="insight-badge insight-badge-blue"><i data-lucide="trending-up" style="width:14px; height:14px;"></i> الحلقة الأعلى كثافة ونشاطاً</span>
-              <span id="topCircleBadge" class="rate-tag rate-tag-blue">--</span>
+        <!-- Interactive Segmented Hero Card (Circles Insights) -->
+        <section class="circles-hero-section" style="margin-bottom:20px;">
+          <div id="circlesHeroCard" class="circles-hero-card">
+            <div class="hero-segmented-control" role="tablist" aria-label="تصنيف تميز الحلقات">
+              <button type="button" id="heroTabDensity" class="hero-seg-tab active" role="tab" aria-selected="true" onclick="selectCircleHeroTab('density')">
+                <i data-lucide="trending-up" style="width:15px; height:15px;"></i>
+                <span>الكثافة</span>
+              </button>
+              <button type="button" id="heroTabDiscipline" class="hero-seg-tab" role="tab" aria-selected="false" onclick="selectCircleHeroTab('discipline')">
+                <i data-lucide="shield-check" style="width:15px; height:15px;"></i>
+                <span>الانضباط</span>
+              </button>
+              <button type="button" id="heroTabMastery" class="hero-seg-tab" role="tab" aria-selected="false" onclick="selectCircleHeroTab('mastery')">
+                <i data-lucide="star" style="width:15px; height:15px;"></i>
+                <span>الإتقان</span>
+              </button>
             </div>
-            <h3 id="topCircleName" class="insight-title">لا توجد بيانات كافية</h3>
-            <div id="topCircleSub" class="insight-sub">الأستاذ: -- | عدد الطلاب: 0</div>
-          </div>
 
-          <div class="insight-card insight-green">
-            <div class="insight-head">
-              <span class="insight-badge success-badge" style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="shield-check" style="width:14px; height:14px;"></i> الحلقة الأعلى انضباطاً</span>
-              <span id="disciplinedCircleBadge" class="rate-tag rate-tag-green">--</span>
+            <div class="hero-card-body">
+              <div class="hero-card-info">
+                <h3 id="heroCircleName" class="hero-circle-name">لا توجد بيانات كافية</h3>
+                <div id="heroCircleSub" class="hero-circle-sub">الأستاذ: -- • 0 طالب</div>
+              </div>
+              <div class="hero-card-metric">
+                <strong id="heroCircleMetricVal" class="hero-metric-value">0%</strong>
+                <span id="heroCircleMetricLabel" class="hero-metric-label">إتقان</span>
+              </div>
             </div>
-            <h3 id="disciplinedCircleName" class="insight-title">لا توجد بيانات كافية</h3>
-            <div id="disciplinedCircleSub" class="insight-sub">الأستاذ: -- | متوسط الغياب: 0</div>
-          </div>
 
-          <div class="insight-card insight-gold">
-            <div class="insight-head">
-              <span class="insight-badge insight-badge-gold"><i data-lucide="star" style="width:14px; height:14px;"></i> الأعلى إتقاناً في الحفظ والمراجعة</span>
-              <span id="topMemoCircleBadge" class="rate-tag rate-tag-gold">--</span>
+            <div class="hero-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="نسبة التميز">
+              <div id="heroCircleProgressBar" class="hero-progress-fill" style="width: 0%;"></div>
             </div>
-            <h3 id="topMemoCircleName" class="insight-title">لا توجد بيانات كافية</h3>
-            <div id="topMemoCircleSub" class="insight-sub">الأستاذ: -- | مؤشر الإتقان: 0%</div>
           </div>
         </section>
 
@@ -798,6 +813,20 @@
     </div>
   </div>
 
+  <!-- Fullscreen Stat/Chart Modal (Double-Tap Triggered) -->
+  <div id="analyticsFullscreenModal" class="modal-overlay an-fs-overlay" role="dialog" aria-modal="true" style="display:none;" onclick="closeAnalyticsCardFullscreen(event)">
+    <div class="modal-card an-fs-card" onclick="event.stopPropagation()">
+      <div class="modal-header an-fs-head">
+        <div>
+          <h3 id="anFullscreenTitle">عرض بملء الشاشة</h3>
+          <span class="modal-meta">اضغط مرتين أو انقر إغلاق للعودة</span>
+        </div>
+        <button type="button" class="close-modal-btn" onclick="closeAnalyticsCardFullscreen()" aria-label="إغلاق ملء الشاشة"><i data-lucide="x" style="width:18px; height:18px;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></i></button>
+      </div>
+      <div id="anFullscreenBody" class="an-fs-body"></div>
+    </div>
+  </div>
+
   <!-- Back to Top Button -->
   <button id="backTopBtn" class="back-top-btn no-print" aria-label="العودة إلى الأعلى" title="العودة إلى الأعلى">
     <svg class="lucide lucide-arrow-up" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
@@ -808,7 +837,7 @@
   <script src="hijri_date.js?v=3.0"></script>
   <script src="mobile_bottom_nav.js?v=2.0"></script>
   <script src="firebase-client.js?v=5.0"></script>
-  <script src="analytics.js?v=7.0"></script>
+  <script src="analytics.js?v=9.0"></script>
   <script>if(window.safeCreateIcons) safeCreateIcons(); else if(window.lucide) lucide.createIcons();</script>
 </body>
 </html>
